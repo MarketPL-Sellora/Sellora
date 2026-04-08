@@ -1,0 +1,14 @@
+{
+  "scenario": "Ініціація Групової покупки (Group Buy)",
+  "endpoint": "POST /api/v1/group-buys",
+  "request": {
+    "productId": "987e6543-e21b-12d3-a456-426614174111"
+  },
+  "response_201_Created": {
+    "groupId": "gb-992x-alpha",
+    "productId": "987e6543-e21b-12d3-a456-426614174111",
+    "shareableLink": "https://sellora.com/group/gb-992x-alpha",
+    "requiredParticipants": 3,
+    "expiresAt": "2026-04-10T10:15:30Z"
+  }
+}

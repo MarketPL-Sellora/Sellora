@@ -1,0 +1,18 @@
+{
+  "scenario": "Авторизація користувача (Login)",
+  "endpoint": "POST /api/v1/auth/login",
+  "request": {
+    "email": "user@sellora.com",
+    "password": "SecretPassword123!"
+  },
+  "response_200_OK": {
+    "accessToken": "eyJhbGciOiJIUzI1NiIsInR5c...",
+    "tokenType": "Bearer",
+    "user": {
+      "id": "123e4567-e89b-12d3-a456-426614174000",
+      "email": "user@sellora.com",
+      "fullName": "Вадим",
+      "role": "USER"
+    }
+  }
+}

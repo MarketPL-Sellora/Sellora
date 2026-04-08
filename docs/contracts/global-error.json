@@ -1,0 +1,17 @@
+{
+  "scenario": "Глобальна схема помилки (Global Error Schema) - Приклад 400 Bad Request",
+  "timestamp": "2026-04-09T10:18:45Z",
+  "errorCode": "VALIDATION_FAILED",
+  "message": "Передані дані не пройшли перевірку",
+  "path": "/api/v1/orders",
+  "details": [
+    {
+      "field": "delivery.department",
+      "issue": "Номер відділення не може бути порожнім"
+    },
+    {
+      "field": "items[0].quantity",
+      "issue": "Кількість товару має бути більшою за 0"
+    }
+  ]
+}
