@@ -1,0 +1,109 @@
+openapi: 3.0.3
+info:
+  title: Sellora API
+  version: v1.0.0
+  description: API для автоматизації маркетплейсу Sellora (MVP).
+servers:
+  - url: http://localhost:8080
+    description: Локальний сервер розробки
+tags:
+  - name: Auth
+    description: Авторизація та реєстрація
+  - name: Orders
+    description: Оформлення та обробка замовлень
+paths:
+  /api/v1/auth/login:
+    post:
+      tags:
+        - Auth
+      summary: Авторизація користувача
+      description: Отримання JWT токена для доступу до захищених ресурсів. Доступно для всіх (Guest).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  example: "user@sellora.com"
+                password:
+                  type: string
+                  example: "SecretPassword123!"
+      responses:
+        '200':
+          description: Успішна авторизація
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  accessToken:
+                    type: string
+                    example: "eyJhbGciOiJIUzI1NiIsInR5c..."
+        '400':
+          description: Помилка валідації (невірний логін або пароль)
+          content:
+            application/json:
+              example:
+                timestamp: "2026-04-09T10:18:45Z"
+                errorCode: "AUTH_FAILED"
+                message: "Невірний email або пароль"
+  /api/v1/orders:
+    post:
+      tags:
+        - Orders
+      summary: Створення нового замовлення
+      description: Оформлення кошика (Checkout). Доступно лише для авторизованих користувачів (Role User).
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                items:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      productId:
+                        type: string
+                        example: "987e6543-e21b-12d3"
+                      quantity:
+                        type: integer
+                        example: 2
+                deliveryAddress:
+                  type: string
+                  example: "м. Київ, Відділення №15"
+      responses:
+        '201':
+          description: Замовлення успішно створено
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  orderId:
+                    type: string
+                    example: "ORD-2026-801"
+                  status:
+                    type: string
+                    example: "PENDING_PAYMENT"
+        '409':
+          description: Недостатньо товару на складі
+          content:
+            application/json:
+              example:
+                timestamp: "2026-04-09T10:20:00Z"
+                errorCode: "OUT_OF_STOCK"
+                message: "Товару немає в наявності"
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
