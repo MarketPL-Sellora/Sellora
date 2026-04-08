@@ -1,0 +1,25 @@
+{
+  "scenario": "Оформлення замовлення (Checkout)",
+  "endpoint": "POST /api/v1/orders",
+  "request": {
+    "items": [
+      {
+        "productId": "987e6543-e21b-12d3-a456-426614174111",
+        "quantity": 2
+      }
+    ],
+    "delivery": {
+      "type": "NOVA_POSHTA",
+      "city": "Київ",
+      "department": "Відділення №15"
+    },
+    "paymentMethod": "LIQPAY"
+  },
+  "response_201_Created": {
+    "orderId": "ORD-2026-801",
+    "status": "PENDING_PAYMENT",
+    "totalPrice": 45600.00,
+    "paymentUrl": "https://www.liqpay.ua/api/3/checkout?data=...",
+    "createdAt": "2026-04-09T10:15:30Z"
+  }
+}
