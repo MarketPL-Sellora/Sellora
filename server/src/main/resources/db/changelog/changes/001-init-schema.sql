@@ -9,6 +9,7 @@ CREATE TABLE users (
                      role VARCHAR(50) NOT NULL CHECK (role IN ('BUYER', 'MERCHANT')),
                      created_at TIMESTAMP DEFAULT now(),
                      updated_at TIMESTAMP DEFAULT now()
+
 );
 -- rollback DROP TABLE users;
 
