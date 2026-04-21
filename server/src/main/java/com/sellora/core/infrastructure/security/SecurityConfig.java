@@ -13,7 +13,7 @@ public class SecurityConfig {
     http
       .csrf(csrf -> csrf.disable()) // Вимикаємо для розробки
       .authorizeHttpRequests(auth -> auth
-        .requestMatchers("/health", "/swagger-ui/**", "/v3/api-docs/**", "/api/v1/trigger-error").permitAll() // Дозволяємо ці шляхи без логіна
+        .requestMatchers("/health", "/api/v1/**","/swagger-ui/**", "/v3/api-docs/**", "/api/v1/trigger-error").permitAll() // Дозволяємо ці шляхи без логіна
         .anyRequest().authenticated() // Все інше потребує авторизації
       )
       .formLogin(form -> form.permitAll()); // Залишаємо форму логіна, але вона не блокуватиме /health
