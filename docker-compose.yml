@@ -1,0 +1,81 @@
+version: '3.8'
+
+services:
+  # 1. База даних (PostgreSQL)
+  db:
+    image: postgres:16-alpine
+    container_name: sellora-db
+    restart: always
+    environment:
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-admin}
+      POSTGRES_DB: ${DB_NAME:-sellora_db}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-sellora_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - sellora-network
+
+  # 2. Веб-інтерфейс для БД (pgAdmin)
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: sellora-pgadmin
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@admin.com}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin}
+    ports:
+      - "5050:80"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    networks:
+      - sellora-network
+
+  # 3.  Backend (Spring Boot)
+#  backend:
+#    build:
+#      context: ./server
+#      dockerfile: Dockerfile
+#    container_name: sellora-backend
+#    restart: always
+#    ports:
+#      - "8080:8080"
+#    environment:
+#      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/${DB_NAME:-sellora_db}
+#      SPRING_DATASOURCE_USERNAME: ${DB_USER:-postgres}
+#      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-admin}
+#    depends_on:
+#      db:
+#        condition: service_healthy
+#    networks:
+#      - sellora-network
+
+#  # 4. Frontend  (Vue.js)
+#  frontend:
+#    build:
+#      context: ./client
+#      dockerfile: Dockerfile
+#    container_name: sellora-frontend
+#    ports:
+#      - "80:80"
+#    networks:
+#      - sellora-network
+
+# Окрема мережа для внутрішньої взаємодії контейнерів
+networks:
+  sellora-network:
+    driver: bridge
+
+# Сховища для збереження даних після вимкнення контейнерів
+volumes:
+  postgres_data:
+  pgadmin_data:
