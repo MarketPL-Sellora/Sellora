@@ -1,8 +1,6 @@
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
 
-// Імпортуємо налаштований екземпляр Axios з централізованого модуля.
-// Він вже містить baseURL, withCredentials: true та інші налаштування.
+import { ref, reactive } from 'vue'
 import { apiClient } from '../api/axios'
 
 // ─── Tabs ─────────────────────────────────────────────────────────────────────
@@ -13,86 +11,68 @@ const isLogin = ref(true)
 
 const loginForm = reactive({ email: '', password: '' })
 
-const registerForm = reactive({ name: '', email: '', password: '', passwordConfirm: '' })
-
-
+// Видалено поле name: бекенд /auth/register приймає лише email + password (див. Swagger)
+const registerForm = reactive({ email: '', password: '', passwordConfirm: '' })
 
 // ─── US 4.1: Стан завантаження ────────────────────────────────────────────────
-// Прапорець, що показує, чи триває процес авторизації/реєстрації.
-// Коли true — кнопка показує «Завантаження...», а всі інпути стають disabled.
 const isLoading = ref(false)
 
 // ─── Password visibility ──────────────────────────────────────────────────────
 
-const showLoginPassword    = ref(false)
-const showRegPassword      = ref(false)
-const showRegPasswordConf  = ref(false)
+const showLoginPassword = ref(false)
+const showRegPassword = ref(false)
+const showRegPasswordConf = ref(false)
 
 // ─── Emits ────────────────────────────────────────────────────────────────────
 
 const emit = defineEmits<{
   (e: 'close'): void
-  (e: 'login',         payload: typeof loginForm):    void
-  (e: 'register',      payload: typeof registerForm): void
+  (e: 'login', payload: typeof loginForm): void
+  (e: 'register', payload: typeof registerForm): void
   (e: 'google'): void
-  // Емітується після успішної авторизації на бекенді
   (e: 'login-success'): void
 }>()
 
-// ─── Головний обробник форми (handleAuth) ─────────────────────────────────────
-// async — функція асинхронна, бо виконує реальний HTTP-запит до бекенду.
-// Викликається при submit форми (вкладка «Вхід» або «Реєстрація»).
-// Бекенд при успіху встановлює HttpOnly cookie — браузер зберігає його
-// автоматично (завдяки withCredentials: true в axios.ts).
+// ─── Головний обробник форми ──────────────────────────────────────────────────
+
 async function handleAuth() {
-  // Вмикаємо стан завантаження — блокує інпути і змінює текст кнопки
   isLoading.value = true
 
   try {
     if (isLogin.value) {
-      // ── Вкладка «Вхід» ──────────────────────────────────────────────────────
-      // Надсилаємо POST-запит на ендпоінт /auth/login з email та паролем.
-      // У разі успіху бекенд поверне 2xx і встановить HttpOnly cookie з сесією.
-      await apiClient.post('/auth/login', {
-        email:    loginForm.email,
-        password: loginForm.password,
-      })
+      // TODO: закоментовано — потрібно уточнити ендпоінт логіну у Swagger
+      // (поки невідомо чи /auth/login приймає ті самі поля)
+      // await apiClient.post('/auth/login', {
+      //   email: loginForm.email,
+      //   password: loginForm.password,
+      // })
+
+      // Тимчасово просто емітуємо подію без реального запиту
+      emit('login', { ...loginForm })
     } else {
-      // ── Вкладка «Реєстрація» ────────────────────────────────────────────────
-      // Надсилаємо POST-запит на ендпоінт /auth/register з базовими даними юзера.
-      // Роль продавця присвоюється пізніше у кабінеті.
+      // Реєстрація: лише email + password (name видалено — не підтримується бекендом)
       await apiClient.post('/auth/register', {
-        name:     registerForm.name,
-        email:    registerForm.email,
+        email: registerForm.email,
         password: registerForm.password,
       })
     }
 
-    // Запит завершився успішно (статус 2xx):
-    // Повідомляємо батьківський компонент (Header) про вдалу авторизацію
     emit('login-success')
-
-    // Закриваємо модальне вікно
     emit('close')
 
   } catch (error) {
-    // Запит завершився з помилкою (мережева помилка або статус 4xx/5xx):
-    // Виводимо деталі в консоль для налагодження.
-    // TODO: замінити на user-friendlyповідомлення (наприклад, toast-сповіщення)
+    // TODO: замінити на toast-сповіщення для користувача
     console.error(error)
 
   } finally {
-    // Блок finally виконується завжди — і після успіху, і після помилки.
-    // Вимикаємо стан завантаження, щоб розблокувати форму.
     isLoading.value = false
   }
 }
 
-// Залишаємо функцію входу для сумісності (обробляє вкладку «Вхід»)
 function handleLogin() {
   emit('login', { ...loginForm })
 }
-// Примітка: handleRegister видалена — її роль тепер виконує handleAuth
+
 </script>
 
 <template>
@@ -124,9 +104,7 @@ function handleLogin() {
         <!-- Вхід tab -->
         <button
           class="pb-3 border-b-2 inline-flex flex-col justify-center items-center transition-colors duration-150"
-          :class="isLogin
-            ? 'border-orange-500'
-            : 'border-transparent hover:border-gray-600'"
+          :class="isLogin ? 'border-orange-500' : 'border-transparent hover:border-gray-600'"
           @click="isLogin = true"
         >
           <span
@@ -140,9 +118,7 @@ function handleLogin() {
         <!-- Реєстрація tab -->
         <button
           class="pb-3 border-b-2 inline-flex flex-col justify-center items-center transition-colors duration-150"
-          :class="!isLogin
-            ? 'border-orange-500'
-            : 'border-transparent hover:border-gray-600'"
+          :class="!isLogin ? 'border-orange-500' : 'border-transparent hover:border-gray-600'"
           @click="isLogin = false"
         >
           <span
@@ -188,7 +164,6 @@ function handleLogin() {
               class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-600 hover:text-gray-400 transition-colors duration-150"
               @click="showLoginPassword = !showLoginPassword"
             >
-              <!-- Eye / Eye-off -->
               <svg v-if="!showLoginPassword" class="w-4 h-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3">
                 <path d="M1 8s2.5-5 7-5 7 5 7 5-2.5 5-7 5-7-5-7-5z" stroke-linecap="round"/>
                 <circle cx="8" cy="8" r="2"/>
@@ -241,18 +216,14 @@ function handleLogin() {
       </div>
 
       <!-- ── REGISTER form ──────────────────────────────────────────────── -->
-      <!-- US 4.1: Форма обгорнута у <form> з @submit.prevent="handleAuth" -->
-      <!-- Це дозволяє перехопити натискання Enter та сабміт кнопки типу submit -->
       <form v-else class="self-stretch flex flex-col gap-4" @submit.prevent="handleAuth">
 
-
-
-        <!-- Name -->
+        <!-- Name — ЗАКОМЕНТОВАНО: бекенд /auth/register не приймає поле name (див. Swagger) -->
+        <!--
         <div class="flex flex-col gap-1.5">
           <label class="text-gray-400 text-xs font-medium font-['Onest'] uppercase leading-4 tracking-tight">
             Ім'я
           </label>
-          <!-- US 4.1: :disabled="isLoading" блокує поле під час завантаження -->
           <input
             v-model="registerForm.name"
             type="text"
@@ -261,13 +232,13 @@ function handleLogin() {
             class="w-full px-4 py-3 bg-neutral-900 rounded-xl outline outline-1 outline-offset-[-1px] outline-gray-700 text-gray-300 text-sm font-normal font-['Onest'] placeholder-gray-600 transition-all duration-150 focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500 disabled:opacity-50 disabled:cursor-not-allowed"
           />
         </div>
+        -->
 
         <!-- Email -->
         <div class="flex flex-col gap-1.5">
           <label class="text-gray-400 text-xs font-medium font-['Onest'] uppercase leading-4 tracking-tight">
             Email
           </label>
-          <!-- US 4.1: :disabled="isLoading" блокує поле під час завантаження -->
           <input
             v-model="registerForm.email"
             type="email"
@@ -283,7 +254,6 @@ function handleLogin() {
             Пароль
           </label>
           <div class="relative">
-            <!-- US 4.1: :disabled="isLoading" блокує поле під час завантаження -->
             <input
               v-model="registerForm.password"
               :type="showRegPassword ? 'text' : 'password'"
@@ -313,7 +283,6 @@ function handleLogin() {
             Повторіть пароль
           </label>
           <div class="relative">
-            <!-- US 4.1: :disabled="isLoading" блокує поле під час завантаження -->
             <input
               v-model="registerForm.passwordConfirm"
               :type="showRegPasswordConf ? 'text' : 'password'"
@@ -349,19 +318,13 @@ function handleLogin() {
           </p>
         </div>
 
-
-
         <!-- Submit -->
-        <!-- US 4.1: type="submit" — дозволяє формі перехопити натискання через @submit.prevent -->
-        <!-- US 4.1: :disabled="isLoading" — блокує повторний сабміт під час завантаження -->
-        <!-- US 4.1: Текст кнопки змінюється на «Завантаження...» поки isLoading === true -->
         <div class="pt-1">
           <button
             type="submit"
             :disabled="isLoading"
             class="w-full py-3.5 relative bg-orange-500 rounded-xl flex justify-center items-center gap-2 shadow-[0px_4px_6px_-4px_rgba(249,115,22,0.20),0px_10px_15px_-3px_rgba(249,115,22,0.20)] transition-all duration-150 hover:bg-orange-400 hover:shadow-[0px_4px_20px_0px_rgba(249,115,22,0.45)] active:scale-[0.98] active:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-500/50 disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:bg-orange-500 disabled:active:scale-100"
           >
-            <!-- Спінер — відображається тільки під час завантаження (isLoading === true) -->
             <svg
               v-if="isLoading"
               class="w-4 h-4 animate-spin text-white"
@@ -372,7 +335,6 @@ function handleLogin() {
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
               <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
             </svg>
-            <!-- Текст кнопки: «Завантаження...» або «Зареєструватися» залежно від isLoading -->
             <span class="text-white text-sm font-semibold font-['Onest'] leading-5 tracking-tight">
               {{ isLoading ? 'Завантаження...' : 'Зареєструватися' }}
             </span>
