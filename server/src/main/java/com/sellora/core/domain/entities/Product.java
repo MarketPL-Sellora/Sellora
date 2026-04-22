@@ -21,7 +21,7 @@ public class Product {
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long id;
 
-  @Column(name = "merchant_id")
+  @Column(name = "store_id")
   private Long merchantId;
 
   @Column(name = "category_id")

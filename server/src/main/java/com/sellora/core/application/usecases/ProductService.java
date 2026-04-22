@@ -18,7 +18,7 @@ public class ProductService {
     product.setTitle(dto.title());
     product.setStandardPrice(dto.standardPrice());
     product.setStockQuantity(dto.stockQuantity());
-    product.setStatus("active");
+    product.setStatus("ACTIVE");
 
     // Хардкодимо обов'язкові зв'язки для MVP
     product.setMerchantId(1L);
