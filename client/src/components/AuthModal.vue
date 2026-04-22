@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive } from 'vue'
 
 // Імпортуємо налаштований екземпляр Axios з централізованого модуля.
 // Він вже містить baseURL, withCredentials: true та інші налаштування.
@@ -15,21 +15,7 @@ const loginForm = reactive({ email: '', password: '' })
 
 const registerForm = reactive({ name: '', email: '', password: '', passwordConfirm: '' })
 
-// ─── US 4.2: Вибір ролі ───────────────────────────────────────────────────────
-// Зберігає вибрану роль користувача: 'buyer' (покупець) або 'seller' (продавець).
-// За замовчуванням встановлено 'buyer'.
-const role = ref<'buyer' | 'seller'>('buyer')
 
-// Додаткові поля форми реєстрації для ролі «Продавець» (US 4.2)
-const sellerForm = reactive({
-  shopName:    '', // Назва магазину
-  taxId:       '', // ЄДРПОУ або ІПН
-  address:     '', // Контактна адреса
-})
-
-// Обчислюване значення: чи є поточна роль «Продавець»
-// Використовується у шаблоні для умовного відображення додаткових полів
-const isSeller = computed(() => role.value === 'seller')
 
 // ─── US 4.1: Стан завантаження ────────────────────────────────────────────────
 // Прапорець, що показує, чи триває процес авторизації/реєстрації.
@@ -73,15 +59,12 @@ async function handleAuth() {
       })
     } else {
       // ── Вкладка «Реєстрація» ────────────────────────────────────────────────
-      // Надсилаємо POST-запит на ендпоінт /auth/register з даними нового юзера.
-      // Передаємо роль та, якщо обрано 'seller', додаткові поля продавця.
+      // Надсилаємо POST-запит на ендпоінт /auth/register з базовими даними юзера.
+      // Роль продавця присвоюється пізніше у кабінеті.
       await apiClient.post('/auth/register', {
         name:     registerForm.name,
         email:    registerForm.email,
         password: registerForm.password,
-        role:     role.value,
-        // Поширюємо поля продавця лише якщо роль — 'seller', інакше — порожній об'єкт
-        ...(isSeller.value ? sellerForm : {}),
       })
     }
 
@@ -262,36 +245,7 @@ function handleLogin() {
       <!-- Це дозволяє перехопити натискання Enter та сабміт кнопки типу submit -->
       <form v-else class="self-stretch flex flex-col gap-4" @submit.prevent="handleAuth">
 
-        <!-- US 4.2: Перемикач ролі (Покупець / Продавець) ──────────────────── -->
-        <!-- При зміні ролі на 'seller' динамічно з'являються 3 додаткові поля -->
-        <div class="flex gap-2 p-1 bg-neutral-800 rounded-xl">
 
-          <!-- Кнопка «Я Покупець» — встановлює role = 'buyer' -->
-          <button
-            type="button"
-            class="flex-1 py-2 rounded-lg text-sm font-medium font-['Onest'] leading-5 transition-all duration-150"
-            :class="role === 'buyer'
-              ? 'bg-orange-500 text-white shadow-sm'
-              : 'text-gray-400 hover:text-gray-300'"
-            @click="role = 'buyer'"
-          >
-            🛒 Я Покупець
-          </button>
-
-          <!-- Кнопка «Я Продавець» — встановлює role = 'seller' -->
-          <button
-            type="button"
-            class="flex-1 py-2 rounded-lg text-sm font-medium font-['Onest'] leading-5 transition-all duration-150"
-            :class="role === 'seller'
-              ? 'bg-orange-500 text-white shadow-sm'
-              : 'text-gray-400 hover:text-gray-300'"
-            @click="role = 'seller'"
-          >
-            🏪 Я Продавець
-          </button>
-
-        </div>
-        <!-- / US 4.2: Кінець перемикача ролей -->
 
         <!-- Name -->
         <div class="flex flex-col gap-1.5">
@@ -395,65 +349,7 @@ function handleLogin() {
           </p>
         </div>
 
-        <!-- US 4.2: Додаткові поля для ролі «Продавець» ────────────────────── -->
-        <!-- Блок з'являється тільки якщо isSeller === true (role === 'seller') -->
-        <!-- Використовує v-if для умовного рендерингу -->
-        <template v-if="isSeller">
 
-          <!-- Роздільник з підписом -->
-          <div class="flex items-center gap-2">
-            <div class="flex-1 h-px border-t border-orange-500/30" />
-            <span class="text-orange-400/70 text-xs font-medium font-['Onest']">Дані продавця</span>
-            <div class="flex-1 h-px border-t border-orange-500/30" />
-          </div>
-
-          <!-- Поле «Назва магазину» (US 4.2) -->
-          <div class="flex flex-col gap-1.5">
-            <label class="text-gray-400 text-xs font-medium font-['Onest'] uppercase leading-4 tracking-tight">
-              Назва магазину
-            </label>
-            <!-- US 4.1: :disabled="isLoading" блокує поле під час завантаження -->
-            <input
-              v-model="sellerForm.shopName"
-              type="text"
-              placeholder="Наприклад: TechShop UA"
-              :disabled="isLoading"
-              class="w-full px-4 py-3 bg-neutral-900 rounded-xl outline outline-1 outline-offset-[-1px] outline-orange-500/30 text-gray-300 text-sm font-normal font-['Onest'] placeholder-gray-600 transition-all duration-150 focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500 disabled:opacity-50 disabled:cursor-not-allowed"
-            />
-          </div>
-
-          <!-- Поле «ЄДРПОУ/ІПН» (US 4.2) -->
-          <div class="flex flex-col gap-1.5">
-            <label class="text-gray-400 text-xs font-medium font-['Onest'] uppercase leading-4 tracking-tight">
-              ЄДРПОУ / ІПН
-            </label>
-            <!-- US 4.1: :disabled="isLoading" блокує поле під час завантаження -->
-            <input
-              v-model="sellerForm.taxId"
-              type="text"
-              placeholder="12345678"
-              :disabled="isLoading"
-              class="w-full px-4 py-3 bg-neutral-900 rounded-xl outline outline-1 outline-offset-[-1px] outline-orange-500/30 text-gray-300 text-sm font-normal font-['Onest'] placeholder-gray-600 transition-all duration-150 focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500 disabled:opacity-50 disabled:cursor-not-allowed"
-            />
-          </div>
-
-          <!-- Поле «Контактна адреса» (US 4.2) -->
-          <div class="flex flex-col gap-1.5">
-            <label class="text-gray-400 text-xs font-medium font-['Onest'] uppercase leading-4 tracking-tight">
-              Контактна адреса
-            </label>
-            <!-- US 4.1: :disabled="isLoading" блокує поле під час завантаження -->
-            <input
-              v-model="sellerForm.address"
-              type="text"
-              placeholder="м. Київ, вул. Хрещатик, 1"
-              :disabled="isLoading"
-              class="w-full px-4 py-3 bg-neutral-900 rounded-xl outline outline-1 outline-offset-[-1px] outline-orange-500/30 text-gray-300 text-sm font-normal font-['Onest'] placeholder-gray-600 transition-all duration-150 focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500 disabled:opacity-50 disabled:cursor-not-allowed"
-            />
-          </div>
-
-        </template>
-        <!-- / US 4.2: Кінець додаткових полів продавця -->
 
         <!-- Submit -->
         <!-- US 4.1: type="submit" — дозволяє формі перехопити натискання через @submit.prevent -->
