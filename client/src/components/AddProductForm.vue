@@ -7,6 +7,7 @@ import { ref, reactive, computed } from 'vue'
 // Батько отримує цю подію через @close і повертає isAddingProduct = false.
 const emit = defineEmits<{
   (e: 'close'): void
+  (e: 'save', product: Record<string, unknown>): void
 }>()
 
 // ─── Типи ────────────────────────────────────────────────────────────────────
@@ -119,6 +120,28 @@ function handleSave() {
   }
   console.log('Дані на відправку:', data)
   // TODO: тут замінити на реальний API-виклик
+
+  // Формуємо об'єкт товару для додавання у масив myStoreProducts батьківського компонента.
+  // Використовуємо дані з форми та mock-значення для полів, яких немає у формі.
+  const coverPhoto = photos.value.find(p => p.isCover)
+  const newProduct = {
+    id:           Date.now(),
+    brand:        'Мій магазин',
+    name:         productForm.name || 'Новий товар',
+    image:        coverPhoto ? coverPhoto.url : 'https://via.placeholder.com/400x400?text=No+Image',
+    imageAlt:     productForm.name || 'Товар',
+    rating:       0,
+    reviewCount:  0,
+    groupLabel:   'Учасників',
+    groupCurrent: 0,
+    groupTotal:   5,
+    price:        Number(productForm.price) || 0,
+    oldPrice:     Math.round((Number(productForm.price) || 0) * 1.2),
+  }
+
+  // Повідомляємо батьківський компонент про збережений товар —
+  // CabinetPage додасть його у масив myStoreProducts через unshift.
+  emit('save', newProduct)
 
   // Повідомляємо батьківський компонент про успішне збереження —
   // CabinetPage закриє форму і поверне список товарів.
