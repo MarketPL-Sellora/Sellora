@@ -1,14 +1,23 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
+// Тип іконки розширено: додано 'seller' для вкладки «Мої товари» (US 4.2)
 interface MenuItem {
   id: string
   label: string
   count?: number
-  icon: 'orders' | 'groups' | 'wishlist' | 'settings'
+  icon: 'orders' | 'groups' | 'wishlist' | 'settings' | 'seller'
 }
+
+// ─── Props ────────────────────────────────────────────────────────────────────
+// activeTab   — id активної вкладки, керується батьківським CabinetPage
+// isUserSeller — якщо true, відображається пункт «Мої товари» (US 4.2)
+const props = defineProps<{
+  activeTab:    string
+  isUserSeller: boolean
+}>()
 
 // ─── User (replace with props / store later) ──────────────────────────────────
 
@@ -20,15 +29,26 @@ const user = ref({
 })
 
 // ─── Menu items ───────────────────────────────────────────────────────────────
-
-const menuItems: MenuItem[] = [
-  { id: 'orders',  label: 'Мої замовлення',      count: 4,  icon: 'orders'   },
-  { id: 'groups',  label: 'Мої групові покупки',  count: 2,  icon: 'groups'   },
-  { id: 'wishlist',label: 'Обране',               count: 12, icon: 'wishlist' },
-  { id: 'settings',label: 'Налаштування',                    icon: 'settings' },
+// Базові пункти меню (доступні всім користувачам)
+const baseMenuItems: MenuItem[] = [
+  { id: 'orders',   label: 'Мої замовлення',      count: 4,  icon: 'orders'   },
+  { id: 'groups',   label: 'Мої групові покупки',  count: 2,  icon: 'groups'   },
+  { id: 'wishlist', label: 'Обране',               count: 12, icon: 'wishlist' },
+  { id: 'settings', label: 'Налаштування',                    icon: 'settings' },
 ]
 
-const activeTab = ref('groups')
+// Крок 4 (US 4.2): Пункт «Мої товари» додається до меню тільки для продавця.
+// computed автоматично перераховується, якщо props.isUserSeller зміниться.
+const menuItems = computed<MenuItem[]>(() => {
+  if (!props.isUserSeller) return baseMenuItems
+
+  // Вставляємо «Мої товари» перед «Налаштування» (передостанній пункт)
+  return [
+    ...baseMenuItems.slice(0, 3),
+    { id: 'my-products', label: 'Мої товари', count: 2, icon: 'seller' },
+    ...baseMenuItems.slice(3),
+  ]
+})
 
 // ─── Emits ────────────────────────────────────────────────────────────────────
 
@@ -37,8 +57,9 @@ const emit = defineEmits<{
   (e: 'logout'): void
 }>()
 
+// Надсилаємо вибраний id у батьківський компонент через emit.
+// Батьківський CabinetPage оновлює свій activeTab і передає його назад через prop.
 function navigate(id: string) {
-  activeTab.value = id
   emit('navigate', id)
 }
 </script>
@@ -85,7 +106,7 @@ function navigate(id: string) {
           :key="item.id"
           class="self-stretch px-4 py-2.5 rounded-[9.6px] inline-flex justify-start items-center gap-3 transition-all duration-150 focus:outline-none"
           :class="
-            activeTab === item.id
+            props.activeTab === item.id
               ? 'bg-orange-500/10 text-orange-500'
               : 'text-gray-400 hover:bg-white/5 hover:text-white'
           "
@@ -118,6 +139,13 @@ function navigate(id: string) {
               <circle cx="7" cy="7" r="2"/>
               <path d="M7 1v1.5M7 11.5V13M1 7h1.5M11.5 7H13M2.93 2.93l1.06 1.06M9.9 9.9l1.1 1.1M2.93 11.07l1.06-1.06M9.9 4.1l1.1-1.1" stroke-linecap="round"/>
             </svg>
+
+            <!-- Seller / My products: tag -->
+            <!-- US 4.2: Іконка відображається тільки для пункту «Мої товари» продавця -->
+            <svg v-else-if="item.icon === 'seller'" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.1" class="w-3.5 h-3.5">
+              <path d="M1.5 1.5h3l2 2h6v8h-11z" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M5 8h4M7 6v4" stroke-linecap="round"/>
+            </svg>
           </span>
 
           <!-- Label -->
@@ -128,14 +156,14 @@ function navigate(id: string) {
             <div
               class="px-2 py-[1.6px] rounded-full"
               :class="
-                activeTab === item.id
+                props.activeTab === item.id
                   ? 'bg-orange-500/20'
                   : 'bg-gray-800'
               "
             >
               <span
                 class="text-xs font-medium font-['Onest'] leading-4"
-                :class="activeTab === item.id ? 'text-orange-500' : 'text-gray-500'"
+                :class="props.activeTab === item.id ? 'text-orange-500' : 'text-gray-500'"
               >
                 {{ item.count }}
               </span>

@@ -1,15 +1,26 @@
 <script setup lang="ts">
-const paths = [
-  'Головна',
-  'Електроніка',
-  'Смартфони',
-  'Samsung',
-  'Samsung Galaxy S24 Ultra 12/256GB',
-]
+// —— Імпорт router-link для навігації ——
+import { RouterLink } from 'vue-router'
 
-const emit = defineEmits<{
-  (e: 'navigate', index: number, label: string): void
+// —— Інтерфейс одного пункту хлібних крихт ——
+interface BreadcrumbItem {
+  name: string    // Текст, що відображається у крихті
+  path?: string   // Маршрут для переходу; відсутній у поточної (останньої) сторінки
+}
+
+// —— Props ——
+// items — масив пунктів; порядок елементів відповідає глибині навігації.
+// Останній елемент вважається поточною сторінкою і не є клікабельним.
+const props = defineProps<{
+  items: BreadcrumbItem[]
 }>()
+
+// —— Допоміжне обчислення ——
+// Повертає true, якщо переданий індекс є останнім у масиві.
+// Використовується у шаблоні для вибору між <router-link> та простим текстом.
+function isLast(index: number): boolean {
+  return index === props.items.length - 1
+}
 </script>
 
 <template>
@@ -18,25 +29,38 @@ const emit = defineEmits<{
     class="w-full bg-[#0d0f14] border-b border-[#1c1f2a]"
   >
     <div class="w-full max-w-[1536px] mx-auto px-6 py-2.5 inline-flex items-center gap-1.5 flex-wrap">
-      <template v-for="(label, i) in paths" :key="label">
 
-        <!-- Crumb -->
-        <span
-          class="text-xs font-normal font-['Onest'] leading-4 transition-colors duration-150"
-          :class="
-            i < paths.length - 1
-              ? 'text-[#5a5f7a] hover:text-orange-500 cursor-pointer'
-              : 'text-[#787d99] cursor-default'
-          "
-          :aria-current="i === paths.length - 1 ? 'page' : undefined"
-          @click="i < paths.length - 1 && emit('navigate', i, label)"
+      <!-- —— Цикл по масиву items ——
+           :key="index" безпечний, бо порядок крихт ніколи не змінюється динамічно -->
+      <template v-for="(item, index) in items" :key="index">
+
+        <!-- —— Клікабельна крихта (усі, крім останньої) ——
+             Якщо у елемента є поле path — рендеримо router-link для SPA-навігації.
+             Колір тьмяний за замовчуванням, помаранчевий при наведенні. -->
+        <RouterLink
+          v-if="!isLast(index) && item.path"
+          :to="item.path"
+          class="text-xs font-normal font-['Onest'] leading-4 text-[#5a5f7a] transition-colors duration-150 hover:text-orange-500"
         >
-          {{ label }}
+          {{ item.name }}
+        </RouterLink>
+
+        <!-- —— Поточна сторінка (остання крихта) ——
+             Не клікабельна; aria-current="page" сигналізує про активну сторінку
+             для скрін-рідерів. Колір трохи світліший, щоб відрізнятись від попередніх. -->
+        <span
+          v-else
+          class="text-xs font-normal font-['Onest'] leading-4 text-[#787d99] cursor-default"
+          :aria-current="isLast(index) ? 'page' : undefined"
+        >
+          {{ item.name }}
         </span>
 
-        <!-- Separator -->
+        <!-- —— Роздільник-стрілка між крихтами ——
+             Відображається після кожного елемента, окрім останнього.
+             aria-hidden="true" — декоративний елемент, прихований від скрін-рідерів. -->
         <svg
-          v-if="i < paths.length - 1"
+          v-if="!isLast(index)"
           class="w-3 h-3 shrink-0 text-[#2a2d3e]"
           viewBox="0 0 12 12"
           fill="none"

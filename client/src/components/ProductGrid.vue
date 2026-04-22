@@ -1,6 +1,66 @@
 <script setup lang="ts">
-// Імпортуємо твою готові картку!
+import { ref } from 'vue'
 import ProductCard from './ProductCard.vue'
+
+// ─── Тестові дані (Моки) ──────────────────────────────────────────────────────
+const products = ref([
+  {
+    id: 1,
+    brand: 'Samsung',
+    name: 'Samsung Galaxy S24 Ultra 256GB',
+    image: '../assets/product-placeholder.png',
+    imageAlt: 'Samsung Galaxy S24 Ultra',
+    rating: 5,
+    reviewCount: 284,
+    groupLabel: 'Учасників',
+    groupCurrent: 14,
+    groupTotal: 20,
+    price: 45000,
+    oldPrice: 50000,
+  },
+  {
+    id: 2,
+    brand: 'Apple',
+    name: 'Apple iPhone 15 Pro 128GB',
+    image: '../assets/product-placeholder.png',
+    imageAlt: 'iPhone 15 Pro',
+    rating: 5,
+    reviewCount: 512,
+    groupLabel: 'Учасників',
+    groupCurrent: 19,
+    groupTotal: 20,
+    price: 42000,
+    oldPrice: 46000,
+  },
+  {
+    id: 3,
+    brand: 'ASUS',
+    name: 'Ноутбук ASUS ROG Strix G16',
+    image: '../assets/product-placeholder.png',
+    imageAlt: 'ASUS ROG',
+    rating: 4,
+    reviewCount: 89,
+    groupLabel: 'Учасників',
+    groupCurrent: 3,
+    groupTotal: 10,
+    price: 65000,
+    oldPrice: 72000,
+  },
+  {
+    id: 4,
+    brand: 'Sony',
+    name: 'Навушники Sony WH-1000XM5',
+    image: '../assets/product-placeholder.png',
+    imageAlt: 'Sony Headphones',
+    rating: 5,
+    reviewCount: 156,
+    groupLabel: 'Учасників',
+    groupCurrent: 8,
+    groupTotal: 15,
+    price: 14000,
+    oldPrice: 16500,
+  }
+])
 </script>
 
 <template>
@@ -21,7 +81,11 @@ import ProductCard from './ProductCard.vue'
     </div>
 
     <div class="grid grid-cols-4 gap-4">
-      <ProductCard v-for="i in 8" :key="i" />
+      <ProductCard
+        v-for="item in products"
+        :key="item.id"
+        :product="item"
+      />
     </div>
 
     <div class="flex justify-center mt-4">

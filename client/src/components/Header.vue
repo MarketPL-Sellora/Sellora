@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import AuthModal from './AuthModal.vue'
 
 interface Category {
   label: string
@@ -18,9 +19,14 @@ const categories: Category[] = [
   { emoji: '📦', label: 'Групові покупки' },
 ]
 
-const cartCount = ref(3)
-const searchQuery = ref('')
+const cartCount      = ref(3)
+const searchQuery    = ref('')
 const activeCategory = ref<string | null>(null)
+
+// ─── Auth state ───────────────────────────────────────────────────────────────
+
+const isAuthenticated  = ref(false)
+const isAuthModalOpen  = ref(false)
 
 function setActive(label: string) {
   activeCategory.value = activeCategory.value === label ? null : label
@@ -67,8 +73,9 @@ function setActive(label: string) {
       <!-- ── Nav buttons ────────────────────────────────────────────────── -->
       <div class="shrink-0 flex items-center gap-2">
 
-        <!-- Кабінет → /cabinet -->
+        <!-- Кабінет (авторизований) → /cabinet -->
         <router-link
+          v-if="isAuthenticated"
           to="/cabinet"
           class="px-3 py-2 bg-[#1a1f2e] rounded-xl outline outline-1 outline-white/5 flex items-center gap-2 transition-all hover:bg-[#22273a] hover:outline-white/10 group"
         >
@@ -78,6 +85,19 @@ function setActive(label: string) {
           </svg>
           <span class="text-gray-400 group-hover:text-gray-200 text-xs font-normal font-['Onest'] transition-colors">Кабінет</span>
         </router-link>
+
+        <!-- Увійти (неавторизований) → відкриває AuthModal -->
+        <button
+          v-else
+          class="px-3 py-2 bg-[#1a1f2e] rounded-xl outline outline-1 outline-white/5 flex items-center gap-2 transition-all hover:bg-[#22273a] hover:outline-white/10 group"
+          @click="isAuthModalOpen = true"
+        >
+          <svg class="w-4 h-4 text-gray-400 group-hover:text-gray-200 transition-colors" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M3.33 14v-1.33A2.67 2.67 0 016 10h4a2.67 2.67 0 012.67 2.67V14" stroke="currentColor" stroke-width="1.33" stroke-linecap="round" />
+            <circle cx="8" cy="5.33" r="2.67" stroke="currentColor" stroke-width="1.33" />
+          </svg>
+          <span class="text-gray-400 group-hover:text-gray-200 text-xs font-normal font-['Onest'] transition-colors">Увійти</span>
+        </button>
 
         <!-- Порівняти (без маршруту) -->
         <button class="px-3 py-2 bg-[#1a1f2e] rounded-xl outline outline-1 outline-white/5 flex items-center gap-2 transition-all hover:bg-[#22273a] hover:outline-white/10 group">
@@ -150,4 +170,11 @@ function setActive(label: string) {
     </div>
 
   </header>
+
+  <!-- ── Auth modal ────────────────────────────────────────────────────────── -->
+  <AuthModal
+    v-if="isAuthModalOpen"
+    @close="isAuthModalOpen = false"
+    @login-success="isAuthenticated = true"
+  />
 </template>
