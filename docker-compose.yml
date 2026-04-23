@@ -57,16 +57,16 @@ services:
     networks:
       - sellora-network
 
-#  # 4. Frontend  (Vue.js)
-#  frontend:
-#    build:
-#      context: ./client
-#      dockerfile: Dockerfile
-#    container_name: sellora-frontend
-#    ports:
-#      - "80:80"
-#    networks:
-#      - sellora-network
+  # 4. Frontend  (Vue.js)
+  frontend:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    container_name: sellora-frontend
+    ports:
+      - "80:80"
+    networks:
+      - sellora-network
 
   # 5. Liquibase (для ручних міграцій)
   # liquibase:
