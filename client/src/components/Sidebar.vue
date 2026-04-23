@@ -1,140 +1,21 @@
 <script setup lang="ts">
 import { ref, reactive, computed } from 'vue'
+import { useCategoryStore, type Category } from '../state/categoryStore'
+
+// Ініціалізуємо стор
+const categoryStore = useCategoryStore()
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-
-interface Subcategory {
-  id: number
-  label: string
-}
-
-interface Category {
-  id: number
-  emoji: string
-  label: string
-  hot?: boolean
-  dividerBefore?: boolean
-  subcategories?: Subcategory[]
-}
 
 interface Brand {
   name: string
   count: number
 }
 
-// ─── Categories with subcategories ───────────────────────────────────────────
-
-const categories: Category[] = [
-  {
-    id: 1,
-    emoji: '📱',
-    label: 'Смартфони',
-    subcategories: [
-      { id: 11, label: 'iPhone' },
-      { id: 12, label: 'Samsung Galaxy' },
-      { id: 13, label: 'Xiaomi' },
-      { id: 14, label: 'Інші Android' },
-    ],
-  },
-  {
-    id: 2,
-    emoji: '💻',
-    label: 'Ноутбуки',
-    subcategories: [
-      { id: 21, label: 'MacBook' },
-      { id: 22, label: 'Ігрові' },
-      { id: 23, label: 'Ультрабуки' },
-      { id: 24, label: 'Офісні' },
-    ],
-  },
-  {
-    id: 3,
-    emoji: '🎮',
-    label: 'Ігрові консолі',
-    subcategories: [
-      { id: 31, label: 'PlayStation' },
-      { id: 32, label: 'Xbox' },
-      { id: 33, label: 'Nintendo' },
-    ],
-  },
-  {
-    id: 4,
-    emoji: '🎧',
-    label: 'Аудіотехніка',
-    subcategories: [
-      { id: 41, label: 'Навушники' },
-      { id: 42, label: 'Колонки' },
-      { id: 43, label: 'Саундбари' },
-    ],
-  },
-  {
-    id: 5,
-    emoji: '📷',
-    label: 'Фото та відео',
-  },
-  {
-    id: 6,
-    emoji: '👟',
-    label: 'Взуття',
-    subcategories: [
-      { id: 61, label: 'Кросівки' },
-      { id: 62, label: 'Черевики' },
-      { id: 63, label: 'Сандалі' },
-    ],
-  },
-  {
-    id: 7,
-    emoji: '👕',
-    label: 'Одяг',
-  },
-  {
-    id: 8,
-    emoji: '🏠',
-    label: 'Дім і сад',
-    subcategories: [
-      { id: 81, label: 'Меблі' },
-      { id: 82, label: 'Освітлення' },
-      { id: 83, label: 'Текстиль' },
-    ],
-  },
-  {
-    id: 9,
-    emoji: '🧴',
-    label: 'Краса та догляд',
-  },
-  {
-    id: 10,
-    emoji: '🔧',
-    label: 'Інструменти',
-  },
-  {
-    id: 11,
-    emoji: '🚗',
-    label: 'Авто товари',
-  },
-  {
-    id: 12,
-    emoji: '🐾',
-    label: 'Зоотовари',
-  },
-  {
-    id: 13,
-    emoji: '📚',
-    label: 'Книги',
-  },
-  {
-    id: 14,
-    emoji: '🔥',
-    label: 'Групові покупки',
-    hot: true,
-    dividerBefore: true,
-  },
-]
-
 // ─── Accordion state ──────────────────────────────────────────────────────────
 
 const activeCategory   = ref('Смартфони')
-const openCategoryId   = ref<number | null>(1) // Смартфони відкриті за замовчуванням
+const openCategoryId   = ref<number | null>(null) // Смартфони відкриті за замовчуванням
 const activeSubcategory = ref<number | null>(null)
 
 function toggleCategory(id: number) {
@@ -142,20 +23,20 @@ function toggleCategory(id: number) {
 }
 
 function selectCategory(cat: Category) {
-  activeCategory.value = cat.label
+  activeCategory.value = cat.name
   activeSubcategory.value = null
   // Якщо підкатегорій немає — просто вибираємо і закриваємо інші
-  if (!cat.subcategories?.length) {
+  if (!cat.children?.length) {
     openCategoryId.value = null
   } else {
     toggleCategory(cat.id)
   }
-  emit('category', cat.label)
+  emit('category', cat.name)
 }
 
-function selectSubcategory(sub: Subcategory) {
+function selectSubcategory(sub: Category) {
   activeSubcategory.value = sub.id
-  emit('category', sub.label)
+  emit('category', sub.name)
 }
 
 // ─── Brands ───────────────────────────────────────────────────────────────────
@@ -216,19 +97,13 @@ const emit = defineEmits<{
 
       <!-- List -->
       <div class="self-stretch flex flex-col">
-        <template v-for="cat in categories" :key="cat.id">
-
-          <!-- Optional divider -->
-          <div
-            v-if="cat.dividerBefore"
-            class="w-44 mx-auto h-px my-1.5 border-t border-white/5"
-          />
+        <template v-for="cat in categoryStore.categories" :key="cat.id">
 
           <!-- Category row -->
           <button
             class="w-full px-4 py-2.5 border-l-2 inline-flex justify-start items-center gap-3 transition-all duration-150 group"
             :class="
-              activeCategory === cat.label
+              activeCategory === cat.name
                 ? 'bg-orange-500/10 border-orange-500'
                 : 'border-transparent hover:bg-white/5 hover:border-white/20 active:bg-white/10'
             "
@@ -236,38 +111,27 @@ const emit = defineEmits<{
           >
             <!-- Emoji -->
             <span class="text-base font-normal font-['Segoe_UI_Emoji'] leading-6 shrink-0">
-              {{ cat.emoji }}
             </span>
 
             <!-- Label -->
             <span
               class="flex-1 text-sm leading-5 font-['Onest'] transition-colors duration-150 truncate text-left"
               :class="
-                activeCategory === cat.label
+                activeCategory === cat.name
                   ? 'text-orange-500 font-medium'
-                  : cat.hot
-                  ? 'text-orange-500 font-semibold'
                   : 'text-gray-400 font-normal group-hover:text-gray-200'
               "
             >
-              {{ cat.label }}
-            </span>
-
-            <!-- HOT badge -->
-            <span
-              v-if="cat.hot"
-              class="shrink-0 px-1.5 py-0.5 bg-orange-500 rounded-md text-white text-[9px] font-normal font-['Onest'] leading-4"
-            >
-              HOT
+              {{ cat.name }}
             </span>
 
             <!-- Chevron (тільки якщо є підкатегорії) -->
             <svg
-              v-if="cat.subcategories?.length"
+              v-if="cat.children?.length"
               class="w-3 h-3 shrink-0 transition-transform duration-200"
               :class="[
                 openCategoryId === cat.id ? 'rotate-180' : 'rotate-0',
-                activeCategory === cat.label ? 'text-orange-500' : 'text-gray-600 group-hover:text-gray-400'
+                activeCategory === cat.name ? 'text-orange-500' : 'text-gray-600 group-hover:text-gray-400'
               ]"
               viewBox="0 0 12 12"
               fill="none"
@@ -288,11 +152,11 @@ const emit = defineEmits<{
             leave-to-class="max-h-0 opacity-0"
           >
             <div
-              v-if="cat.subcategories?.length && openCategoryId === cat.id"
+              v-if="cat.children?.length && openCategoryId === cat.id"
               class="flex flex-col bg-black/20 border-l-2 border-orange-500/30 ml-0"
             >
               <button
-                v-for="sub in cat.subcategories"
+                v-for="sub in cat.children"
                 :key="sub.id"
                 class="w-full pl-10 pr-4 py-2 inline-flex justify-start items-center transition-all duration-100 group/sub"
                 :class="
@@ -308,7 +172,7 @@ const emit = defineEmits<{
                   :class="activeSubcategory === sub.id ? 'bg-orange-400' : 'bg-gray-600 group-hover/sub:bg-gray-400'"
                 />
                 <span class="text-xs font-normal font-['Onest'] leading-4 truncate text-left">
-                  {{ sub.label }}
+                  {{ sub.name }}
                 </span>
               </button>
             </div>
