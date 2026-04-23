@@ -6,6 +6,7 @@ import ProductPage  from './components/ProductPage.vue'
 import CheckoutPage from './components/CheckoutPage.vue'
 import CabinetPage  from './components/CabinetPage.vue'
 
+
 // Налаштовуємо шляхи (посилання)
 const routes = [
   { path: '/',             component: HomePage     },
