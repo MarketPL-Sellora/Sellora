@@ -44,7 +44,7 @@ public class GlobalExceptionHandler {
       "Некоректний формат даних у запиті (очікувалося число, а прийшов текст або невалідний JSON)"
     );
     return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
-  }
+  } 
 
   /**
    * Загальний обробник для всіх інших непередбачуваних помилок
