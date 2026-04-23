@@ -2,6 +2,8 @@
 
 import { ref, reactive } from 'vue'
 import { apiClient } from '../api/axios'
+// ─── Імпорт сховища користувача ───────────────────────────────────────────────
+import { useUserStore } from '../state/userStore'
 
 // ─── Tabs ─────────────────────────────────────────────────────────────────────
 
@@ -17,11 +19,17 @@ const registerForm = reactive({ email: '', password: '', passwordConfirm: '' })
 // ─── US 4.1: Стан завантаження ────────────────────────────────────────────────
 const isLoading = ref(false)
 
+// Стан помилки
+const errorMessage = ref('')
+
 // ─── Password visibility ──────────────────────────────────────────────────────
 
 const showLoginPassword = ref(false)
 const showRegPassword = ref(false)
 const showRegPasswordConf = ref(false)
+
+// ─── Ініціалізація сховища ────────────────────────────────────────────────────
+const userStore = useUserStore()
 
 // ─── Emits ────────────────────────────────────────────────────────────────────
 
@@ -35,42 +43,43 @@ const emit = defineEmits<{
 
 // ─── Головний обробник форми ──────────────────────────────────────────────────
 
+// ─── Головний обробник форми ──────────────────────────────────────────────────
+
 async function handleAuth() {
   isLoading.value = true
+  errorMessage.value = '' // Очищаємо стару помилку перед новою спробою!
 
   try {
     if (isLogin.value) {
-      // TODO: закоментовано — потрібно уточнити ендпоінт логіну у Swagger
-      // (поки невідомо чи /auth/login приймає ті самі поля)
-      // await apiClient.post('/auth/login', {
-      //   email: loginForm.email,
-      //   password: loginForm.password,
-      // })
-
-      // Тимчасово просто емітуємо подію без реального запиту
+      // ─── Вхід: відправляємо email + password на бекенд ────────────────────
+      await apiClient.post('/auth/login', {
+        email: loginForm.email,
+        password: loginForm.password,
+      })
+      // Зберігаємо email у сховищі та встановлюємо isAuthenticated = true
+      userStore.login({ email: loginForm.email })
       emit('login', { ...loginForm })
     } else {
-      // Реєстрація: лише email + password (name видалено — не підтримується бекендом)
+      // ─── Реєстрація: відправляємо email + password на бекенд ──────────────
       await apiClient.post('/auth/register', {
         email: registerForm.email,
         password: registerForm.password,
       })
+      // Зберігаємо email у сховищі та встановлюємо isAuthenticated = true
+      userStore.login({ email: registerForm.email })
     }
 
     emit('login-success')
     emit('close')
 
-  } catch (error) {
-    // TODO: замінити на toast-сповіщення для користувача
+  } catch (error: any) {
     console.error(error)
-
+    // Якщо бекенд прислав свою помилку (наприклад "Користувача не знайдено"), показуємо її.
+    // Якщо ні — показуємо стандартний текст.
+    errorMessage.value = error.response?.data?.message || 'Невірний email або пароль. Спробуйте ще раз.'
   } finally {
     isLoading.value = false
   }
-}
-
-function handleLogin() {
-  emit('login', { ...loginForm })
 }
 
 </script>
@@ -131,6 +140,16 @@ function handleLogin() {
 
       </div>
 
+      <div
+        v-if="errorMessage"
+        class="p-3 bg-red-500/10 border border-red-500/50 rounded-xl flex items-start gap-3 animate-pulse"
+      >
+        <svg class="w-5 h-5 text-red-400 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <span class="text-red-400 text-sm font-['Onest']">{{ errorMessage }}</span>
+      </div>
+
       <!-- ── LOGIN form ────────────────────────────────────────────────── -->
       <div v-if="isLogin" class="self-stretch flex flex-col gap-4">
 
@@ -185,8 +204,8 @@ function handleLogin() {
         <!-- Submit -->
         <div class="pt-1">
           <button
-            class="w-full py-3.5 relative bg-orange-500 rounded-xl flex justify-center items-center shadow-[0px_4px_6px_-4px_rgba(249,115,22,0.20),0px_10px_15px_-3px_rgba(249,115,22,0.20)] transition-all duration-150 hover:bg-orange-400 hover:shadow-[0px_4px_20px_0px_rgba(249,115,22,0.45)] active:scale-[0.98] active:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-500/50"
-            @click="handleLogin"
+            class="w-full py-3.5 relative bg-orange-500 rounded-xl ..."
+            @click="handleAuth"
           >
             <span class="text-white text-sm font-semibold font-['Onest'] leading-5 tracking-tight">Увійти</span>
           </button>

@@ -9,6 +9,8 @@ import ProductCard       from './ProductCard.vue'
 // Підключаємо компонент форми, яка відображається замість списку товарів
 // коли продавець натискає «Додати товар».
 import AddProductForm   from './AddProductForm.vue'
+// ─── Імпорт сховища користувача ───────────────────────────────────────────────
+import { useUserStore } from '../state/userStore'
 // —— Імпорт форми створення магазину ——
 // Показується, коли у користувача ще немає магазину і він натискає «Відкрити магазин».
 import CreateStoreForm  from './CreateStoreForm.vue'
@@ -43,6 +45,9 @@ const isCreatingStore = ref(false)
 // false → користувач — покупець, вкладка прихована.
 // TODO: замінити на реальне значення з auth store / API після інтеграції бекенду.
 const isUserSeller = ref(true)
+
+// ─── Сховище користувача (email для відображення) ────────────────────────────
+const userStore = useUserStore()
 
 // ─── Крок 3: Mock-дані для «Мої замовлення» ──────────────────────────────────
 // Масив тестових товарів. Кожен об'єкт відповідає інтерфейсу Product у ProductCard.vue.
@@ -533,7 +538,7 @@ function editStore() {
               </div>
               <div class="flex flex-col gap-0.5">
                 <span class="text-gray-100 text-base font-bold font-['Onest']">Максим Коваленко</span>
-                <span class="text-gray-600 text-xs font-normal font-['Onest']">m.kovalenko@gmail.com</span>
+                <span class="text-gray-600 text-xs font-normal font-['Onest']">{{ userStore.user?.email ?? '' }}</span>
               </div>
               <button class="ml-auto px-4 py-2 rounded-xl outline outline-1 outline-gray-700 text-gray-400 text-sm font-['Onest'] transition-all duration-150 hover:bg-white/5 hover:text-white">
                 Змінити фото
@@ -556,7 +561,7 @@ function editStore() {
                 <label class="text-gray-400 text-xs font-medium font-['Onest'] uppercase leading-4 tracking-tight">Email</label>
                 <input
                   type="email"
-                  value="m.kovalenko@gmail.com"
+                  :value="userStore.user?.email ?? ''"
                   class="w-full px-4 py-3 bg-neutral-900 rounded-xl outline outline-1 outline-offset-[-1px] outline-gray-700 text-gray-300 text-sm font-normal font-['Onest'] transition-all duration-150 focus:outline-none focus:ring-1 focus:ring-orange-500"
                 />
               </div>

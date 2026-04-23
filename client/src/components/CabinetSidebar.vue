@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { computed } from 'vue'
+import { useRouter } from 'vue-router'
+import { useUserStore } from '../state/userStore'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -12,21 +14,19 @@ interface MenuItem {
 }
 
 // ─── Props ────────────────────────────────────────────────────────────────────
-// activeTab   — id активної вкладки, керується батьківським CabinetPage
+// activeTab    — id активної вкладки, керується батьківським CabinetPage
 // isUserSeller — якщо true, відображається пункт «Мої товари» (US 4.2)
 const props = defineProps<{
   activeTab:    string
   isUserSeller: boolean
 }>()
 
-// ─── User (replace with props / store later) ──────────────────────────────────
+// ─── Ініціалізація store та router ───────────────────────────────────────────
+const userStore = useUserStore()
+const router    = useRouter()
 
-const user = ref({
-  initials: 'МК',
-  name:     'Максим Коваленко',
-  email:    'm.kovalenko@gmail.com',
-  badge:    'Pro учасник',
-})
+// ─── Статичні дані профілю ────────────────────────────────────────────────────
+const userBadge = 'Pro учасник'
 
 // ─── Menu items ───────────────────────────────────────────────────────────────
 // Базові пункти меню (доступні всім користувачам)
@@ -54,13 +54,22 @@ const menuItems = computed<MenuItem[]>(() => {
 
 const emit = defineEmits<{
   (e: 'navigate', id: string): void
-  (e: 'logout'): void
 }>()
 
+// ─── Навігація по вкладках ────────────────────────────────────────────────────
 // Надсилаємо вибраний id у батьківський компонент через emit.
 // Батьківський CabinetPage оновлює свій activeTab і передає його назад через prop.
 function navigate(id: string) {
   emit('navigate', id)
+}
+
+// ─── Логіка виходу ────────────────────────────────────────────────────────────
+// Показуємо підтвердження перед виходом, щоб уникнути випадкового натискання.
+function handleLogout() {
+  if (window.confirm('Ви точно хочете вийти?')) {
+    userStore.logout()
+    router.push('/')
+  }
 }
 </script>
 
@@ -74,25 +83,27 @@ function navigate(id: string) {
         <div class="w-14 h-14 p-0.5 bg-gradient-to-br from-orange-500 to-violet-600 rounded-[30px] flex justify-center items-center shrink-0">
           <div class="w-full h-full bg-[#1a2235] rounded-3xl flex justify-center items-center">
             <span class="text-orange-500 text-xl font-bold font-['Unbounded'] leading-7">
-              {{ user.initials }}
+              <!--{{ user.initials }}-->
             </span>
           </div>
         </div>
 
         <!-- Name -->
+        <!-- Відображаємо частину пошти до символу @ як ім'я користувача -->
         <span class="text-gray-100 text-base font-bold font-['Onest'] leading-5 text-center">
-          {{ user.name }}
+          {{ userStore.user?.email?.split('@')[0] || 'Користувач' }}
         </span>
 
         <!-- Email -->
+        <!-- Відображаємо повну поштову адресу користувача -->
         <span class="text-gray-600 text-xs font-normal font-['Onest'] leading-4 text-center">
-          {{ user.email }}
+          {{ userStore.user?.email }}
         </span>
 
         <!-- Badge -->
         <div class="px-2.5 py-[3px] bg-orange-500/10 rounded-full outline outline-1 outline-offset-[-1px] outline-orange-500/20">
           <span class="text-orange-500 text-xs font-normal font-['Onest'] leading-4">
-            {{ user.badge }}
+            {{ userBadge }}
           </span>
         </div>
       </div>
@@ -177,9 +188,10 @@ function navigate(id: string) {
         </div>
 
         <!-- Logout -->
+        <!-- Кнопка виходу: викликає handleLogout з підтвердженням -->
         <button
           class="self-stretch px-4 py-2.5 rounded-[9.6px] inline-flex justify-start items-center gap-3 text-red-400/70 transition-all duration-150 hover:bg-red-500/5 hover:text-red-400 active:scale-[0.98] focus:outline-none"
-          @click="emit('logout')"
+          @click="handleLogout"
         >
           <svg class="w-3.5 h-3.5 shrink-0" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.1">
             <path d="M5 12H3a1 1 0 01-1-1V3a1 1 0 011-1h2" stroke-linecap="round"/>
