@@ -12,4 +12,5 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
   @Query("SELECT p FROM Product p JOIN Store s ON p.merchantId = s.id WHERE s.status = 'ACTIVE'")
   Page<Product> findAllActiveProducts(Pageable pageable);
+  Page<Product> findByTitleContainingIgnoreCase(String keyword, Pageable pageable);
 }

@@ -45,4 +45,21 @@ public class ProductService {
     Pageable pageable = PageRequest.of(page, size, sort);
     return productRepository.findAllActiveProducts(pageable);
   }
+
+  public Page<Product> searchProductsByTitle(String keyword, int page, int size, String sortBy, String sortDir) {
+    // Якщо Вадим пришле пустий рядок (або взагалі без нього), просто віддаємо всі товари
+    if (keyword == null || keyword.trim().isEmpty()) {
+      return getAllProducts(page, size, sortBy, sortDir);
+    }
+
+    // Робимо таке саме сортування, як у тебе вище
+    Sort sort = sortDir.equalsIgnoreCase(Sort.Direction.ASC.name())
+      ? Sort.by(sortBy).ascending()
+      : Sort.by(sortBy).descending();
+
+    Pageable pageable = PageRequest.of(page, size, sort);
+
+    // Викликаємо наш новий метод з репозиторію
+    return productRepository.findByTitleContainingIgnoreCase(keyword.trim(), pageable);
+  }
 }
