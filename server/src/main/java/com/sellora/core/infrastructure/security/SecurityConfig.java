@@ -35,9 +35,13 @@ public class SecurityConfig {
       .csrf(csrf -> csrf.disable())
       .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
       .authorizeHttpRequests(auth -> auth
-        .requestMatchers("/api/v1/auth/**", "/swagger-ui/**", "/v3/api-docs/**", "/health").permitAll()
-        // Поки залишаємо permitAll() для розробки, щоб Вадим не падав з 403
-        .anyRequest().permitAll()
+        // 1. Відкриті двері (реєстрація, логін, свагер) - сюди можна без токена
+        .requestMatchers("/api/v1/auth/**",  "/swagger-ui/**","/v3/api-docs/**", "/health").permitAll()
+        // 2. Читати каталог товарів і категорій можуть всі (навіть неавторизовані гості сайту)
+        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/v1/categories/**", "/api/v1/products/**").permitAll()
+
+        // 3. ЗАКРИТІ ДВЕРІ: Будь-який інший запит (створення товару, кошик, профіль) вимагає токен!
+        .anyRequest().authenticated()
       )
       // ДОДАЄМО ФІЛЬТР ПЕРЕД СТАНДАРТНИМИ
       .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
