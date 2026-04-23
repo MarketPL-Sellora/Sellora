@@ -1,6 +1,9 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import AuthModal from './AuthModal.vue'
+// ─── Імпорт сховища користувача ───────────────────────────────────────────────
+import { useUserStore } from '../state/userStore'
 
 interface Category {
   label: string
@@ -23,14 +26,26 @@ const cartCount      = ref(3)
 const searchQuery    = ref('')
 const activeCategory = ref<string | null>(null)
 
-// ─── Auth state ───────────────────────────────────────────────────────────────
+// ─── Роутер і поточний маршрут ────────────────────────────────────────────────
+const route  = useRoute()
+const router = useRouter()
 
-const isAuthenticated  = ref(false)
-const isAuthModalOpen  = ref(false)
+// ─── Сховище користувача (замість локального ref) ─────────────────────────────
+const userStore = useUserStore()
+
+// ─── Модальне вікно авторизації ───────────────────────────────────────────────
+const isAuthModalOpen = ref(false)
+
+// ─── Чи відображати кнопку «Кабінет» ─────────────────────────────────────────
+// Показуємо лише якщо: користувач залогінений І НЕ знаходиться на /cabinet
+const showCabinetBtn = computed(
+  () => userStore.isAuthenticated && route.path !== '/cabinet',
+)
 
 function setActive(label: string) {
   activeCategory.value = activeCategory.value === label ? null : label
 }
+
 </script>
 
 <template>
@@ -73,9 +88,9 @@ function setActive(label: string) {
       <!-- ── Nav buttons ────────────────────────────────────────────────── -->
       <div class="shrink-0 flex items-center gap-2">
 
-        <!-- Кабінет (авторизований) → /cabinet -->
+        <!-- Кабінет → /cabinet (лише якщо залогінений і НЕ на /cabinet) -->
         <router-link
-          v-if="isAuthenticated"
+          v-if="showCabinetBtn"
           to="/cabinet"
           class="px-3 py-2 bg-[#1a1f2e] rounded-xl outline outline-1 outline-white/5 flex items-center gap-2 transition-all hover:bg-[#22273a] hover:outline-white/10 group"
         >
@@ -86,9 +101,10 @@ function setActive(label: string) {
           <span class="text-gray-400 group-hover:text-gray-200 text-xs font-normal font-['Onest'] transition-colors">Кабінет</span>
         </router-link>
 
+
         <!-- Увійти (неавторизований) → відкриває AuthModal -->
         <button
-          v-else
+          v-if="!userStore.isAuthenticated"
           class="px-3 py-2 bg-[#1a1f2e] rounded-xl outline outline-1 outline-white/5 flex items-center gap-2 transition-all hover:bg-[#22273a] hover:outline-white/10 group"
           @click="isAuthModalOpen = true"
         >
@@ -175,6 +191,6 @@ function setActive(label: string) {
   <AuthModal
     v-if="isAuthModalOpen"
     @close="isAuthModalOpen = false"
-    @login-success="isAuthenticated = true"
+    @login-success="isAuthModalOpen = false"
   />
 </template>
