@@ -25,14 +25,16 @@ public class ProductController {
   // ОНОВЛЕНИЙ МЕТОД
   @GetMapping
   public ResponseEntity<Page<Product>> getProducts(
-    @RequestParam(required = false) String keyword, // Додали параметр пошуку
+    @RequestParam(required = false) String keyword,
+    @RequestParam(required = false) Double minPrice,
+    @RequestParam(required = false) Double maxPrice,
+    @RequestParam(required = false) Long categoryId,
     @RequestParam(defaultValue = "0") int page,
     @RequestParam(defaultValue = "10") int size,
     @RequestParam(defaultValue = "id") String sortBy,
     @RequestParam(defaultValue = "asc") String sortDir) {
 
-    // Тепер викликаємо searchProductsByTitle замість getAllProducts
-    Page<Product> products = productService.searchProductsByTitle(keyword, page, size, sortBy, sortDir);
+    Page<Product> products = productService.filterProducts(keyword, minPrice, maxPrice, categoryId, page, size, sortBy, sortDir);
     return ResponseEntity.ok(products);
   }
 }
