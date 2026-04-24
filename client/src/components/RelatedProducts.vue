@@ -69,11 +69,12 @@ const relatedProducts = ref([
       <h2 class="text-white text-2xl font-bold font-['Unbounded']">З цим товаром купують</h2>
     </div>
 
-    <div class="grid grid-cols-4 gap-4">
+    <div class="w-full flex overflow-x-auto gap-4 pb-4 scrollbar-none -mx-4 px-4 sm:mx-0 sm:px-0 sm:grid sm:grid-cols-2 lg:grid-cols-4">
       <ProductCard
         v-for="item in relatedProducts"
         :key="item.id"
         :product="item"
+        class="w-[260px] shrink-0 lg:w-full lg:shrink"
       />
     </div>
   </div>

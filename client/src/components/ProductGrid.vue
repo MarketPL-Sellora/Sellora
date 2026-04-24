@@ -32,7 +32,7 @@ const mappedProducts = computed(() =>
 <template>
   <div class="flex flex-col gap-6 py-8 min-h-[800px]">
 
-    <div class="flex justify-between items-end border-b border-white/10 pb-4">
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 border-b border-white/10 pb-4">
       <div class="flex items-baseline gap-3">
         <h2 class="text-white text-2xl font-bold font-['Unbounded']">Популярні товари</h2>
         <span class="text-gray-500 text-sm font-['Onest']">
@@ -50,11 +50,11 @@ const mappedProducts = computed(() =>
 
     <Transition name="fade" mode="out-in">
 
-      <div v-if="productStore.isLoading" key="loading" class="grid grid-cols-4 gap-4">
+      <div v-if="productStore.isLoading" key="loading" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
         <div
           v-for="n in 8"
           :key="n"
-          class="w-72 h-96 bg-[#1c1f2a] rounded-2xl outline outline-1 outline-white/5 animate-pulse"
+          class="w-full h-96 bg-[#1c1f2a] rounded-2xl outline outline-1 outline-white/5 animate-pulse"
         />
       </div>
 
@@ -78,7 +78,7 @@ const mappedProducts = computed(() =>
         </p>
       </div>
 
-      <div v-else key="content" class="grid grid-cols-4 gap-4">
+      <div v-else key="content" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
         <ProductCard
           v-for="item in mappedProducts"
           :key="item.id"

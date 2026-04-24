@@ -28,7 +28,7 @@ function isLast(index: number): boolean {
     aria-label="Breadcrumb"
     class="w-full bg-[#0d0f14] border-b border-[#1c1f2a]"
   >
-    <div class="w-full max-w-[1536px] mx-auto px-6 py-2.5 inline-flex items-center gap-1.5 flex-wrap">
+    <div class="w-full max-w-[1536px] mx-auto px-4 md:px-6 py-2.5 flex items-center gap-1.5 overflow-x-auto scrollbar-none whitespace-nowrap">
 
       <!-- —— Цикл по масиву items ——
            :key="index" безпечний, бо порядок крихт ніколи не змінюється динамічно -->

@@ -76,11 +76,11 @@ function toggleWishlist(e: MouseEvent) {
   -->
   <router-link
     :to="'/product/' + product.id"
-    class="block w-72 relative bg-[#1c1f2a] rounded-2xl outline outline-1 outline-offset-[-1px] outline-orange-500/30 inline-flex flex-col justify-start items-start cursor-pointer
+    class="relative w-full lg:max-w-none mx-auto sm:max-w-none bg-[#1c1f2a] rounded-2xl outline outline-1 outline-offset-[-1px] outline-orange-500/30 flex flex-col justify-start items-start cursor-pointer
            transition-all duration-300 ease-out
            hover:-translate-y-1.5 hover:shadow-[0px_16px_48px_0px_rgba(0,0,0,0.50),0px_0px_0px_1px_rgba(249,115,22,0.30)]
            group"
-    :class="simple ? 'h-auto' : 'h-96'"
+    :class="simple ? 'h-auto' : 'h-full min-h-[24rem]'"
   >
     <!-- Ambient glow overlay -->
     <div
@@ -147,7 +147,7 @@ function toggleWishlist(e: MouseEvent) {
 
       <!-- Name -->
       <div class="self-stretch h-6 relative overflow-hidden">
-        <span class="text-gray-100 text-sm font-semibold font-['Onest'] leading-5 line-clamp-1">
+        <span class="text-gray-100 text-sm font-semibold font-['Onest'] leading-5 line-clamp-2">
           {{ product.name }}
         </span>
       </div>
@@ -184,7 +184,7 @@ function toggleWishlist(e: MouseEvent) {
       </div>
 
       <!-- Prices -->
-      <div class="self-stretch flex flex-col" :class="simple ? 'pb-0' : 'pb-3'">
+      <div class="self-stretch flex flex-col min-h-[52px]" :class="simple ? 'pb-0' : 'pb-3'">
         <span class="text-gray-600 text-xs font-normal font-['Onest'] line-through leading-4">
           {{ formattedOldPrice }}
         </span>

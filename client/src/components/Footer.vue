@@ -66,7 +66,7 @@ const currentYear = new Date().getFullYear()
     <div class="w-full max-w-[1536px] mx-auto px-6 py-12 flex flex-col gap-10">
 
       <!-- ── Columns row ──────────────────────────────────────────────────── -->
-      <div class="self-stretch inline-flex justify-center items-start gap-8 flex-wrap">
+      <div class="w-full flex flex-col md:flex-row justify-between items-start gap-8 md:gap-4 flex-wrap">
 
         <!-- Brand column -->
         <div class="flex-1 min-w-[200px] self-stretch inline-flex flex-col justify-start items-start gap-4">
@@ -207,7 +207,7 @@ const currentYear = new Date().getFullYear()
       </div>
 
       <!-- ── Bottom bar ───────────────────────────────────────────────────── -->
-      <div class="self-stretch pt-6 border-t border-[#1c1f2a] inline-flex justify-between items-center flex-wrap gap-4">
+      <div class="w-full pt-6 border-t border-[#1c1f2a] flex flex-col sm:flex-row justify-center sm:justify-between items-center text-center sm:text-left gap-4">
         <span class="text-[#3d4158] text-xs font-normal font-['Onest'] leading-4">
           © {{ currentYear }} Sellora. Всі права захищені.
         </span>

@@ -37,14 +37,14 @@ const productBreadcrumbs = ref([
 
     <Header :showCategories="false" />
 
-    <main class="flex-1 w-full max-w-[1536px] mx-auto px-6 py-8 flex flex-col gap-12">
+    <main class="flex-1 w-full max-w-[1536px] mx-auto px-6 py-8 md:py-12 flex flex-col gap-8 md:gap-12">
 
       <!-- —— Хлібні крихти ——
            Передаємо масив productBreadcrumbs через prop :items.
            Компонент сам визначить, який елемент клікабельний, а який — поточна сторінка. -->
       <Breadcrumbs :items="productBreadcrumbs" />
 
-      <div class="grid grid-cols-2 gap-10 items-start">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-10 items-start">
         <div class="w-full">
           <ProductGallery />
         </div>
