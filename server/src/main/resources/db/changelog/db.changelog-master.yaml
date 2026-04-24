@@ -6,3 +6,7 @@ databaseChangeLog:
       file: changes/002-seed-data.sql
       relativeToChangelogFile: true
       context: dev
+  - include:
+      file: changes/003-add-username.sql
+      relativeToChangelogFile: true
+
