@@ -1,5 +1,6 @@
 package com.sellora.core.infrastructure.security;
 
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -22,6 +23,7 @@ import java.util.List;
 public class SecurityConfig {
 
   private final JwtAuthenticationFilter jwtAuthFilter; // Наш новий фільтр
+  private final CustomAuthenticationEntryPoint authenticationEntryPoint;
 
   @Bean
   public PasswordEncoder passwordEncoder() {
@@ -33,6 +35,10 @@ public class SecurityConfig {
     http
       .cors(cors -> cors.configurationSource(corsConfigurationSource()))
       .csrf(csrf -> csrf.disable())
+      .exceptionHandling(ex -> ex
+        .authenticationEntryPoint(authenticationEntryPoint)
+      )
+
       .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
       .authorizeHttpRequests(auth -> auth
         // 1. Відкриті двері (реєстрація, логін, свагер) - сюди можна без токена
