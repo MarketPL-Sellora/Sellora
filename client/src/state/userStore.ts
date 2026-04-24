@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, watch } from 'vue'
+import { apiClient } from '../api/axios' // adjust path if needed
 
 // ─── Ключ для localStorage ────────────────────────────────────────────────────
 const STORAGE_KEY = 'sellora_user'
@@ -7,6 +8,26 @@ const STORAGE_KEY = 'sellora_user'
 // ─── Тип даних користувача ────────────────────────────────────────────────────
 interface UserData {
   email: string
+}
+
+// ─── Тип payload для створення магазину ──────────────────────────────────────
+export interface StorePayload {
+  name: string
+  address: string
+  contactPhone: string
+  description: string
+  logoUrl: string
+}
+
+// ─── Тип відповіді від бекенду (розширте за потреби) ─────────────────────────
+export interface StoreResponse {
+  id?: number | string
+  name: string
+  address: string
+  contactPhone: string
+  description: string
+  logoUrl: string
+  [key: string]: unknown
 }
 
 // ─── Допоміжна функція: зчитуємо збережений стан при старті ──────────────────
@@ -20,7 +41,6 @@ function loadFromStorage(): { user: UserData | null; isAuthenticated: boolean } 
       isAuthenticated: parsed.isAuthenticated ?? false,
     }
   } catch {
-    // У разі пошкодженого JSON — повертаємо порожній стан
     return { user: null, isAuthenticated: false }
   }
 }
@@ -28,14 +48,14 @@ function loadFromStorage(): { user: UserData | null; isAuthenticated: boolean } 
 // ─── Pinia Store: userStore ───────────────────────────────────────────────────
 export const useUserStore = defineStore('user', () => {
 
-  // ─── Початковий стан із localStorage ─────────────────────────────────────
   const saved = loadFromStorage()
 
   const user            = ref<UserData | null>(saved.user)
   const isAuthenticated = ref<boolean>(saved.isAuthenticated)
 
-  // ─── Автоматичне збереження стану при будь-якій зміні ────────────────────
-  // watch() стежить за user та isAuthenticated і одразу синхронізує localStorage
+  // ─── Стан завантаження для createStore ───────────────────────────────────
+  const isCreatingStore = ref<boolean>(false)
+
   watch(
     [user, isAuthenticated],
     ([newUser, newAuth]) => {
@@ -47,19 +67,30 @@ export const useUserStore = defineStore('user', () => {
     { deep: true },
   )
 
-  // ─── Дія: зберегти дані після входу або реєстрації ───────────────────────
   function login(userData: UserData) {
     user.value            = userData
     isAuthenticated.value = true
   }
 
-  // ─── Дія: вийти з акаунту ─────────────────────────────────────────────────
   function logout() {
     user.value            = null
     isAuthenticated.value = false
-    // Видаляємо дані з localStorage повністю
     localStorage.removeItem(STORAGE_KEY)
   }
 
-  return { user, isAuthenticated, login, logout }
+  // ─── Дія: створити магазин ────────────────────────────────────────────────
+  async function createStore(payload: StorePayload): Promise<StoreResponse> {
+    isCreatingStore.value = true
+    try {
+      const response = await apiClient.post<StoreResponse>('/stores/create', payload)
+      return response.data
+    } catch (error) {
+      // Прокидаємо помилку далі, щоб компонент міг її обробити
+      throw error
+    } finally {
+      isCreatingStore.value = false
+    }
+  }
+
+  return { user, isAuthenticated, isCreatingStore, login, logout, createStore }
 })

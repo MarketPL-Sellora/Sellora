@@ -1,6 +1,5 @@
 import axios, { type AxiosInstance } from 'axios';
 
-// Виправлено: додано /v1 відповідно до Swagger (/api/v1/auth/register)
 const API_URL = 'http://localhost:8080/api/v1';
 
 export const apiClient: AxiosInstance = axios.create({
@@ -9,28 +8,14 @@ export const apiClient: AxiosInstance = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  // Дозволяє браузеру автоматично прикріплювати HttpOnly cookie
+  // ДОЗВОЛЯЄ БРАУЗЕРУ АВТОМАТИЧНО ПРИКРІПЛЮВАТИ COOKIES (зокрема accessToken)
   withCredentials: true,
 });
 
-// ПЕРЕХОПЛЮВАЧ: Цей код спрацьовує ПЕРЕД кожним запитом на бекенд
-apiClient.interceptors.request.use(
-  (config) => {
-    // 1. Дістаємо токен з LocalStorage (переконайся, що Вадим зберігає його саме під ключем 'token')
-    const token = localStorage.getItem('token');
-
-    // 2. Якщо токен є — чіпляємо його в заголовок Authorization
-    if (token && config.headers) {
-      config.headers['Authorization'] = `Bearer ${token}`;
-    }
-
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
-  }
-);
+// Ми ПОВНІСТЮ ВИДАЛИЛИ інтерсептор request, тому що:
+// 1. Влад сказав, що авторизація не має бути побудована на токенах з localStorage.
+// 2. Влад сказав, що авторизація працює ТІЛЬКИ через відправлення cookies браузером.
+// 3. Браузер сам додасть cookie "accessToken" до запиту завдяки withCredentials: true.
 
 // export default залишати не обов'язково, якщо всюди використовується import { apiClient }
-// але я залишу для сумісності, якщо Вадим використовував дефолтний імпорт.
 export default apiClient;
