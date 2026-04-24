@@ -5,6 +5,7 @@ import com.sellora.core.infrastructure.persistence.UserRepository;
 import com.sellora.core.infrastructure.security.JwtService;
 import com.sellora.core.presentation.dtos.LoginRequest;
 import com.sellora.core.presentation.dtos.RegisterRequest;
+import com.sellora.core.presentation.exceptions.UserAlreadyExistsException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -18,8 +19,8 @@ public class AuthService {
   private final JwtService jwtService;
 
   public void register(RegisterRequest request) {
-    if (userRepository.findByEmail(request.getEmail()).isPresent()) {
-      throw new RuntimeException("Користувач з таким email вже існує");
+    if (userRepository.existsByEmail(request.getEmail())) {
+      throw new UserAlreadyExistsException("Користувач з таким email вже існує");
     }
 
     User user = new User();
