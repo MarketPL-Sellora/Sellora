@@ -117,11 +117,11 @@ const emit = defineEmits<{
           <span class="text-gray-500 text-xs font-normal font-['Onest'] leading-4">
             {{ item.specs }}
           </span>
-          <div class="self-stretch pt-1 inline-flex justify-between items-center">
+          <div class="self-stretch pt-1 flex flex-wrap justify-between items-end gap-2">
             <span class="text-gray-500 text-xs font-normal font-['Onest'] leading-4">
               Кількість: {{ item.qty }}
             </span>
-            <span class="text-white text-sm font-bold font-['Onest'] leading-5">
+            <span class="text-white text-sm font-bold font-['Onest'] leading-5 whitespace-nowrap">
               {{ item.price.toLocaleString('uk-UA') }} ₴
             </span>
           </div>
@@ -193,11 +193,11 @@ const emit = defineEmits<{
       <div class="self-stretch h-px border-t border-gray-700" />
 
       <!-- ── Total ───────────────────────────────────────────────────────── -->
-      <div class="self-stretch inline-flex justify-between items-center">
-        <span class="text-gray-300 text-sm font-bold font-['Unbounded'] leading-5 tracking-tight">
+      <div class="self-stretch flex flex-wrap justify-between items-center gap-2">
+        <span class="text-gray-300 text-xs md:text-sm font-bold font-['Unbounded'] leading-5 tracking-tight">
           ДО СПЛАТИ
         </span>
-        <span class="text-white text-2xl font-extrabold font-['Unbounded'] leading-8">
+        <span class="text-white text-xl md:text-2xl font-extrabold font-['Unbounded'] leading-8 whitespace-nowrap">
           {{ total }}
         </span>
       </div>

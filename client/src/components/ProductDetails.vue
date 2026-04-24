@@ -243,16 +243,18 @@ const emit = defineEmits<{
       </div>
 
       <!-- Prices -->
-      <div class="self-stretch h-11 relative">
-        <span class="absolute left-0 top-[4px] text-orange-400 text-4xl font-normal font-['Unbounded'] leading-10">
+      <div class="w-full overflow-hidden flex flex-wrap items-baseline gap-x-3 gap-y-1 py-1">
+        <span class="text-orange-400 text-3xl md:text-4xl font-normal font-['Unbounded'] leading-tight">
           {{ fmt(product.groupPrice) }}
         </span>
-        <span class="absolute left-[155px] top-[14px] text-[#5a5f7a] text-xl font-normal font-['Onest'] line-through leading-7">
-          {{ fmt(product.oldPrice) }}
-        </span>
-        <span class="absolute left-[258px] top-[18px] px-2 py-0.5 bg-red-600/80 rounded-lg text-white text-sm font-normal font-['Onest'] leading-5">
-          −{{ product.discount }}%
-        </span>
+        <div class="flex items-center gap-2">
+          <span class="text-[#5a5f7a] text-lg md:text-xl font-normal font-['Onest'] line-through leading-tight">
+            {{ fmt(product.oldPrice) }}
+          </span>
+          <span class="px-2 py-0.5 bg-red-600/80 rounded-lg text-white text-xs md:text-sm font-normal font-['Onest']">
+            −{{ product.discount }}%
+          </span>
+        </div>
       </div>
 
       <!-- Description -->

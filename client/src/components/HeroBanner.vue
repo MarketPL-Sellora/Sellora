@@ -113,7 +113,7 @@ const emit = defineEmits<{
 
     <!-- ── Hero banner ─────────────────────────────────────────────────────── -->
     <div
-      class="self-stretch h-72 relative rounded-2xl overflow-hidden"
+      class="self-stretch h-[400px] sm:h-[320px] md:h-72 relative rounded-2xl overflow-hidden"
       @mouseenter="pauseAutoPlay"
       @mouseleave="resumeAutoPlay"
     >
@@ -133,7 +133,7 @@ const emit = defineEmits<{
           class="absolute inset-0 flex items-center overflow-hidden"
         >
           <!-- Phone / product mockup -->
-          <div class="absolute right-8 top-1/2 -translate-y-1/2 w-40 h-64 shrink-0">
+          <div class="hidden md:block absolute right-8 top-1/2 -translate-y-1/2 w-40 h-64 shrink-0">
             <!-- Decorative card behind image -->
             <div class="absolute inset-0 bg-gradient-to-br from-slate-800 to-[#0f2027] rounded-3xl shadow-[0px_30px_80px_0px_rgba(0,0,0,0.60)] shadow-[inset_0px_1px_0px_1px_rgba(255,255,255,0.08)] outline outline-1 outline-offset-[-1px] outline-white/10">
               <div class="w-28 h-1.5 absolute left-[21px] top-[11px] bg-white/10 rounded" />
@@ -151,16 +151,16 @@ const emit = defineEmits<{
           </div>
 
           <!-- Text content -->
-          <div class="relative z-10 max-w-[512px] px-12 flex flex-col justify-start items-start gap-2">
+          <div class="relative z-10 max-w-[512px] px-14 md:px-12 pb-8 md:pb-0 flex flex-col justify-start items-start gap-2">
             <!-- Badge -->
-            <span class="px-2.5 py-1 bg-orange-500/10 rounded-full outline outline-1 outline-offset-[-1px] outline-orange-500/20 text-orange-400 text-[10px] font-semibold font-['Onest'] uppercase leading-4 tracking-wide">
+            <span class="relative px-2.5 py-1 bg-orange-500/10 rounded-full outline outline-1 outline-offset-[-1px] outline-orange-500/20 text-orange-400 text-[10px] font-semibold font-['Onest'] uppercase leading-4 tracking-wide">
               {{ slide.badge }}
             </span>
 
             <!-- Title -->
             <div class="pt-1">
-              <span class="text-white text-4xl font-black font-['Unbounded'] leading-10">{{ slide.titleWhite }}<br /></span>
-              <span class="text-orange-500 text-4xl font-black font-['Unbounded'] leading-10">{{ slide.titleAccent }}</span>
+              <span class="text-white text-4xl font-black ...">{{ slide.titleWhite }}<br /></span>
+              <span class="text-orange-500 text-4xl ...">{{ slide.titleAccent }}</span>
             </div>
 
             <!-- Description -->
@@ -169,20 +169,20 @@ const emit = defineEmits<{
             </p>
 
             <!-- Prices -->
-            <div class="self-stretch h-11 relative">
-              <span class="absolute left-0 bottom-0 text-orange-500 text-3xl font-bold font-['Onest'] leading-9">
+            <div class="self-stretch flex items-end gap-3 pt-2">
+              <span class="text-orange-500 text-3xl font-bold font-['Onest'] leading-none">
                 {{ slide.price }}
               </span>
-              <span class="absolute left-[140px] bottom-[4px] text-gray-600 text-lg font-normal font-['Onest'] line-through leading-7">
+              <span class="text-gray-600 text-lg font-normal font-['Onest'] line-through leading-none mb-1">
                 {{ slide.oldPrice }}
               </span>
-              <span class="absolute left-[232px] bottom-[4px] px-2 py-0.5 bg-green-500/20 rounded-lg text-green-400 text-sm font-semibold font-['Onest'] leading-5">
+              <span class="px-2 py-0.5 bg-green-500/20 rounded-lg text-green-400 text-sm font-semibold font-['Onest'] mb-1">
                 {{ slide.discount }}
               </span>
             </div>
 
             <!-- CTA buttons -->
-            <div class="self-stretch pt-3 inline-flex justify-start items-start gap-3">
+            <div class="w-full pt-3 flex flex-wrap justify-start items-start gap-3">
               <button
                 class="px-6 py-2.5 bg-gradient-to-b from-orange-500 to-orange-600 rounded-xl shadow-[0px_4px_16px_0px_rgba(249,115,22,0.35)] text-white text-sm font-semibold font-['Onest'] leading-5 transition-all duration-150 hover:from-orange-400 hover:to-orange-500 hover:shadow-[0px_4px_24px_0px_rgba(249,115,22,0.55)] active:scale-[0.97]"
                 @click="emit('buy', slide)"
@@ -236,7 +236,7 @@ const emit = defineEmits<{
     </div>
 
     <!-- ── Stats row ────────────────────────────────────────────────────────── -->
-    <div class="self-stretch pt-2 inline-flex justify-center items-start gap-3">
+    <div class="self-stretch pt-2 grid grid-cols-2 md:grid-cols-4 gap-3">
       <div
         v-for="stat in stats"
         :key="stat.label"

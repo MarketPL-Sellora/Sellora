@@ -156,7 +156,7 @@ function setTab(id: string) {
   <div class="w-full inline-flex flex-col justify-start items-start gap-8">
 
     <!-- ── Tab bar ────────────────────────────────────────────────────────── -->
-    <div class="self-stretch border-b border-[#1c1f2a] inline-flex justify-start items-start">
+    <div class="self-stretch border-b border-[#1c1f2a] flex overflow-x-auto scrollbar-none whitespace-nowrap">
       <button
         v-for="tab in tabs"
         :key="tab.id"
@@ -209,7 +209,7 @@ function setTab(id: string) {
         </div>
 
         <!-- Banner 1 — Camera -->
-        <div class="self-stretch py-44 relative bg-[#1c1f2a] rounded-xl outline outline-1 outline-offset-[-1px] outline-[#2a2d3e] flex justify-center items-center overflow-hidden">
+        <div class="self-stretch py-20 md:py-44 relative bg-[#1c1f2a] rounded-xl outline outline-1 outline-offset-[-1px] outline-[#2a2d3e] flex justify-center items-center overflow-hidden">
           <div class="absolute inset-0 bg-gradient-to-br from-[#1a1040] to-[#0d1022]" />
           <!-- Replace with: <img src="../assets/banner-camera.jpg" alt="Камерна система 200 Мп" class="absolute inset-0 w-full h-full object-cover" /> -->
           <div class="relative z-10 flex flex-col items-center gap-2">
@@ -227,7 +227,7 @@ function setTab(id: string) {
         </div>
 
         <!-- Banner 2 — AI -->
-        <div class="self-stretch py-44 relative bg-[#1c1f2a] rounded-xl outline outline-1 outline-offset-[-1px] outline-[#2a2d3e] flex justify-center items-center overflow-hidden">
+        <div class="self-stretch py-20 md:py-44 relative bg-[#1c1f2a] rounded-xl outline outline-1 outline-offset-[-1px] outline-[#2a2d3e] flex justify-center items-center overflow-hidden">
           <div class="absolute inset-0 bg-gradient-to-br from-[#0f2027] to-[#203a43]" />
           <!-- Replace with: <img src="../assets/banner-ai.jpg" alt="Galaxy AI функції" class="absolute inset-0 w-full h-full object-cover" /> -->
           <div class="relative z-10 flex flex-col items-center gap-2">
@@ -245,7 +245,7 @@ function setTab(id: string) {
       </div>
 
       <!-- Right: key features -->
-      <div class="w-80 shrink-0 self-stretch">
+      <div class="w-full lg:w-80 shrink-0">
         <div class="self-stretch p-5 bg-[#161820] rounded-2xl outline outline-1 outline-offset-[-1px] outline-[#1c1f2a] flex flex-col gap-4">
           <h3 class="text-white text-base font-normal font-['Onest'] leading-6">
             Ключові особливості
