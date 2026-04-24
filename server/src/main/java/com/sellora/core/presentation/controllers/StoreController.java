@@ -1,7 +1,6 @@
 package com.sellora.core.presentation.controllers;
 
 import com.sellora.core.application.usecases.StoreService;
-import com.sellora.core.domain.entities.User;
 import com.sellora.core.presentation.dtos.CreateStoreRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -16,19 +15,19 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class StoreController {
 
-  private final StoreService storeService;
+    private final StoreService storeService;
 
-  @PostMapping("/create")
-  @PreAuthorize("isAuthenticated()")
-  public ResponseEntity<?> createStore(
-    @RequestBody CreateStoreRequest request,
-    @AuthenticationPrincipal User currentUser) {
+    @PostMapping("/create")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<?> createStore(
+            @RequestBody CreateStoreRequest request,
+            @AuthenticationPrincipal Long userId) { // Змінено на Long
 
-    storeService.createStore(request, currentUser);
+        storeService.createStore(request, userId); // Передаємо Long далі в сервіс
 
-    return ResponseEntity.ok(Map.of(
-      "message", "Магазин '" + request.getName() + "' успішно створено!",
-      "status", "Ви отримали статус MERCHANT (Продавець)"
-    ));
-  }
+        return ResponseEntity.ok(Map.of(
+                "message", "Магазин '" + request.getName() + "' успішно створено!",
+                "status", "Ви отримали статус MERCHANT (Продавець)"
+        ));
+    }
 }

@@ -173,22 +173,30 @@ function handleProductSave(product: Record<string, unknown>) {
 }
 
 // —— Обробник успішного створення магазину ——
-// Викликається з CreateStoreForm через emit('created', formData).
-// Зберігає дані форми у myStore та перемикає стан.
+// formData тепер відповідає backend-схемі:
+//   name, address, contactPhone, description, logoUrl — з сервера
+//   logoFile — File об'єкт (якщо був завантажений)
 function handleStoreCreated(formData: Record<string, unknown>) {
   console.log('Магазин створено:', formData)
-  myStore.name = (formData.name as string) || ''
-  myStore.category = (formData.category as string) || ''
-  myStore.description = (formData.description as string) || ''
-  myStore.city = (formData.city as string) || ''
-  myStore.phone = (formData.phone as string) || ''
-  myStore.website = (formData.website as string) || ''
-  myStore.instagram = (formData.instagram as string) || ''
-  // Якщо завантажено логотип — створюємо blob URL для прев'ю
-  if (formData.logoFile instanceof File) {
+
+  // `address` від бекенду → відображаємо як `city` у профілі
+  myStore.name        = (formData.name         as string) || ''
+  myStore.category    = ''                                   // not in schema, clear it
+  myStore.description = (formData.description  as string) || ''
+  myStore.city        = (formData.address       as string) || ''
+  myStore.phone       = (formData.contactPhone  as string) || ''
+  myStore.website     = (formData.website       as string) || ''
+  myStore.instagram   = (formData.instagram     as string) || ''
+
+  // Логотип: якщо сервер повернув URL — використовуємо його;
+  // інакше — blob URL із локального файлу (для миттєвого прев'ю)
+  if (formData.logoUrl && typeof formData.logoUrl === 'string' && formData.logoUrl !== '') {
+    myStore.logo = formData.logoUrl
+  } else if (formData.logoFile instanceof File) {
     myStore.logo = URL.createObjectURL(formData.logoFile)
   }
-  hasStore.value = true
+
+  hasStore.value       = true
   isCreatingStore.value = false
 }
 
