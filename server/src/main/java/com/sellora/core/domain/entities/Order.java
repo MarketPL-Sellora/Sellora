@@ -28,16 +28,10 @@ public class Order {
   @Column(name = "user_id")
   private Long userId;
 
-  @Column(name = "merchant_id")
+  @Column(name = "store_id")
   private Long merchantId;
 
-  @Column(name = "product_id")
-  private Long productId;
-
-  @Column(name = "product_title_snapshot")
-  private String productTitleSnapshot;
-
-  @Column(name = "final_price")
+  @Column(name = "total_amount")
   private BigDecimal finalPrice;
 
   @Column(name = "payment_status")

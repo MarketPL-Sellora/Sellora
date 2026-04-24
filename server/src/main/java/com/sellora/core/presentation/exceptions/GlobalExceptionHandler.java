@@ -9,6 +9,8 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @ControllerAdvice
@@ -44,7 +46,18 @@ public class GlobalExceptionHandler {
       "Некоректний формат даних у запиті (очікувалося число, а прийшов текст або невалідний JSON)"
     );
     return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
-  } 
+  }
+
+  @ExceptionHandler(EmptyCartException.class)
+  public ResponseEntity<Map<String, Object>> handleEmptyCartException(EmptyCartException ex) {
+    Map<String, Object> errorResponse = new HashMap<>();
+    errorResponse.put("timestamp", LocalDateTime.now());
+    errorResponse.put("errorCode", "EMPTY_CART"); // Можна зробити свій код
+    errorResponse.put("message", ex.getMessage());
+
+    // Повертаємо 400 BAD_REQUEST
+    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+  }
 
   /**
    * Загальний обробник для всіх інших непередбачуваних помилок
