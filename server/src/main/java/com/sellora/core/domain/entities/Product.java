@@ -11,6 +11,8 @@ import lombok.Data;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
 
 @Entity
 @Table(name = "products")
@@ -33,11 +35,11 @@ public class Product {
 
   @JdbcTypeCode(SqlTypes.JSON)
   @Column(name = "attributes", columnDefinition = "jsonb")
-  private String attributes;
+  private Map<String, Object> attributes;
 
   @JdbcTypeCode(SqlTypes.JSON)
   @Column(name = "images", columnDefinition = "jsonb")
-  private String images;
+  private List<String> images;
 
   @Column(name = "stock_quantity")
   private Integer stockQuantity;

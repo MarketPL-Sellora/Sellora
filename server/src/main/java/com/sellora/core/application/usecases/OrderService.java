@@ -63,7 +63,11 @@ public class OrderService {
       orderItem.setQuantity(cartItem.getQuantity());
       orderItem.setPriceSnapshot(product.getStandardPrice()); // Зберігаємо ціну на момент покупки
       orderItem.setTitleSnapshot(product.getTitle());
-      orderItem.setImageSnapshot(product.getImages());
+      // Перевіряємо, чи є в товару картинки, і беремо першу для прев'ю в замовленні
+      String mainImage = (product.getImages() != null && !product.getImages().isEmpty())
+        ? product.getImages().get(0)
+        : null;
+      orderItem.setImageSnapshot(mainImage);
       return orderItem;
     }).toList();
 

@@ -2,14 +2,17 @@ package com.sellora.core.infrastructure.persistence;
 
 import com.sellora.core.domain.entities.Store;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
 
+@Repository
 public interface StoreRepository extends JpaRepository<Store, Long> {
+
+  Optional<Store> findByOwnerId(Long ownerId);
+
   boolean existsByOwnerId(Long ownerId);
-  // Пошук тільки тих, хто має статус ACTIVE
   List<Store> findAllByStatus(String status);
-  // Пошук конкретного магазину, тільки якщо він не заблокований
   Optional<Store> findByIdAndStatus(Long id, String status);
 }
