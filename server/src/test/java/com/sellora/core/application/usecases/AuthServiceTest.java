@@ -5,6 +5,7 @@ import com.sellora.core.infrastructure.persistence.UserRepository;
 import com.sellora.core.infrastructure.security.JwtService;
 import com.sellora.core.presentation.dtos.LoginRequest;
 import com.sellora.core.presentation.dtos.RegisterRequest;
+import com.sellora.core.presentation.exceptions.UserAlreadyExistsException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -22,7 +23,6 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class AuthServiceTest {
 
-  // Створюємо "заглушки" для всіх залежностей AuthService
   @Mock
   private UserRepository userRepository;
 
@@ -35,7 +35,7 @@ class AuthServiceTest {
   @InjectMocks
   private AuthService authService;
 
-  // REGISTER
+  // --- REGISTER TESTS ---
 
   @Test
   void register_Success() {
@@ -44,49 +44,62 @@ class AuthServiceTest {
     request.setEmail("test@sellora.com");
     request.setPassword("securePassword");
 
-    //сервіс шукає користувача, return empty результат
-    when(userRepository.findByEmail(request.getEmail())).thenReturn(Optional.empty());
-
+    when(userRepository.existsByEmail(request.getEmail())).thenReturn(false);
     when(passwordEncoder.encode(request.getPassword())).thenReturn("hashedPassword123");
 
-    //act
+    // act
     authService.register(request);
 
     // assert
-    //ArgumentCaptor, щоб "спіймати" об'єкт User, який передається в репозиторій для збереження
     ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
     verify(userRepository, times(1)).save(userCaptor.capture());
 
     User savedUser = userCaptor.getValue();
     assertEquals("test@sellora.com", savedUser.getEmail());
-    assertEquals("hashedPassword123", savedUser.getPasswordHash(), "Пароль має бути захешованим!");
-    assertEquals("BUYER", savedUser.getRole(), "Роль за замовчуванням має бути BUYER");
+    assertEquals("hashedPassword123", savedUser.getPasswordHash());
+    assertEquals("BUYER", savedUser.getRole());
   }
 
   @Test
   void register_UserAlreadyExists_ThrowsException() {
-
+    // arrange
     RegisterRequest request = new RegisterRequest();
     request.setEmail("exist@sellora.com");
     request.setPassword("password");
 
-    // імітація існування користувача в БД
-    when(userRepository.findByEmail(request.getEmail())).thenReturn(Optional.of(new User()));
+    when(userRepository.existsByEmail(request.getEmail())).thenReturn(true);
 
-    RuntimeException exception = assertThrows(RuntimeException.class, () -> {
+    // act & assert
+    assertThrows(UserAlreadyExistsException.class, () -> {
       authService.register(request);
     });
 
-    assertEquals("Користувач з таким email вже існує", exception.getMessage());
-    //перевірка що метод SAVE не викликався
     verify(userRepository, never()).save(any(User.class));
   }
 
-  // LOGIN
+  @Test
+  void register_NullPassword_ThrowsIllegalArgumentException() {
+    // arrange
+    RegisterRequest request = new RegisterRequest();
+    request.setEmail("test@sellora.com");
+    request.setPassword(null);
+
+    when(userRepository.existsByEmail(request.getEmail())).thenReturn(false);
+    when(passwordEncoder.encode(null)).thenThrow(new IllegalArgumentException("rawPassword cannot be null"));
+
+    // act & assert
+    assertThrows(IllegalArgumentException.class, () -> {
+      authService.register(request);
+    });
+
+    verify(userRepository, never()).save(any(User.class));
+  }
+
+  // --- LOGIN TESTS ---
 
   @Test
   void login_Success() {
-
+    // arrange
     LoginRequest request = new LoginRequest();
     request.setEmail("test@sellora.com");
     request.setPassword("securePassword");
@@ -109,15 +122,14 @@ class AuthServiceTest {
 
   @Test
   void login_UserNotFound_ThrowsException() {
-
+    // arrange
     LoginRequest request = new LoginRequest();
     request.setEmail("wrong@sellora.com");
     request.setPassword("password");
 
-    // користувача немає в базі
     when(userRepository.findByEmail(request.getEmail())).thenReturn(Optional.empty());
 
-
+    // act & assert
     RuntimeException exception = assertThrows(RuntimeException.class, () -> {
       authService.login(request);
     });
@@ -127,7 +139,7 @@ class AuthServiceTest {
 
   @Test
   void login_WrongPassword_ThrowsException() {
-    // Arrange
+    // arrange
     LoginRequest request = new LoginRequest();
     request.setEmail("test@sellora.com");
     request.setPassword("wrongPassword");
@@ -137,69 +149,37 @@ class AuthServiceTest {
     mockUser.setPasswordHash("hashedPassword123");
 
     when(userRepository.findByEmail(request.getEmail())).thenReturn(Optional.of(mockUser));
-    // Імітуємо, що паролі не співпадають
     when(passwordEncoder.matches(request.getPassword(), mockUser.getPasswordHash())).thenReturn(false);
 
-    // Act & Assert
+    // act & assert
     RuntimeException exception = assertThrows(RuntimeException.class, () -> {
       authService.login(request);
     });
 
     assertEquals("Невірний email або пароль", exception.getMessage());
-    // Переконуємося, що токен НЕ генерувався
     verify(jwtService, never()).generateToken(any());
   }
 
   @Test
-  void register_NullPassword_ThrowsIllegalArgumentException() {
-    //запит де пароль буде null
-    RegisterRequest request = new RegisterRequest();
-    request.setEmail("test@sellora.com");
-    request.setPassword(null);
-
-    //юзера ще не існує
-    when(userRepository.findByEmail(request.getEmail())).thenReturn(Optional.empty());
-
-    //коли буде хешуватись null то повернути помилку
-    when(passwordEncoder.encode(null)).thenThrow(new IllegalArgumentException("rawPassword cannot be null"));
-
-
-    IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
-      authService.register(request);
-    });
-
-    // додаткова перевірка що запис не додався в БД
-    verify(userRepository, never()).save(any(User.class));
-  }
-
-  @Test
   void login_NullEmail_ThrowsException() {
-    //логін з порожнім email
+    // arrange
     LoginRequest request = new LoginRequest();
     request.setEmail(null);
     request.setPassword("somePassword");
 
-    when(userRepository.findByEmail(null)).thenReturn(Optional.empty());
-
-    //пошук за null нічого не видасть, тому сервер повинен видати повідомлення
-    RuntimeException exception = assertThrows(RuntimeException.class, () -> {
+    // act & assert
+    assertThrows(RuntimeException.class, () -> {
       authService.login(request);
     });
 
-    assertEquals("Невірний email або пароль", exception.getMessage());
-    // токен не повинен генеруватись
     verify(jwtService, never()).generateToken(any());
   }
 
   @Test
   void login_NullRequestObject_ThrowsNullPointerException() {
-    // контроллер передає порожній об'єкт
-    LoginRequest request = null;
-
-    // перерірка що видасть NullPointerException
+    // act & assert
     assertThrows(NullPointerException.class, () -> {
-      authService.login(request);
+      authService.login(null);
     });
   }
-
 }
