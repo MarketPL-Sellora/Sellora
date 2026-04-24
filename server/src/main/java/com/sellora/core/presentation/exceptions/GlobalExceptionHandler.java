@@ -38,6 +38,18 @@ public class GlobalExceptionHandler {
     return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
   }
 
+  @ExceptionHandler(UserAlreadyExistsException.class)
+  public ResponseEntity<ApiErrorResponse> handleUserAlreadyExistsException(UserAlreadyExistsException ex) {
+    ApiErrorResponse error = new ApiErrorResponse(
+      LocalDateTime.now().toString(),
+      "EMAIL_ALREADY_EXISTS", // Спеціальний код помилки для фронтенда
+      ex.getMessage()
+    );
+
+    // Повертаємо 409 Conflict
+    return new ResponseEntity<>(error, HttpStatus.CONFLICT);
+  }
+
   @ExceptionHandler(org.springframework.http.converter.HttpMessageNotReadableException.class)
   public ResponseEntity<ApiErrorResponse> handleHttpMessageNotReadable(org.springframework.http.converter.HttpMessageNotReadableException ex) {
     ApiErrorResponse error = new ApiErrorResponse(
