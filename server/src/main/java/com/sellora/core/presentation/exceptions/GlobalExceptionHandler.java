@@ -50,6 +50,28 @@ public class GlobalExceptionHandler {
     return new ResponseEntity<>(error, HttpStatus.CONFLICT);
   }
 
+  @ExceptionHandler(ResourceNotFoundException.class)
+  public ResponseEntity<ApiErrorResponse> handleResourceNotFoundException(ResourceNotFoundException ex) {
+    ApiErrorResponse error = new ApiErrorResponse(
+      LocalDateTime.now().toString(),
+      "NOT_FOUND", // Код помилки для фронтенда
+      ex.getMessage()
+    );
+    // Повертаємо правильний статус 404
+    return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+  }
+
+  @ExceptionHandler(BadRequestException.class)
+  public ResponseEntity<ApiErrorResponse> handleBadRequestException(BadRequestException ex) {
+    ApiErrorResponse error = new ApiErrorResponse(
+      LocalDateTime.now().toString(),
+      "BAD_REQUEST", // Код для фронтенду
+      ex.getMessage()
+    );
+    // Повертаємо правильний статус 400
+    return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+  }
+
   @ExceptionHandler(org.springframework.http.converter.HttpMessageNotReadableException.class)
   public ResponseEntity<ApiErrorResponse> handleHttpMessageNotReadable(org.springframework.http.converter.HttpMessageNotReadableException ex) {
     ApiErrorResponse error = new ApiErrorResponse(
