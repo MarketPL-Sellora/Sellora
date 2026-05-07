@@ -44,7 +44,7 @@ public class SecurityConfig {
         // 1. Відкриті двері (реєстрація, логін, свагер) - сюди можна без токена
         .requestMatchers("/api/v1/auth/**",  "/swagger-ui/**","/api/v1/upload/**","/v3/api-docs/**", "/health").permitAll()
         // 2. Читати каталог товарів і категорій можуть всі (навіть неавторизовані гості сайту)
-        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/v1/categories/**", "/api/v1/products/**", "/api/v1/group-buy/sessions/**").permitAll()
+        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/v1/categories/**","/share/**", "/api/v1/products/**", "/api/v1/group-buy/sessions/**").permitAll()
 
         // 3. ЗАКРИТІ ДВЕРІ: Будь-який інший запит (створення товару, кошик, профіль) вимагає токен!
         .anyRequest().authenticated()
