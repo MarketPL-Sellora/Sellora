@@ -11,6 +11,11 @@ import com.sellora.core.presentation.exceptions.BadRequestException;
 import com.sellora.core.presentation.exceptions.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import java.util.UUID;
+import com.sellora.core.presentation.dtos.CreateGroupBuySessionDto;
+import java.time.LocalDateTime;
+import java.math.BigDecimal;
 
 @Service
 @RequiredArgsConstructor
@@ -82,5 +87,44 @@ public class GroupBuySessionService {
     newMember.setUserId(userId);
 
     memberRepository.save(newMember);
+  }
+
+  @Transactional
+  public GroupBuySessionResponseDto createSession(CreateGroupBuySessionDto dto, Long initiatorId) {
+    // 1. Шукаємо товар
+    Product product = productRepository.findById(dto.productId())
+      .orElseThrow(() -> new ResourceNotFoundException("Товар не знайдено"));
+
+    // 2. Створюємо нову сесію (AC #4: дедлайн 24 години, AC #5: генерація UUID)
+    GroupBuySession session = new GroupBuySession();
+    session.setUuid(UUID.randomUUID().toString()); // Генеруємо унікальний лінк
+    session.setProductId(product.getId());
+    session.setInitiatorId(initiatorId);
+    session.setStatus("ACTIVE");
+    session.setExpiresAt(LocalDateTime.now().plusHours(24)); // Дедлайн +24 години
+
+    BigDecimal price = product.getGroupPrice() != null
+      ? product.getGroupPrice()
+      : product.getStandardPrice(); // фолбек, якщо групову ціну забули вказати
+
+    session.setLockedPrice(price);
+
+    // Цільова кількість людей (беремо з товару, дефолт - 3)
+    int targetSize = product.getGroupTargetSize() != null
+      ? product.getGroupTargetSize()
+      : 3;
+
+    session.setLockedTargetSize(targetSize);
+
+    session = sessionRepository.save(session); // Зберігаємо сесію, щоб отримати її ID
+
+    // 3. Ініціатор стає першим учасником (AC #3)
+    GroupMember initiator = new GroupMember();
+    initiator.setSessionId(session.getId());
+    initiator.setUserId(initiatorId);
+    memberRepository.save(initiator);
+
+    // 4. Повертаємо деталі щойно створеної сесії (використовуємо наш старий метод!)
+    return getSessionDetails(session.getUuid());
   }
 }
