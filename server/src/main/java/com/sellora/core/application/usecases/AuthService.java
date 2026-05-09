@@ -5,6 +5,8 @@ import com.sellora.core.infrastructure.persistence.UserRepository;
 import com.sellora.core.infrastructure.security.JwtService;
 import com.sellora.core.presentation.dtos.LoginRequest;
 import com.sellora.core.presentation.dtos.RegisterRequest;
+import com.sellora.core.presentation.dtos.UserResponseDto;
+import com.sellora.core.presentation.exceptions.ResourceNotFoundException;
 import com.sellora.core.presentation.exceptions.UserAlreadyExistsException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -40,5 +42,19 @@ public class AuthService {
     }
 
     return jwtService.generateToken(user.getId());
+  }
+
+  public UserResponseDto getCurrentUserInfo(Long userId) {
+    User user = userRepository.findById(userId)
+      .orElseThrow(() -> new ResourceNotFoundException("Користувача не знайдено"));
+
+    return new UserResponseDto(
+      user.getId(),
+      user.getEmail(),
+      user.getRole(), // Припускаємо, що Role - це Enum
+      user.getAvatarUrl(),
+      user.getCreatedAt(),
+      user.getUpdatedAt()
+    );
   }
 }
