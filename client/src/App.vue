@@ -1,13 +1,16 @@
 <script setup lang="ts">
 import { onMounted } from 'vue';
 import { useCategoryStore } from './state/categoryStore';
+import { useUserStore } from './state/userStore'; // ДОДАНО
 
-// Ініціалізуємо сховище категорій
+// Ініціалізуємо сховища
 const categoryStore = useCategoryStore();
+const userStore = useUserStore(); // ДОДАНО
 
-// Завантажуємо категорії один раз при старті додатку
-onMounted(() => {
+// Завантажуємо дані один раз при старті додатку
+onMounted(async () => { // ЗМІНЕНО НА async
   categoryStore.fetchCategories();
+  await userStore.fetchMe(); // ДОДАНО: перевіряємо авторизацію при старті
 });
 
 // Зараз ми дивимося сторінку товару.

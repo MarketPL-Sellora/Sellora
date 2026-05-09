@@ -1,36 +1,51 @@
 import { defineStore } from 'pinia'
 import { ref, watch } from 'vue'
-import { apiClient } from '../api/axios' // adjust path if needed
+import { apiClient } from '../api/axios'
 
-// ─── Ключ для localStorage ────────────────────────────────────────────────────
 const STORAGE_KEY = 'sellora_user'
 
-// ─── Тип даних користувача ────────────────────────────────────────────────────
 interface UserData {
-  email: string
+  id:        number
+  email:     string
+  role:      string
+  avatarUrl: string
+  createdAt: string
+  updatedAt: string
 }
 
-// ─── Тип payload для створення магазину ──────────────────────────────────────
 export interface StorePayload {
-  name: string
-  address: string
+  name:         string
+  address:      string
   contactPhone: string
-  description: string
-  logoUrl: string
+  description:  string
+  logoUrl:      string
 }
 
-// ─── Тип відповіді від бекенду (розширте за потреби) ─────────────────────────
 export interface StoreResponse {
-  id?: number | string
-  name: string
-  address: string
+  id?:          number | string
+  name:         string
+  address:      string
   contactPhone: string
-  description: string
-  logoUrl: string
+  description:  string
+  logoUrl:      string
   [key: string]: unknown
 }
 
-// ─── Допоміжна функція: зчитуємо збережений стан при старті ──────────────────
+export interface SellerStore {
+  id:           number
+  ownerId:      number
+  name:         string
+  slug:         string
+  address:      string
+  contactPhone: string
+  description:  string
+  logoUrl:      string
+  rating:       number
+  status:       string
+  createdAt:    string
+  updatedAt:    string
+}
+
 function loadFromStorage(): { user: UserData | null; isAuthenticated: boolean } {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
@@ -45,52 +60,101 @@ function loadFromStorage(): { user: UserData | null; isAuthenticated: boolean } 
   }
 }
 
-// ─── Pinia Store: userStore ───────────────────────────────────────────────────
 export const useUserStore = defineStore('user', () => {
-
   const saved = loadFromStorage()
-
   const user            = ref<UserData | null>(saved.user)
   const isAuthenticated = ref<boolean>(saved.isAuthenticated)
 
-  // ─── Стан завантаження для createStore ───────────────────────────────────
   const isCreatingStore = ref<boolean>(false)
+  const sellerStore     = ref<SellerStore | null>(null)
+  const isLoadingStore  = ref<boolean>(false)
 
-  watch(
-    [user, isAuthenticated],
-    ([newUser, newAuth]) => {
-      localStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify({ user: newUser, isAuthenticated: newAuth }),
-      )
-    },
-    { deep: true },
-  )
+  // ─── ЛОГІКА LOCALSTORAGE (ІЗОЛЯЦІЯ ЮЗЕРІВ) ─────────────────────────────
+  function getCurrentUserEmail(): string {
+    return user.value?.email || 'guest'
+  }
+
+  function markAsJoinedLocally(uuid: string) {
+    const email = getCurrentUserEmail()
+    const raw = localStorage.getItem('joinedGroupSessions')
+    let storage: Record<string, string[]> = {}
+    try {
+      if (raw) storage = JSON.parse(raw)
+      if (Array.isArray(storage)) storage = {} // очистка старого формату
+    } catch { storage = {} }
+
+    if (!storage[email]) storage[email] = []
+    if (!storage[email].includes(uuid)) {
+      storage[email].push(uuid)
+      localStorage.setItem('joinedGroupSessions', JSON.stringify(storage))
+    }
+  }
+
+  function isJoinedLocally(uuid: string): boolean {
+    const email = getCurrentUserEmail()
+    try {
+      const raw = localStorage.getItem('joinedGroupSessions')
+      if (!raw) return false
+      const storage = JSON.parse(raw)
+      return Array.isArray(storage[email]) && storage[email].includes(uuid)
+    } catch { return false }
+  }
+  // ─────────────────────────────────────────────────────────────────────────
+
+  watch([user, isAuthenticated], ([newUser, newAuth]) => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ user: newUser, isAuthenticated: newAuth }))
+  }, { deep: true })
 
   function login(userData: UserData) {
-    user.value            = userData
+    user.value = userData
     isAuthenticated.value = true
   }
 
   function logout() {
-    user.value            = null
+    user.value = null
     isAuthenticated.value = false
+    sellerStore.value = null
     localStorage.removeItem(STORAGE_KEY)
   }
 
-  // ─── Дія: створити магазин ────────────────────────────────────────────────
+  async function fetchMe(): Promise<void> {
+    try {
+      const response = await apiClient.get<UserData>('/auth/me')
+      user.value = response.data
+      isAuthenticated.value = true
+    } catch {
+      user.value = null
+      isAuthenticated.value = false
+    }
+  }
+
+  async function fetchUserStore(userId: number): Promise<void> {
+    isLoadingStore.value = true
+    try {
+      const response = await apiClient.get<SellerStore>(`/stores/user/${userId}`)
+      sellerStore.value = response.data
+    } catch {
+      sellerStore.value = null
+    } finally {
+      isLoadingStore.value = false
+    }
+  }
+
   async function createStore(payload: StorePayload): Promise<StoreResponse> {
     isCreatingStore.value = true
     try {
       const response = await apiClient.post<StoreResponse>('/stores/create', payload)
       return response.data
     } catch (error) {
-      // Прокидаємо помилку далі, щоб компонент міг її обробити
       throw error
     } finally {
       isCreatingStore.value = false
     }
   }
 
-  return { user, isAuthenticated, isCreatingStore, login, logout, createStore }
+  return {
+    user, isAuthenticated, isCreatingStore, sellerStore, isLoadingStore,
+    login, logout, fetchMe, fetchUserStore, createStore,
+    isJoinedLocally, markAsJoinedLocally
+  }
 })
