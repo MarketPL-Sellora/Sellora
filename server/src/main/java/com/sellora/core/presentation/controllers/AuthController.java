@@ -3,12 +3,18 @@ package com.sellora.core.presentation.controllers;
 import com.sellora.core.application.usecases.AuthService;
 import com.sellora.core.presentation.dtos.LoginRequest;
 import com.sellora.core.presentation.dtos.RegisterRequest;
+import com.sellora.core.presentation.dtos.UserResponseDto;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -43,5 +49,18 @@ public class AuthController {
     response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
 
     return ResponseEntity.ok(Map.of("message", "Вхід успішний"));
+  }
+
+
+  @Operation(summary = "Отримання інформації про поточного авторизованого користувача")
+  @ApiResponses(value = {
+    @ApiResponse(responseCode = "200", description = "Інформація про користувача отримана"),
+    @ApiResponse(responseCode = "401", description = "Користувач не авторизований")
+  })
+  @PreAuthorize("isAuthenticated()")
+  @GetMapping("/me")
+  public ResponseEntity<UserResponseDto> getCurrentUser(@AuthenticationPrincipal Long userId) {
+    UserResponseDto userResponse = authService.getCurrentUserInfo(userId);
+    return ResponseEntity.ok(userResponse);
   }
 }

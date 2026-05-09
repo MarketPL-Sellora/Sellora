@@ -3,6 +3,8 @@ package com.sellora.core.domain.specifications;
 import com.sellora.core.domain.entities.Product;
 import org.springframework.data.jpa.domain.Specification;
 
+import java.math.BigDecimal;
+
 public class ProductSpecification {
 
   // 1. Фільтр за назвою (замінить наш старий метод)
@@ -15,8 +17,8 @@ public class ProductSpecification {
     };
   }
 
-  // 2. Фільтр: Ціна ВІД (мінімальна)
-  public static Specification<Product> priceGreaterThanOrEqual(Double minPrice) {
+  // 2. Фільтр: Ціна ВІД (мінімальна) - Виправлено на BigDecimal
+  public static Specification<Product> priceGreaterThanOrEqual(BigDecimal minPrice) {
     return (root, query, criteriaBuilder) -> {
       if (minPrice == null) {
         return criteriaBuilder.conjunction();
@@ -25,8 +27,8 @@ public class ProductSpecification {
     };
   }
 
-  // 3. Фільтр: Ціна ДО (максимальна)
-  public static Specification<Product> priceLessThanOrEqual(Double maxPrice) {
+  // 3. Фільтр: Ціна ДО (максимальна) - Виправлено на BigDecimal
+  public static Specification<Product> priceLessThanOrEqual(BigDecimal maxPrice) {
     return (root, query, criteriaBuilder) -> {
       if (maxPrice == null) {
         return criteriaBuilder.conjunction();
