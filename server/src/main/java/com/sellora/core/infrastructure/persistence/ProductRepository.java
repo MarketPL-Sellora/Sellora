@@ -14,4 +14,7 @@ public interface ProductRepository extends JpaRepository<Product, Long>, JpaSpec
   @Query("SELECT p FROM Product p JOIN Store s ON p.merchantId = s.id WHERE s.status = 'ACTIVE'")
   Page<Product> findAllActiveProducts(Pageable pageable);
 
+  // НОВИЙ МЕТОД: Пошук товарів за ID продавця (магазину)
+  Page<Product> findAllByMerchantId(Long merchantId, Pageable pageable);
+
 }
