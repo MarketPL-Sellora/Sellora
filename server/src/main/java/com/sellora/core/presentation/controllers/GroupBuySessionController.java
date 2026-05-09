@@ -14,6 +14,8 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/v1/group-buy/sessions")
 @RequiredArgsConstructor
@@ -39,11 +41,11 @@ public class GroupBuySessionController {
     @ApiResponse(responseCode = "404", description = "Сесію не знайдено"),
     @ApiResponse(responseCode = "400", description = "Немає місць або сесія неактивна")
   })
-  @PreAuthorize("isAuthenticated()") // Тільки для зареєстрованих
+  @PreAuthorize("isAuthenticated()")
   @PostMapping("/{uuid}/join")
   public ResponseEntity<?> joinSession(
     @PathVariable String uuid,
-    @org.springframework.security.core.annotation.AuthenticationPrincipal Long userId) {
+    @AuthenticationPrincipal Long userId) {
 
     sessionService.joinSession(uuid, userId);
     return ResponseEntity.ok(java.util.Map.of("message", "Ви успішно приєдналися до групової покупки!"));
@@ -54,7 +56,7 @@ public class GroupBuySessionController {
     @ApiResponse(responseCode = "201", description = "Сесію успішно створено"),
     @ApiResponse(responseCode = "404", description = "Товар не знайдено")
   })
-  @PreAuthorize("isAuthenticated()") // Тільки авторизовані!
+  @PreAuthorize("isAuthenticated()")
   @PostMapping
   public ResponseEntity<GroupBuySessionResponseDto> createSession(
     @Valid @RequestBody CreateGroupBuySessionDto dto,
@@ -62,5 +64,21 @@ public class GroupBuySessionController {
 
     GroupBuySessionResponseDto createdSession = sessionService.createSession(dto, userId);
     return new ResponseEntity<>(createdSession, HttpStatus.CREATED);
+  }
+
+  // НОВЕ: Ендпоінт для історії сесій користувача
+  @Operation(summary = "Отримати всі сесії групових покупок поточного користувача (історія)")
+  @ApiResponses(value = {
+    @ApiResponse(responseCode = "200", description = "Успішно отримано список сесій"),
+    @ApiResponse(responseCode = "401", description = "Необхідна авторизація")
+  })
+  @PreAuthorize("isAuthenticated()") // Тільки для залогінених користувачів
+  @GetMapping("/user")
+  public ResponseEntity<List<GroupBuySessionResponseDto>> getUserSessions(
+    @AuthenticationPrincipal Long userId,
+    @RequestParam(required = false) String status) { // Опціональний фільтр статусу (ACTIVE, COMPLETED, CANCELLED)
+
+    List<GroupBuySessionResponseDto> sessions = sessionService.getUserSessions(userId, status);
+    return ResponseEntity.ok(sessions);
   }
 }

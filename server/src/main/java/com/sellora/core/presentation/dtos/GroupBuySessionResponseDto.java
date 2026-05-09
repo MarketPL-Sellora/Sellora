@@ -2,6 +2,7 @@ package com.sellora.core.presentation.dtos;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 public record GroupBuySessionResponseDto(
   String uuid,
@@ -13,6 +14,7 @@ public record GroupBuySessionResponseDto(
   Integer currentMembersCount,
   String status,
   LocalDateTime expiresAt,
-  boolean isAvailable,// true, якщо сесія ACTIVE і ще є вільні місця
-  LocalDateTime serverTime
+  boolean isAvailable,
+  LocalDateTime serverTime,
+  List<GroupMemberDto> members
 ) {}
