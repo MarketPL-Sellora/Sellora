@@ -56,7 +56,8 @@ public class GroupBuySessionService {
       currentMembers,
       session.getStatus(),
       session.getExpiresAt(),
-      isAvailable
+      isAvailable,
+      LocalDateTime.now()
     );
   }
 

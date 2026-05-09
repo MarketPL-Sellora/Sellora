@@ -13,5 +13,6 @@ public record GroupBuySessionResponseDto(
   Integer currentMembersCount,
   String status,
   LocalDateTime expiresAt,
-  boolean isAvailable // true, якщо сесія ACTIVE і ще є вільні місця
+  boolean isAvailable,// true, якщо сесія ACTIVE і ще є вільні місця
+  LocalDateTime serverTime
 ) {}
