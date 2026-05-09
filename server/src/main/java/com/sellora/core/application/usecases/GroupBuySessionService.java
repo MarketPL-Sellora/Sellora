@@ -6,16 +6,20 @@ import com.sellora.core.domain.entities.Product;
 import com.sellora.core.infrastructure.persistence.GroupBuySessionRepository;
 import com.sellora.core.infrastructure.persistence.GroupMemberRepository;
 import com.sellora.core.infrastructure.persistence.ProductRepository;
+import com.sellora.core.presentation.dtos.CreateGroupBuySessionDto;
 import com.sellora.core.presentation.dtos.GroupBuySessionResponseDto;
+import com.sellora.core.presentation.dtos.GroupMemberDto;
 import com.sellora.core.presentation.exceptions.BadRequestException;
 import com.sellora.core.presentation.exceptions.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import java.util.UUID;
-import com.sellora.core.presentation.dtos.CreateGroupBuySessionDto;
-import java.time.LocalDateTime;
+
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -26,26 +30,25 @@ public class GroupBuySessionService {
   private final ProductRepository productRepository;
 
   public GroupBuySessionResponseDto getSessionDetails(String uuid) {
-    // 1. Шукаємо сесію. Якщо немає - кидаємо помилку 404
     GroupBuySession session = sessionRepository.findByUuid(uuid)
       .orElseThrow(() -> new ResourceNotFoundException("Сесію за таким посиланням не знайдено"));
 
-    // 2. Дістаємо товар, щоб показати його назву і картинку
     Product product = productRepository.findById(session.getProductId())
       .orElseThrow(() -> new ResourceNotFoundException("Товар не знайдено"));
 
-    // 3. Рахуємо, скільки людей вже приєдналося
     int currentMembers = memberRepository.countBySessionId(session.getId());
-
-    // 4. ВАЛІДАЦІЯ: Перевіряємо, чи можна ще приєднатися
     boolean isAvailable = "ACTIVE".equals(session.getStatus()) && currentMembers < session.getLockedTargetSize();
 
-    // 5. Беремо першу картинку товару для прев'ю
     String mainImage = (product.getImages() != null && !product.getImages().isEmpty())
       ? product.getImages().get(0)
       : null;
 
-    // 6. Повертаємо сформований DTO
+    // НОВЕ: Отримуємо масив учасників і мапимо його в DTO
+    List<GroupMemberDto> memberDtos = memberRepository.findBySessionId(session.getId())
+      .stream()
+      .map(m -> new GroupMemberDto(m.getId(), m.getSessionId(), m.getUserId(), m.getJoinedAt()))
+      .collect(Collectors.toList());
+
     return new GroupBuySessionResponseDto(
       session.getUuid(),
       product.getId(),
@@ -57,75 +60,94 @@ public class GroupBuySessionService {
       session.getStatus(),
       session.getExpiresAt(),
       isAvailable,
-      LocalDateTime.now()
+      LocalDateTime.now(),
+      memberDtos // Передаємо масив у DTO
     );
   }
 
+  @Transactional
   public void joinSession(String uuid, Long userId) {
-    // 1. Шукаємо сесію
     GroupBuySession session = sessionRepository.findByUuid(uuid)
       .orElseThrow(() -> new ResourceNotFoundException("Сесію не знайдено"));
 
-    // 2. Перевіряємо, чи вона активна
     if (!"ACTIVE".equals(session.getStatus())) {
       throw new BadRequestException("Ця сесія вже неактивна");
     }
 
-    // 3. Перевіряємо, чи юзер уже НЕ є учасником (щоб не було дублікатів у базі)
     if (memberRepository.existsBySessionIdAndUserId(session.getId(), userId)) {
       throw new BadRequestException("Ви вже є учасником цієї групової покупки");
     }
 
-    // 4. Перевіряємо, чи є вільні місця
     int currentMembers = memberRepository.countBySessionId(session.getId());
     if (currentMembers >= session.getLockedTargetSize()) {
       throw new BadRequestException("У цій групі більше немає вільних місць");
     }
 
-    // 5. Зберігаємо нового учасника
     GroupMember newMember = new GroupMember();
     newMember.setSessionId(session.getId());
     newMember.setUserId(userId);
-
+    newMember.setJoinedAt(LocalDateTime.now());
     memberRepository.save(newMember);
+
+    // НОВЕ: Якщо після приєднання група заповнилася, переводимо в COMPLETED
+    if (currentMembers + 1 == session.getLockedTargetSize()) {
+      session.setStatus("COMPLETED");
+      sessionRepository.save(session);
+    }
   }
 
   @Transactional
   public GroupBuySessionResponseDto createSession(CreateGroupBuySessionDto dto, Long initiatorId) {
-    // 1. Шукаємо товар
     Product product = productRepository.findById(dto.productId())
       .orElseThrow(() -> new ResourceNotFoundException("Товар не знайдено"));
 
-    // 2. Створюємо нову сесію (AC #4: дедлайн 24 години, AC #5: генерація UUID)
+    // НОВЕ: Валідація. Якщо юзер вже в активній сесії для ЦЬОГО товару - відмовляємо.
+    if (memberRepository.isUserInActiveSessionForProduct(initiatorId, product.getId())) {
+      throw new BadRequestException("Ви вже берете участь в активній сесії для цього товару. Дочекайтеся її завершення.");
+    }
+
     GroupBuySession session = new GroupBuySession();
-    session.setUuid(UUID.randomUUID().toString()); // Генеруємо унікальний лінк
+    session.setUuid(UUID.randomUUID().toString());
     session.setProductId(product.getId());
     session.setInitiatorId(initiatorId);
     session.setStatus("ACTIVE");
-    session.setExpiresAt(LocalDateTime.now().plusHours(24)); // Дедлайн +24 години
+    session.setExpiresAt(LocalDateTime.now().plusHours(24));
 
     BigDecimal price = product.getGroupPrice() != null
       ? product.getGroupPrice()
-      : product.getStandardPrice(); // фолбек, якщо групову ціну забули вказати
+      : product.getStandardPrice();
 
     session.setLockedPrice(price);
 
-    // Цільова кількість людей (беремо з товару, дефолт - 3)
     int targetSize = product.getGroupTargetSize() != null
       ? product.getGroupTargetSize()
       : 3;
 
     session.setLockedTargetSize(targetSize);
+    session = sessionRepository.save(session);
 
-    session = sessionRepository.save(session); // Зберігаємо сесію, щоб отримати її ID
-
-    // 3. Ініціатор стає першим учасником (AC #3)
     GroupMember initiator = new GroupMember();
     initiator.setSessionId(session.getId());
     initiator.setUserId(initiatorId);
+    initiator.setJoinedAt(LocalDateTime.now());
     memberRepository.save(initiator);
 
-    // 4. Повертаємо деталі щойно створеної сесії (використовуємо наш старий метод!)
     return getSessionDetails(session.getUuid());
+  }
+
+  // НОВЕ: Отримання історії сесій користувача
+  public List<GroupBuySessionResponseDto> getUserSessions(Long userId, String status) {
+    List<GroupBuySession> sessions;
+
+    if (status != null && !status.trim().isEmpty()) {
+      sessions = sessionRepository.findAllByUserIdAndStatus(userId, status.toUpperCase());
+    } else {
+      sessions = sessionRepository.findAllByUserId(userId);
+    }
+
+    // Використовуємо існуючий метод для формування красивої відповіді з масивом учасників і товарами
+    return sessions.stream()
+      .map(s -> getSessionDetails(s.getUuid()))
+      .collect(Collectors.toList());
   }
 }
