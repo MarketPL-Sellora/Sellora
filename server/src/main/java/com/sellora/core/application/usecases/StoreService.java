@@ -5,6 +5,8 @@ import com.sellora.core.domain.entities.User;
 import com.sellora.core.infrastructure.persistence.StoreRepository;
 import com.sellora.core.infrastructure.persistence.UserRepository;
 import com.sellora.core.presentation.dtos.CreateStoreRequest;
+import com.sellora.core.presentation.dtos.StoreResponseDto;
+import com.sellora.core.presentation.exceptions.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -46,4 +48,26 @@ public class StoreService {
         currentUser.setRole("MERCHANT");
         userRepository.save(currentUser);
     }
+
+  public StoreResponseDto getStoreByUserId(Long userId) {
+    // 1. Шукаємо магазин у базі
+    Store store = storeRepository.findByOwnerId(userId)
+      .orElseThrow(() -> new ResourceNotFoundException("Магазин для цього користувача не знайдено"));
+
+    // 2. Формуємо DTO для відповіді
+    return new StoreResponseDto(
+      store.getId(),
+      store.getOwnerId(),
+      store.getName(),
+      store.getSlug(),
+      store.getAddress(),
+      store.getContactPhone(),
+      store.getDescription(),
+      store.getLogoUrl(),
+      store.getRating(),
+      store.getStatus(),
+      store.getCreatedAt(),
+      store.getUpdatedAt()
+    );
+  }
 }

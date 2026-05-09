@@ -15,4 +15,5 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
   boolean existsByOwnerId(Long ownerId);
   List<Store> findAllByStatus(String status);
   Optional<Store> findByIdAndStatus(Long id, String status);
+
 }
