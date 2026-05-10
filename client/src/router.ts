@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { useUserStore } from './state/userStore'
 
 // Імпортуємо всі твої ГОЛОВНІ сторінки
 import HomePage     from './components/HomePage.vue'
@@ -14,11 +15,22 @@ const routes = [
     name: 'product',
     component: ProductPage  },  // :id — динамічний параметр
   { path: '/checkout',     component: CheckoutPage },
-  { path: '/cabinet',      component: CabinetPage  },
+  { path: '/cabinet',      component: CabinetPage, meta: { requiresAuth: true } },
 ]
 
 // Створюємо сам роутер
 export const router = createRouter({
   history: createWebHistory(),
   routes,
+})
+
+// ─── Auth Guard ──────────────────────────────────────────────────────────────
+router.beforeEach((to, _from, next) => {
+  if (to.meta.requiresAuth) {
+    const userStore = useUserStore() // Інстанціюємо всередині guard, щоб Pinia вже була ініціалізована
+    if (!userStore.isAuthenticated) {
+      return next('/')
+    }
+  }
+  next()
 })

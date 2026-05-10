@@ -8,8 +8,11 @@ import ProductCard      from '../components/ProductCard.vue'
 import AddProductForm   from '../components/AddProductForm.vue'
 import CreateStoreForm  from '../components/CreateStoreForm.vue'
 import { useUserStore } from '../state/userStore'
+import { useProductStore } from '../state/productStore'
 
 const userStore = useUserStore()
+const productStore = useProductStore()
+
 const activeTab = ref('orders')
 const isAddingProduct = ref(false)
 const isCreatingStoreForm = ref(false)
@@ -31,7 +34,14 @@ watch(() => userStore.user?.id, (id) => {
   if (id) userStore.fetchUserStore(id)
 })
 
-// Mock-дані (залишаються без змін)
+// Коли з'являється магазин (sellerStore.id), автоматично вантажимо його товари
+watch(() => userStore.sellerStore?.id, (merchantId) => {
+  if (merchantId) {
+    productStore.fetchMerchantProducts(merchantId)
+  }
+}, { immediate: true })
+
+// Mock-дані для замовлень та обраного
 const mockOrders = ref([
   { id: 101, brand: 'Apple', name: 'MacBook Air M3 13"', image: 'https://store.storeimages.cdn-apple.com/4982/as-images.apple.com/is/mba13-midnight-select-202402?wid=904&hei=840&fmt=jpeg&qlt=90', rating: 5, reviewCount: 214, groupCurrent: 3, groupTotal: 3, price: 52999, oldPrice: 59999 },
   { id: 102, brand: 'Sony', name: 'WH-1000XM5 Headphones', image: 'https://www.bhphotovideo.com/images/images2500x2500/sony_wh1000xm5_b_wh_1000xm5_wireless_noise_canceling_over_ear_1668478.jpg', rating: 4, reviewCount: 98, groupCurrent: 2, groupTotal: 4, price: 9499, oldPrice: 11999 }
@@ -41,17 +51,18 @@ const mockFavorites = ref([
   { id: 201, brand: 'Logitech', name: 'MX Master 3S', image: 'https://resource.logitech.com/w_386,c_limit,q_auto,f_auto,dpr_1.0/d_transparent.gif/content/dam/logitech/en/products/mice/mx-master-3s/gallery/mx-master-3s-mouse-top-view-graphite.png', rating: 5, reviewCount: 341, groupCurrent: 2, groupTotal: 3, price: 3299, oldPrice: 4199 }
 ])
 
-const myStoreProducts = ref<Record<string, unknown>[]>([])
-
-function handleProductSave(product: Record<string, unknown>) {
-  myStoreProducts.value.unshift(product)
-  isAddingProduct.value = false
-}
-
 async function handleStoreCreated() {
   isCreatingStoreForm.value = false
   if (userStore.user?.id) {
     await userStore.fetchUserStore(userStore.user.id)
+  }
+}
+
+// Функція для закриття форми і оновлення списку
+async function handleFormClose() {
+  isAddingProduct.value = false
+  if (userStore.sellerStore?.id) {
+    await productStore.fetchMerchantProducts(userStore.sellerStore.id)
   }
 }
 
@@ -74,14 +85,14 @@ function editStore() {
         <div v-if="activeTab === 'orders'">
           <div class="mb-6"><span class="text-gray-100 text-xl font-black font-['Unbounded']">Мої замовлення</span></div>
           <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
-            <ProductCard v-for="item in mockOrders" :key="item.id" :product="item" :simple="true" />
+            <ProductCard v-for="item in mockOrders" :key="item.id" :product="(item as any)" :simple="true" />
           </div>
         </div>
 
         <div v-else-if="activeTab === 'wishlist'">
           <div class="mb-6"><span class="text-gray-100 text-xl font-black font-['Unbounded']">Обране</span></div>
           <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
-            <ProductCard v-for="item in mockFavorites" :key="item.id" :product="item" :simple="true" />
+            <ProductCard v-for="item in mockFavorites" :key="item.id" :product="(item as any)" :simple="true" />
           </div>
         </div>
 
@@ -123,16 +134,16 @@ function editStore() {
               </div>
 
               <div class="mb-5 flex justify-between items-center">
-                <span class="text-gray-100 text-lg font-bold">Мої товари ({{ myStoreProducts.length }})</span>
+                <span class="text-gray-100 text-lg font-bold">Мої товари ({{ productStore.myProducts.length }})</span>
                 <button class="px-5 py-2.5 bg-orange-500 rounded-xl text-white font-semibold hover:bg-orange-400" @click="isAddingProduct = true">Додати товар</button>
               </div>
 
-              <div v-if="myStoreProducts.length > 0" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
-                <ProductCard v-for="product in myStoreProducts" :key="(product as any).id" :product="product" :simple="true" />
+              <div v-if="productStore.myProducts.length > 0" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
+                <ProductCard v-for="product in productStore.myProducts" :key="product.id" :product="product" :simple="true" />
               </div>
               <div v-else class="text-center py-16 text-gray-500">Ви ще не додали жодного товару.</div>
             </template>
-            <AddProductForm v-else @save="handleProductSave" @close="isAddingProduct = false" />
+            <AddProductForm v-else @close="handleFormClose" />
           </template>
         </div>
 
