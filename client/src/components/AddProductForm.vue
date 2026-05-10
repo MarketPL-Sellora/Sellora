@@ -146,8 +146,9 @@ async function handleSave() {
       .forEach(c => { attributes[c.name.trim()] = c.value.trim() })
 
     const standardPrice = Number(productForm.price) || 0
-    const groupPrice      = productForm.isGroupBuy ? Number(productForm.groupPrice) : 0
-    const groupTargetSize = productForm.isGroupBuy ? Number(productForm.groupTargetSize) : 0
+    // Змінити:
+    const groupPrice      = productForm.isGroupBuy ? Number(productForm.groupPrice) : null;
+    const groupTargetSize = productForm.isGroupBuy ? Number(productForm.groupTargetSize) : null;
 
     // ── Крок 3: Формуємо payload для POST /products ───────────────────────
     const payload = {
