@@ -1,8 +1,6 @@
 import { defineStore } from 'pinia'
-import { ref, watch } from 'vue'
+import { ref } from 'vue'
 import { apiClient } from '../api/axios'
-
-const STORAGE_KEY = 'sellora_user'
 
 interface UserData {
   id:        number
@@ -46,24 +44,9 @@ export interface SellerStore {
   updatedAt:    string
 }
 
-function loadFromStorage(): { user: UserData | null; isAuthenticated: boolean } {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) return { user: null, isAuthenticated: false }
-    const parsed = JSON.parse(raw)
-    return {
-      user:            parsed.user            ?? null,
-      isAuthenticated: parsed.isAuthenticated ?? false,
-    }
-  } catch {
-    return { user: null, isAuthenticated: false }
-  }
-}
-
 export const useUserStore = defineStore('user', () => {
-  const saved = loadFromStorage()
-  const user            = ref<UserData | null>(saved.user)
-  const isAuthenticated = ref<boolean>(saved.isAuthenticated)
+  const user            = ref<UserData | null>(null)
+  const isAuthenticated = ref<boolean>(false)
 
   const isCreatingStore = ref<boolean>(false)
   const sellerStore     = ref<SellerStore | null>(null)
@@ -101,20 +84,22 @@ export const useUserStore = defineStore('user', () => {
   }
   // ─────────────────────────────────────────────────────────────────────────
 
-  watch([user, isAuthenticated], ([newUser, newAuth]) => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ user: newUser, isAuthenticated: newAuth }))
-  }, { deep: true })
-
   function login(userData: UserData) {
     user.value = userData
     isAuthenticated.value = true
   }
 
-  function logout() {
+  async function logout() {
+    // Запит на бекенд для видалення cookie (ігноруємо помилки)
+    try {
+      await apiClient.post('/auth/logout')
+    } catch {
+      // Ігноруємо — навіть якщо бекенд недоступний, скидаємо стан локально
+    }
+
     user.value = null
     isAuthenticated.value = false
     sellerStore.value = null
-    localStorage.removeItem(STORAGE_KEY)
   }
 
   async function fetchMe(): Promise<void> {

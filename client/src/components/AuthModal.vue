@@ -56,8 +56,6 @@ async function handleAuth() {
         email: loginForm.email,
         password: loginForm.password,
       })
-      // Зберігаємо email у сховищі та встановлюємо isAuthenticated = true
-      userStore.login({ email: loginForm.email })
       emit('login', { ...loginForm })
     } else {
       // ─── Реєстрація: відправляємо email + password на бекенд ──────────────
@@ -65,9 +63,10 @@ async function handleAuth() {
         email: registerForm.email,
         password: registerForm.password,
       })
-      // Зберігаємо email у сховищі та встановлюємо isAuthenticated = true
-      userStore.login({ email: registerForm.email })
     }
+
+    // Завантажуємо реальні дані юзера з бекенду (cookie вже встановлена)
+    await userStore.fetchMe()
 
     emit('login-success')
     emit('close')
