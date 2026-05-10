@@ -26,17 +26,16 @@ public record CreateProductDto(
   // @NotNull(message = "ID магазину є обов'язковим")
   // Long storeId,
 
-  // --- ЦІНИ (DB: standard_price >= 0 AND group_price >= 0) ---
+  // --- ЦІНИ ---
   @NotNull(message = "Стандартна ціна є обов'язковою")
   @Min(value = 0, message = "Стандартна ціна не може бути від'ємною")
   BigDecimal standardPrice,
 
-  @NotNull(message = "Групова ціна є обов'язковою")
   @Min(value = 0, message = "Групова ціна не може бути від'ємною")
   BigDecimal groupPrice,
 
   // --- КІЛЬКІСТЬ (DB: group_target_size > 1, stock_quantity >= 0) ---
-  @NotNull(message = "Розмір групи є обов'язковим")
+  // Примітка: @Min(2) працює тільки якщо значення НЕ null. Якщо прийде null, валідація пройде успішно.
   @Min(value = 2, message = "Для групової покупки потрібно мінімум 2 людини")
   Integer groupTargetSize,
 
