@@ -36,11 +36,12 @@ export const useProductStore = defineStore('products', () => {
 
   // --- Стан -------------------------------------------------------------------
 
-  const products      = ref<ProductApiItem[]>([])
-  const myProducts    = ref<ProductApiItem[]>([])   // NEW: товари конкретного мерчанта
-  const totalElements = ref<number>(0)
-  const isLoading     = ref<boolean>(false)
-  const error         = ref<string | null>(null)
+  const products       = ref<ProductApiItem[]>([])
+  const myProducts     = ref<ProductApiItem[]>([])   // NEW: товари конкретного мерчанта
+  const currentProduct = ref<ProductApiItem | null>(null) // Деталі одного товару
+  const totalElements  = ref<number>(0)
+  const isLoading      = ref<boolean>(false)
+  const error          = ref<string | null>(null)
 
   const filters = reactive<ProductFilters>({
     page: 0,
@@ -129,6 +130,22 @@ export const useProductStore = defineStore('products', () => {
     }
   }
 
+  // ─── NEW: завантажити один товар за ID ──────────────────────────────────────
+  async function fetchProductById(id: number): Promise<void> {
+    isLoading.value = true
+    error.value     = null
+    try {
+      const response = await apiClient.get('/products/' + id)
+      currentProduct.value = response.data
+    } catch (err: unknown) {
+      error.value = err instanceof Error ? err.message : 'Помилка завантаження товару'
+      currentProduct.value = null
+      console.error('[productStore] fetchProductById error:', err)
+    } finally {
+      isLoading.value = false
+    }
+  }
+
   function resetFilters() {
     filters.categoryId = undefined
     filters.keyword    = undefined
@@ -141,11 +158,13 @@ export const useProductStore = defineStore('products', () => {
   return {
     products,
     myProducts,
+    currentProduct,
     totalElements,
     isLoading,
     error,
     filters,
     fetchProducts,
+    fetchProductById,
     resetFilters,
     uploadImage,
     createProduct,

@@ -1,5 +1,9 @@
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref, reactive, computed } from 'vue'
+
+const props = defineProps<{
+  description?: string
+}>()
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -36,11 +40,11 @@ const activeTab = ref('desc')
 
 // ─── Description paragraphs ───────────────────────────────────────────────────
 
-const descriptionParagraphs: string[] = [
-  'Samsung Galaxy S24 Ultra — це флагман нового покоління, що встановлює нові стандарти в мобільній фотографії та штучному інтелекті. Оснащений процесором Snapdragon 8 Gen 3, він забезпечує блискавичну продуктивність у будь-яких умовах.',
-  'Революційна камерна система з 200 Мп основним сенсором та підтримкою 100-кратного оптичного зуму відкриває безмежні творчі можливості. Вбудований S Pen з нульовою затримкою дозволяє легко занотовувати ідеї та малювати прямо на екрані.',
-  'Galaxy AI — набір інтелектуальних функцій на основі штучного інтелекту, що перетворює спілкування, творчість та продуктивність. Від Circle to Search до Live Translate — телефон розуміє вас краще, ніж будь-коли.',
-]
+const descriptionParagraphs = computed(() => {
+  const desc = props.description?.trim()
+  if (!desc) return ['Опис відсутній']
+  return desc.split(/\n\s*\n/).filter(p => p.trim().length > 0)
+})
 
 // ─── Features ────────────────────────────────────────────────────────────────
 
@@ -196,7 +200,7 @@ function setTab(id: string) {
         <!-- Description -->
         <div class="self-stretch flex flex-col gap-3">
           <h2 class="text-white text-xl font-normal font-['Unbounded'] leading-7">
-            Про Samsung Galaxy S24 Ultra
+            Опис товару
           </h2>
           <p
             v-for="(para, i) in descriptionParagraphs"

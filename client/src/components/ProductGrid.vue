@@ -9,19 +9,16 @@ onMounted(() => {
   productStore.fetchProducts()
 })
 
+// Ми більше не перейменовуємо price на groupPrice!
+// Ми просто передаємо об'єкт з бекенду як є, додаючи лише декілька заглушок для бренду та рейтингу.
 const mappedProducts = computed(() =>
   productStore.products.map((item) => ({
-    id:           item.id,
-    name:         item.title,
-    price:        item.groupPrice,
-    oldPrice:     item.standardPrice,
-    groupTotal:   item.groupTargetSize,
-    groupCurrent: item.groupCurrentSize ?? 1,
+    ...item, // Передаємо всі поля бекенду без змін (standardPrice, groupPrice, groupTargetSize тощо)
+    name:         item.title, // Залишаємо name для сумісності
     image:        item.images && item.images.length > 0
       ? item.images[0]
       : '/src/assets/product-placeholder.png',
     imageAlt:     item.title,
-    brand:        'Brand',
     rating:       5,
     reviewCount:  12,
     groupLabel:   'Учасників',
