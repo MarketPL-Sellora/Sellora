@@ -100,15 +100,19 @@ CREATE TABLE products (
     images JSONB,
     stock_quantity INTEGER NOT NULL,
     standard_price DECIMAL(10,2) NOT NULL,
-    group_price DECIMAL(10,2) NOT NULL,
-    group_target_size INTEGER NOT NULL,
+    group_price DECIMAL(10,2),
+    group_target_size INTEGER,
     status VARCHAR(50) NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT chk_products_stock CHECK (stock_quantity >= 0),
-    CONSTRAINT chk_products_prices CHECK (standard_price >= 0 AND group_price >= 0),
-    CONSTRAINT chk_products_target_size CHECK (group_target_size > 1),
+    CONSTRAINT chk_products_standard_price CHECK (standard_price >= 0),
+    CONSTRAINT chk_products_group_sale CHECK (
+        (group_price IS NULL AND group_target_size IS NULL) 
+        OR 
+        (group_price >= 0 AND group_target_size > 1)
+    ),
     CONSTRAINT chk_products_status CHECK (status IN ('ACTIVE', 'OUT_OF_STOCK', 'ARCHIVED')),
 
     CONSTRAINT fk_products_store FOREIGN KEY (store_id) REFERENCES stores(id) ON DELETE RESTRICT,
@@ -160,6 +164,7 @@ CREATE INDEX idx_cart_items_product_id ON cart_items USING btree(product_id);
 -- changeset andrii:8-group-buy-sessions
 CREATE TABLE group_buy_sessions (
     id BIGSERIAL PRIMARY KEY,
+    uuid VARCHAR(36) UNIQUE,
     product_id BIGINT NOT NULL,
     initiator_id BIGINT NOT NULL,
     status VARCHAR(50) NOT NULL,
@@ -169,6 +174,7 @@ CREATE TABLE group_buy_sessions (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
 
+    CONSTRAINT uq_group_sessions_uuid UNIQUE (uuid),
     CONSTRAINT chk_group_sessions_status CHECK (status IN ('ACTIVE', 'COMPLETED', 'CANCELLED')),
 
     CONSTRAINT fk_sessions_product FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE RESTRICT,
