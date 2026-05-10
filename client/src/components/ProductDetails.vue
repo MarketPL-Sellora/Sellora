@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import dayjs from 'dayjs'
 import type { GroupBuySession } from '../state/groupBuyStore'
 import { useGroupBuyStore }     from '../state/groupBuyStore'
 import type { ProductApiItem }  from '../state/productStore'
@@ -17,7 +18,7 @@ watch(() => props.sessionData, (newData) => {
   if (newData) {
     localMembersCount.value = newData.currentMembersCount
 
-    if (groupBuyStore.isJoinedLocally(newData.uuid)) {
+    if (groupBuyStore.isJoined(newData.uuid)) {
       joinSuccess.value = true
       if (localMembersCount.value === 0) {
         localMembersCount.value = 1
@@ -41,6 +42,12 @@ async function handleJoin() {
 const isGroupFull = computed(() => {
   if (!props.sessionData) return false
   return localMembersCount.value >= props.sessionData.targetSize
+})
+
+// ─── ПЕРЕВІРКА НА ВИЧЕРПАННЯ ЧАСУ (синхронно через dayjs) ─────────────────
+const isExpired = computed(() => {
+  if (!props.sessionData?.expiresAt) return false
+  return dayjs(props.sessionData.expiresAt).diff(dayjs(), 'second') <= 0
 })
 
 interface MemoryOption { label: string }
@@ -132,23 +139,39 @@ const groupPercent = computed(() => {
   return Math.round((current / total) * 100);
 })
 
-const countdown = ref({ h: 23, m: 58, s: 36 })
+const countdownText = ref('—')
 let timerInterval: ReturnType<typeof setInterval>
 
+function updateCountdown() {
+  if (!props.sessionData?.expiresAt) {
+    countdownText.value = '—'
+    return
+  }
+  const now = dayjs()
+  const end = dayjs(props.sessionData.expiresAt)
+  const diff = end.diff(now, 'second')
+  if (diff <= 0) {
+    countdownText.value = 'Час вичерпано'
+    return
+  }
+  const h = Math.floor(diff / 3600)
+  const m = Math.floor((diff % 3600) / 60)
+  const s = diff % 60
+  const pad = (n: number) => String(n).padStart(2, '0')
+  countdownText.value = `${pad(h)}:${pad(m)}:${pad(s)}`
+}
+
+// Синхронно оновлюємо таймер при зміні sessionData (усуває flicker — не чекаємо onMounted)
+watch(() => props.sessionData, () => {
+  updateCountdown()
+}, { immediate: true })
+
 onMounted(() => {
-  timerInterval = setInterval(() => {
-    const { h, m, s } = countdown.value
-    if (s > 0) { countdown.value.s-- }
-    else if (m > 0) { countdown.value.m--; countdown.value.s = 59 }
-    else if (h > 0) { countdown.value.h--; countdown.value.m = 59; countdown.value.s = 59 }
-  }, 1000)
+  timerInterval = setInterval(updateCountdown, 1000)
 })
 onUnmounted(() => clearInterval(timerInterval))
 
-const countdownFormatted = computed(() => {
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${pad(countdown.value.h)}:${pad(countdown.value.m)}:${pad(countdown.value.s)}`
-})
+const countdownFormatted = computed(() => countdownText.value)
 
 const fmt = (n: number) => n.toLocaleString('uk-UA') + ' ₴'
 
@@ -267,12 +290,15 @@ const emit = defineEmits<{
           <span class="text-orange-200/70"> за {{ product.groupHours }} години та отримай знижку на весь порядок!</span>
         </p>
 
-        <div class="self-stretch pt-2 inline-flex items-center gap-2">
+        <div v-if="sessionData" class="self-stretch pt-2 inline-flex items-center gap-2">
           <svg class="w-4 h-4 text-orange-400 shrink-0" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5">
             <circle cx="10" cy="10" r="8"/><path d="M10 6v4l2.5 2.5" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
           <span class="text-[#787d99] text-xs font-normal font-['Onest'] leading-4">До кінця збору:</span>
-          <span class="text-white text-sm font-normal font-['Unbounded'] leading-5 tabular-nums">{{ countdownFormatted }}</span>
+          <span
+            class="text-sm font-normal font-['Unbounded'] leading-5 tabular-nums"
+            :class="countdownFormatted === 'Час вичерпано' ? 'text-red-400' : 'text-white'"
+          >{{ countdownFormatted }}</span>
         </div>
 
         <div class="self-stretch py-2 flex flex-col gap-1.5">
@@ -297,8 +323,12 @@ const emit = defineEmits<{
         </div>
 
         <template v-if="sessionData">
-          <div v-if="joinSuccess" class="w-full h-14 py-4 bg-green-600 rounded-xl text-white text-[11px] sm:text-xs md:text-base font-normal font-['Unbounded'] leading-6 tracking-wide text-center flex items-center justify-center">
-            ВИ ПРИЄДНАЛИСЯ ✓
+          <div v-if="isExpired" class="w-full h-14 py-4 bg-[#2a2d3e] rounded-xl text-[#787d99] text-[11px] sm:text-xs md:text-base font-normal font-['Unbounded'] leading-6 tracking-wide text-center flex items-center justify-center cursor-not-allowed">
+            ЗБІР ЗАВЕРШЕНО (ЧАС ВИЧЕРПАНО)
+          </div>
+
+          <div v-else-if="joinSuccess" class="w-full h-14 py-4 bg-green-600 rounded-xl text-white text-[11px] sm:text-xs md:text-base font-normal font-['Unbounded'] leading-6 tracking-wide text-center flex items-center justify-center">
+            ВИ ВЖЕ БЕРЕТЕ УЧАСТЬ ✓
           </div>
 
           <div v-else-if="isGroupFull" class="w-full h-14 py-4 bg-[#2a2d3e] rounded-xl text-[#787d99] text-[11px] sm:text-xs md:text-base font-normal font-['Unbounded'] leading-6 tracking-wide text-center flex items-center justify-center cursor-not-allowed">

@@ -17,65 +17,15 @@ export interface GroupBuySession {
 
 export const useGroupBuyStore = defineStore('groupBuy', () => {
   const session    = ref<GroupBuySession | null>(null)
+  const mySessions = ref<GroupBuySession[]>([])
   const isLoading  = ref(false)
   const error      = ref<string | null>(null)
 
-  // ─── ЛОГІКА LOCALSTORAGE (ПРИВ'ЯЗКА ДО ЮЗЕРА) ─────────────────────────────
+  // ─── Перевірка участі через серверний масив mySessions ──────────────────────
 
-  function getCurrentUserKey(): string {
-    try {
-      const raw = localStorage.getItem('sellora_user')
-      if (!raw) return 'guest'
-      const userData = JSON.parse(raw)
-      return userData?.user?.email || 'guest'
-    } catch {
-      return 'guest'
-    }
+  function isJoined(uuid: string): boolean {
+    return mySessions.value.some(s => s.uuid === uuid)
   }
-
-  function markAsJoinedLocally(uuid: string) {
-    const userKey = getCurrentUserKey()
-    let storage: Record<string, string[]> = {}
-
-    try {
-      const raw = localStorage.getItem('joinedGroupSessions')
-      if (raw) {
-        const parsed = JSON.parse(raw)
-        // Якщо це старий формат (простий масив) - стираємо його і починаємо з чистого аркуша
-        storage = Array.isArray(parsed) ? {} : parsed
-      }
-    } catch {
-      storage = {}
-    }
-
-    // Створюємо масив для юзера, якщо його ще немає
-    if (!Array.isArray(storage[userKey])) {
-      storage[userKey] = []
-    }
-
-    // Додаємо uuid, якщо його там ще немає
-    if (!storage[userKey].includes(uuid)) {
-      storage[userKey].push(uuid)
-      localStorage.setItem('joinedGroupSessions', JSON.stringify(storage))
-    }
-  }
-
-  function isJoinedLocally(uuid: string): boolean {
-    const userKey = getCurrentUserKey()
-    try {
-      const raw = localStorage.getItem('joinedGroupSessions')
-      if (!raw) return false
-      const parsed = JSON.parse(raw)
-
-      // Підтримка для старих тестів (якщо там ще масив)
-      if (Array.isArray(parsed)) return parsed.includes(uuid)
-
-      return Array.isArray(parsed[userKey]) && parsed[userKey].includes(uuid)
-    } catch {
-      return false
-    }
-  }
-  // ─────────────────────────────────────────────────────────────────────────
 
   async function fetchSession(uuid: string): Promise<GroupBuySession | null> {
     isLoading.value = true
@@ -104,12 +54,11 @@ export const useGroupBuyStore = defineStore('groupBuy', () => {
         response.data.currentMembersCount = 1
       }
 
-      // Одразу фіксуємо в пам'яті, що творець (поточний юзер) є учасником
-      if (response.data.uuid) {
-        markAsJoinedLocally(response.data.uuid)
-      }
+      session.value = response.data
 
-      session.value  = response.data
+      // Оновлюємо масив mySessions з бекенду
+      await fetchMySessions()
+
       return response.data
     } catch (err: unknown) {
       error.value   = err instanceof Error ? err.message : 'Помилка створення сесії'
@@ -126,13 +75,27 @@ export const useGroupBuyStore = defineStore('groupBuy', () => {
     try {
       await apiClient.post(`/group-buy/sessions/${uuid}/join`)
 
-      // Фіксуємо приєднання в пам'яті браузера для конкретного юзера
-      markAsJoinedLocally(uuid)
+      // Оновлюємо масив mySessions з бекенду
+      await fetchMySessions()
 
       return true
     } catch (err: unknown) {
       error.value = err instanceof Error ? err.message : 'Не вдалося приєднатися'
       return false
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  async function fetchMySessions(): Promise<void> {
+    isLoading.value = true
+    error.value     = null
+    try {
+      const response = await apiClient.get<GroupBuySession[]>('/group-buy/sessions/user')
+      mySessions.value = response.data
+    } catch (err: unknown) {
+      error.value = err instanceof Error ? err.message : 'Помилка завантаження сесій'
+      mySessions.value = []
     } finally {
       isLoading.value = false
     }
@@ -144,8 +107,8 @@ export const useGroupBuyStore = defineStore('groupBuy', () => {
   }
 
   return {
-    session, isLoading, error,
+    session, mySessions, isLoading, error,
     fetchSession, createSession, joinSession, clearSession,
-    isJoinedLocally // Експортуємо для використання в компонентах
+    fetchMySessions, isJoined,
   }
 })

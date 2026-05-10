@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '../state/userStore'
+import { useGroupBuyStore } from '../state/groupBuyStore'
+import { useProductStore } from '../state/productStore'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -22,31 +24,43 @@ const props = defineProps<{
 }>()
 
 // ─── Ініціалізація store та router ───────────────────────────────────────────
-const userStore = useUserStore()
-const router    = useRouter()
+const userStore     = useUserStore()
+const groupBuyStore = useGroupBuyStore()
+const productStore  = useProductStore()
+const router        = useRouter()
+
+// ─── Завантаження сесій при монтуванні (щоб лічильник був актуальним) ──────────
+onMounted(() => {
+  groupBuyStore.fetchMySessions()
+
+  if (props.isUserSeller && userStore.sellerStore?.id) {
+    productStore.fetchMerchantProducts(userStore.sellerStore.id)
+  }
+})
 
 // ─── Статичні дані профілю ────────────────────────────────────────────────────
 const userBadge = 'Pro учасник'
 
 // ─── Menu items ───────────────────────────────────────────────────────────────
 // Базові пункти меню (доступні всім користувачам)
-const baseMenuItems: MenuItem[] = [
-  { id: 'orders',   label: 'Мої замовлення',      count: 4,  icon: 'orders'   },
-  { id: 'groups',   label: 'Мої групові покупки',  count: 2,  icon: 'groups'   },
-  { id: 'wishlist', label: 'Обране',               count: 12, icon: 'wishlist' },
-  { id: 'settings', label: 'Налаштування',                    icon: 'settings' },
-]
+const baseMenuItems = computed<MenuItem[]>(() => [
+  { id: 'orders',   label: 'Мої замовлення',      count: 4,                                icon: 'orders'   },
+  { id: 'groups',   label: 'Мої групові покупки',  count: groupBuyStore.mySessions.length,  icon: 'groups'   },
+  { id: 'wishlist', label: 'Обране',               count: 12,                               icon: 'wishlist' },
+  { id: 'settings', label: 'Налаштування',                                                  icon: 'settings' },
+])
 
 // Крок 4 (US 4.2): Пункт «Мої товари» додається до меню тільки для продавця.
 // computed автоматично перераховується, якщо props.isUserSeller зміниться.
 const menuItems = computed<MenuItem[]>(() => {
-  if (!props.isUserSeller) return baseMenuItems
+  const base = baseMenuItems.value
+  if (!props.isUserSeller) return base
 
   // Вставляємо «Мої товари» перед «Налаштування» (передостанній пункт)
   return [
-    ...baseMenuItems.slice(0, 3),
-    { id: 'my-products', label: 'Мої товари', count: 2, icon: 'seller' },
-    ...baseMenuItems.slice(3),
+    ...base.slice(0, 3),
+    { id: 'my-products', label: 'Мої товари', count: productStore.myProducts.length, icon: 'seller' },
+    ...base.slice(3),
   ]
 })
 
@@ -163,7 +177,7 @@ function handleLogout() {
           <span class="text-sm font-normal font-['Onest'] leading-5">{{ item.label }}</span>
 
           <!-- Count badge -->
-          <div v-if="item.count != null" class="flex-1 inline-flex justify-end">
+          <div v-if="item.count != null && item.count > 0" class="flex-1 inline-flex justify-end">
             <div
               class="px-2 py-[1.6px] rounded-full"
               :class="
