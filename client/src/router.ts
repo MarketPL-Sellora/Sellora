@@ -22,6 +22,15 @@ const routes = [
 export const router = createRouter({
   history: createWebHistory(),
   routes,
+  scrollBehavior(to, from, savedPosition) {
+    if (savedPosition) {
+      // Якщо користувач натиснув "Назад" у браузері, повертаємо туди, де він був
+      return savedPosition
+    } else {
+      // При кожному новому переході (кліку) скролимо на самий верх
+      return { top: 0, behavior: 'smooth' }
+    }
+  },
 })
 
 // ─── Auth Guard ──────────────────────────────────────────────────────────────
