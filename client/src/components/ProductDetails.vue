@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import dayjs from 'dayjs'
+import utc from 'dayjs/plugin/utc'
+dayjs.extend(utc)
 import type { GroupBuySession } from '../state/groupBuyStore'
 import { useGroupBuyStore }     from '../state/groupBuyStore'
 import type { ProductApiItem }  from '../state/productStore'
@@ -11,19 +13,15 @@ const props = defineProps<{
 }>()
 
 const groupBuyStore = useGroupBuyStore()
-const joinSuccess   = ref(false)
+const joinSuccess = computed(() => {
+  if (!props.sessionData?.uuid) return false;
+  return groupBuyStore.mySessions.some(s => s.uuid === props.sessionData!.uuid);
+});
 const localMembersCount = ref(0)
 
 watch(() => props.sessionData, (newData) => {
   if (newData) {
     localMembersCount.value = newData.currentMembersCount
-
-    if (groupBuyStore.isJoined(newData.uuid)) {
-      joinSuccess.value = true
-      if (localMembersCount.value === 0) {
-        localMembersCount.value = 1
-      }
-    }
   }
 }, { immediate: true })
 
@@ -33,7 +31,6 @@ async function handleJoin() {
   const ok = await groupBuyStore.joinSession(props.sessionData.uuid)
 
   if (ok) {
-    joinSuccess.value = true
     localMembersCount.value += 1
   }
 }
@@ -47,7 +44,7 @@ const isGroupFull = computed(() => {
 // ─── ПЕРЕВІРКА НА ВИЧЕРПАННЯ ЧАСУ (синхронно через dayjs) ─────────────────
 const isExpired = computed(() => {
   if (!props.sessionData?.expiresAt) return false
-  return dayjs(props.sessionData.expiresAt).diff(dayjs(), 'second') <= 0
+  return dayjs.utc(props.sessionData.expiresAt).diff(dayjs(), 'second') <= 0
 })
 
 interface MemoryOption { label: string }
@@ -148,7 +145,7 @@ function updateCountdown() {
     return
   }
   const now = dayjs()
-  const end = dayjs(props.sessionData.expiresAt)
+  const end = dayjs.utc(props.sessionData.expiresAt)
   const diff = end.diff(now, 'second')
   if (diff <= 0) {
     countdownText.value = 'Час вичерпано'
@@ -166,7 +163,8 @@ watch(() => props.sessionData, () => {
   updateCountdown()
 }, { immediate: true })
 
-onMounted(() => {
+onMounted(async () => {
+  await groupBuyStore.fetchMySessions()
   timerInterval = setInterval(updateCountdown, 1000)
 })
 onUnmounted(() => clearInterval(timerInterval))

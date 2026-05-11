@@ -2,6 +2,8 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import dayjs from 'dayjs'
+import utc from 'dayjs/plugin/utc'
+dayjs.extend(utc)
 import { useGroupBuyStore } from '../state/groupBuyStore'
 import type { GroupBuySession } from '../state/groupBuyStore'
 import { apiClient } from '../api/axios'
@@ -46,7 +48,7 @@ const countdowns = ref<Record<string, string>>({})
 function updateCountdowns() {
   const now = dayjs()
   for (const s of groupBuyStore.mySessions) {
-    const end = dayjs(s.expiresAt)
+    const end = dayjs.utc(s.expiresAt)
     const diff = end.diff(now, 'second')
     if (diff <= 0) {
       countdowns.value[s.uuid] = 'Час вичерпано'
@@ -88,20 +90,26 @@ interface MappedSession {
 }
 
 const mappedSessions = computed<MappedSession[]>(() =>
-  groupBuyStore.mySessions.map((s) => ({
-    uuid: s.uuid,
-    productId: s.productId,
-    productImage: s.productImage,
-    name: s.productTitle,
-    status: localizeStatus(s.status),
-    rawStatus: s.status,
-    price: s.price,
-    membersCurrent: s.currentMembersCount,
-    membersTotal: s.targetSize,
-    inviteLink: window.location.origin + '/product/' + s.productId + '?session=' + s.uuid,
-    ogShareLink: apiClient.defaults.baseURL + '/share/group-buy/' + s.uuid,
-    countdown: countdowns.value[s.uuid] || '—',
-  }))
+  groupBuyStore.mySessions.map((s) => {
+    const currentCountdown = countdowns.value[s.uuid] || '—';
+    // Якщо час вийшов, примусово ставимо статус EXPIRED для UI
+    const finalRawStatus = currentCountdown === 'Час вичерпано' ? 'EXPIRED' : s.status;
+
+    return {
+      uuid: s.uuid,
+      productId: s.productId,
+      productImage: s.productImage,
+      name: s.productTitle,
+      status: localizeStatus(finalRawStatus),
+      rawStatus: finalRawStatus,
+      price: s.price,
+      membersCurrent: s.currentMembersCount,
+      membersTotal: s.targetSize,
+      inviteLink: window.location.origin + '/product/' + s.productId + '?session=' + s.uuid,
+      ogShareLink: apiClient.defaults.baseURL + '/share/group-buy/' + s.uuid,
+      countdown: currentCountdown,
+    }
+  })
 )
 
 // ─── Progress helpers ─────────────────────────────────────────────────────────
