@@ -54,14 +54,20 @@ const baseMenuItems = computed<MenuItem[]>(() => [
 // computed автоматично перераховується, якщо props.isUserSeller зміниться.
 const menuItems = computed<MenuItem[]>(() => {
   const base = baseMenuItems.value
-  if (!props.isUserSeller) return base
-
-  // Вставляємо «Мої товари» перед «Налаштування» (передостанній пункт)
-  return [
+  const items = !props.isUserSeller ? [...base] : [
     ...base.slice(0, 3),
-    { id: 'my-products', label: 'Мої товари', count: productStore.myProducts.length, icon: 'seller' },
+    { id: 'my-products', label: 'Мої товари', count: productStore.myProducts.length, icon: 'seller' as const },
     ...base.slice(3),
   ]
+
+  // Додаємо пункт «Категорії» тільки для адміна (перед «Налаштування»)
+  const isAdmin = userStore.user?.role === 'ADMIN'
+  if (isAdmin) {
+    const settingsIndex = items.findIndex(i => i.id === 'settings')
+    items.splice(settingsIndex, 0, { id: 'categories', label: 'Категорії', icon: 'settings' })
+  }
+
+  return items
 })
 
 // ─── Emits ────────────────────────────────────────────────────────────────────
