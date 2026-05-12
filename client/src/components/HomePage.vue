@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import Header from './Header.vue'
 import Sidebar from './Sidebar.vue'
 import HeroBanner from './HeroBanner.vue'
@@ -10,6 +11,19 @@ import Footer from './Footer.vue'
 import { useProductStore } from '../state/productStore'
 
 const productStore = useProductStore()
+const route = useRoute()
+
+watch(
+  () => route.query.categoryId,
+  (newCatId) => {
+    if (newCatId) {
+      productStore.fetchProducts({ categoryId: Number(newCatId), keyword: undefined, page: 0 })
+    } else {
+      productStore.fetchProducts({ categoryId: undefined, keyword: undefined, page: 0 })
+    }
+  },
+  { immediate: true }
+)
 
 // --- Стан для мобільного меню фільтрів ---
 const isMobileMenuOpen = ref(false)
@@ -26,9 +40,10 @@ function handleFilter(payload: { priceMin: number; priceMax: number; brands: str
 }
 
 // 3. Функція для вибору категорії
-function handleCategory(name: string) {
+function handleCategory(payload: { id: number; name: string }) {
   productStore.fetchProducts({
-    keyword: name,
+    categoryId: payload.id,
+    keyword: undefined, // Скидаємо попередній пошук по слову, якщо був
     page: 0
   })
   isMobileMenuOpen.value = false // Закриваємо меню після вибору

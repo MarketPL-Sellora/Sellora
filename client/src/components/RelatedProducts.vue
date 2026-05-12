@@ -1,72 +1,49 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch, onMounted } from 'vue'
 import ProductCard from './ProductCard.vue'
+import { apiClient } from '../api/axios'
+import type { ProductApiItem } from '../state/productStore'
 
-// Ті самі тестові дані, щоб карткам було з чим працювати
-const relatedProducts = ref([
-  {
-    id: 5,
-    brand: 'Samsung',
-    name: 'Samsung Galaxy Watch 6',
-    image: '../assets/product-placeholder.png',
-    imageAlt: 'Galaxy Watch',
-    rating: 5,
-    reviewCount: 112,
-    groupLabel: 'Учасників',
-    groupCurrent: 5,
-    groupTotal: 10,
-    price: 12000,
-    oldPrice: 14000,
-  },
-  {
-    id: 6,
-    brand: 'Apple',
-    name: 'Apple AirPods Pro 2',
-    image: '../assets/product-placeholder.png',
-    imageAlt: 'AirPods Pro',
-    rating: 5,
-    reviewCount: 340,
-    groupLabel: 'Учасників',
-    groupCurrent: 18,
-    groupTotal: 20,
-    price: 10500,
-    oldPrice: 11500,
-  },
-  {
-    id: 7,
-    brand: 'Samsung',
-    name: 'Бездротовий зарядний пристрій',
-    image: '../assets/product-placeholder.png',
-    imageAlt: 'Wireless Charger',
-    rating: 4,
-    reviewCount: 45,
-    groupLabel: 'Учасників',
-    groupCurrent: 2,
-    groupTotal: 5,
-    price: 1500,
-    oldPrice: 2000,
-  },
-  {
-    id: 8,
-    brand: 'Spigen',
-    name: 'Чохол для Samsung S24 Ultra',
-    image: '../assets/product-placeholder.png',
-    imageAlt: 'Case',
-    rating: 5,
-    reviewCount: 89,
-    groupLabel: 'Учасників',
-    groupCurrent: 10,
-    groupTotal: 15,
-    price: 800,
-    oldPrice: 1200,
+const props = defineProps<{
+  categoryId: number
+  currentProductId: number
+}>()
+
+const relatedProducts = ref<ProductApiItem[]>([])
+const isLoading = ref(true)
+
+async function fetchRelated() {
+  if (!props.categoryId) return
+  isLoading.value = true
+  try {
+    // Запитуємо 5 товарів, щоб точно вистачило 4 після видалення поточного
+    const res = await apiClient.get('/products', {
+      params: { categoryId: props.categoryId, page: 0, size: 5 }
+    })
+    
+    const items = res.data.content || []
+    
+    // Відфільтровуємо поточний товар і беремо перші 4
+    relatedProducts.value = items
+      .filter((item: ProductApiItem) => item.id !== props.currentProductId)
+      .slice(0, 4)
+  } catch (error) {
+    console.error('Failed to fetch related products', error)
+  } finally {
+    isLoading.value = false
   }
-])
+}
+
+onMounted(fetchRelated)
+
+// Оновлюємо, якщо користувач перейшов на інший товар з цього ж блоку
+watch(() => props.currentProductId, fetchRelated)
 </script>
 
 <template>
-  <div class="w-full flex flex-col gap-6">
+  <div v-if="relatedProducts.length > 0" class="w-full flex flex-col gap-6">
     <div class="flex justify-between items-end border-b border-white/10 pb-4">
-      <h2 class="text-white text-2xl font-bold font-['Unbounded']">З цим товаром купують</h2>
+      <h2 class="text-white text-2xl font-bold font-['Unbounded']">Схожі товари</h2>
     </div>
 
     <div class="w-full flex overflow-x-auto gap-4 pb-4 scrollbar-none -mx-4 px-4 sm:mx-0 sm:px-0 sm:grid sm:grid-cols-2 lg:grid-cols-4">
