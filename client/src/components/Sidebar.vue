@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useCategoryStore, type Category } from '../state/categoryStore'
 import { useProductStore } from '../state/productStore' // Імпортуємо стор товарів
 
@@ -11,6 +12,57 @@ const props = defineProps<{
 // Ініціалізуємо стори
 const categoryStore = useCategoryStore()
 const productStore = useProductStore()
+const route = useRoute()
+const router = useRouter()
+
+function syncCategoryFromUrl() {
+  const catIdParam = route.query.categoryId
+  if (!catIdParam) {
+    activeCategory.value = null
+    openCategoryId.value = null
+    activeSubcategory.value = null
+    return
+  }
+  
+  const catId = Number(catIdParam)
+  let found = false
+  
+  for (const rootCat of categoryStore.categories) {
+    if (rootCat.id === catId) {
+      activeCategory.value = rootCat.name
+      openCategoryId.value = null
+      activeSubcategory.value = null
+      found = true
+      break
+    }
+    
+    if (rootCat.children && rootCat.children.length > 0) {
+      const subCat = rootCat.children.find(c => c.id === catId)
+      if (subCat) {
+        activeCategory.value = rootCat.name
+        openCategoryId.value = rootCat.id
+        activeSubcategory.value = subCat.id
+        found = true
+        break
+      }
+    }
+  }
+  
+  if (!found) {
+    activeCategory.value = null
+    openCategoryId.value = null
+    activeSubcategory.value = null
+  }
+}
+
+onMounted(async () => {
+  if (categoryStore.categories.length === 0) {
+    await categoryStore.fetchCategories()
+  }
+  syncCategoryFromUrl()
+})
+
+watch(() => route.query.categoryId, syncCategoryFromUrl)
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -21,7 +73,7 @@ interface Brand {
 
 // ─── Accordion state ──────────────────────────────────────────────────────────
 
-const activeCategory   = ref('Смартфони')
+const activeCategory   = ref<string | null>(null)
 const openCategoryId   = ref<number | null>(null)
 const activeSubcategory = ref<number | null>(null)
 
@@ -37,12 +89,13 @@ function selectCategory(cat: Category) {
   } else {
     toggleCategory(cat.id)
   }
-  emit('category', cat.name)
+  emit('category', { id: cat.id, name: cat.name })
 }
 
 function selectSubcategory(sub: Category) {
   activeSubcategory.value = sub.id
-  emit('category', sub.name)
+  // Не змінюємо activeCategory, щоб підсвічувався батько, але передаємо дані саб-категорії
+  emit('category', { id: sub.id, name: sub.name })
 }
 
 // ─── Brands ───────────────────────────────────────────────────────────────────
@@ -82,21 +135,31 @@ function applyFilter() {
 // ─── Reset Logic ─────────────────────────────────────────────────────────────
 
 function handleReset() {
-  // 1. Скидаємо внутрішній стан сайдбару
+  // 1. Скидаємо локальні фільтри ціни та брендів
   priceMin.value = PRICE_ABSOLUTE_MIN
   priceMax.value = PRICE_ABSOLUTE_MAX
   selectedBrands.clear()
 
-  // 2. Викликаємо скидання в самому сторі (це оновить і ProductGrid)
+  // 2. Скидаємо локальні змінні активної категорії
+  activeCategory.value = null
+  openCategoryId.value = null
+  activeSubcategory.value = null
+
+  // 3. Очищаємо URL від параметрів (зокрема categoryId) без перезавантаження сторінки
+  router.replace({ query: {} })
+
+  // 4. Скидаємо фільтри в сторі (це викличе новий запит за всіма товарами)
   productStore.resetFilters()
-  emit('close') // Додано: Закриваємо меню після скидання
+  
+  // 5. Закриваємо мобільне меню, якщо воно відкрите
+  emit('close')
 }
 
 // ─── Emits ────────────────────────────────────────────────────────────────────
 
 const emit = defineEmits<{
   (e: 'filter', payload: { priceMin: number; priceMax: number; brands: string[] }): void
-  (e: 'category', name: string): void
+  (e: 'category', payload: { id: number; name: string }): void
   (e: 'close'): void // ДОДАНО ДЛЯ МОБІЛЬНОГО МЕНЮ
 }>()
 </script>

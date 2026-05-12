@@ -1,10 +1,16 @@
 <script setup lang="ts">
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useProductStore }         from '../state/productStore'
 import { useUserStore }            from '../state/userStore'
+import { useCategoryStore }        from '../state/categoryStore'
 
-const productStore = useProductStore()
-const userStore    = useUserStore()
+const productStore  = useProductStore()
+const userStore     = useUserStore()
+const categoryStore = useCategoryStore()
+
+onMounted(async () => {
+  await categoryStore.fetchFlatCategories()
+})
 
 // ─── Emit ─────────────────────────────────────────────────────────────────────
 const emit = defineEmits<{
@@ -30,7 +36,7 @@ interface PhotoItem {
 
 const productForm = reactive({
   name:            '',
-  category:        '',
+  categoryId:      '',
   price:           '',
   stock:           0,
   description:     '',
@@ -41,12 +47,7 @@ const productForm = reactive({
 
 const descriptionLength = computed(() => productForm.description.length)
 
-const categoryOptions = [
-  'Смартфони', 'Ноутбуки', 'Ігрові консолі',
-  'Аудіотехніка', 'Фото та відео', 'Взуття',
-  'Одяг', 'Дім і сад', 'Краса та догляд',
-  'Інструменти', 'Авто товари', 'Зоотовари', 'Книги',
-]
+
 
 // ─── 2. Логіка фотографій ─────────────────────────────────────────────────────
 
@@ -154,7 +155,7 @@ async function handleSave() {
     const payload = {
       title:           productForm.name,
       description:     productForm.description,
-      categoryId:      1,                                  // TODO: маппинг назви → ID
+      categoryId:      Number(productForm.categoryId),
       standardPrice,
       groupPrice,
       groupTargetSize,
@@ -185,7 +186,7 @@ async function handleSave() {
 
 function handleCancel() {
   productForm.name            = ''
-  productForm.category        = ''
+  productForm.categoryId      = ''
   productForm.price           = ''
   productForm.stock           = 0
   productForm.description     = ''
@@ -292,11 +293,13 @@ function handleCancel() {
             </label>
             <div class="self-stretch relative">
               <select
-                v-model="productForm.category"
+                v-model="productForm.categoryId"
                 class="w-full appearance-none pl-4 pr-10 py-3 bg-neutral-900 rounded-xl outline outline-1 outline-offset-[-1px] outline-gray-800 text-gray-200 text-sm font-normal font-['Onest'] leading-5 transition-all focus:outline-orange-500/40 focus:outline-none cursor-pointer"
               >
                 <option value="" disabled>Оберіть категорію…</option>
-                <option v-for="cat in categoryOptions" :key="cat" :value="cat">{{ cat }}</option>
+                <option v-for="cat in categoryStore.flatCategories" :key="cat.id" :value="cat.id">
+                  {{ cat.name }}
+                </option>
               </select>
               <svg class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" width="14" height="14" viewBox="0 0 14 14" fill="none">
                 <path d="M3 5L7 9L11 5" stroke="#6B7280" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>

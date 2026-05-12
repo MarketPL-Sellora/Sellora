@@ -11,11 +11,18 @@ export interface Category {
   children: Category[];
 }
 
+export interface FlatCategory {
+  id: number;
+  name: string;
+  parentId: number | null;
+}
+
 // ─── Pinia Store: categoryStore ──────────────────────────────────────────────
 export const useCategoryStore = defineStore('category', () => {
 
   // ─── Стан ──────────────────────────────────────────────────────────────────
   const categories = ref<Category[]>([]);
+  const flatCategories = ref<FlatCategory[]>([]);
   const isLoading = ref<boolean>(false);
   const error = ref<string | null>(null);
 
@@ -36,5 +43,21 @@ export const useCategoryStore = defineStore('category', () => {
     }
   }
 
-  return { categories, isLoading, error, fetchCategories };
+  async function fetchFlatCategories() {
+    isLoading.value = true;
+    error.value = null;
+    try {
+      // Використовуємо size=1000, щоб отримати всі категорії для селекта без складної пагінації на фронті
+      const response = await apiClient.get('/categories?page=0&size=1000');
+      // Згідно зі Swagger, масив даних лежить у полі content
+      flatCategories.value = response.data.content || [];
+    } catch (err: any) {
+      error.value = err?.message || 'Помилка при завантаженні категорій';
+      console.error('fetchFlatCategories error:', err);
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  return { categories, flatCategories, isLoading, error, fetchCategories, fetchFlatCategories };
 });
