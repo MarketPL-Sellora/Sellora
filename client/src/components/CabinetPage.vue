@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import Header           from '../components/Header.vue'
 import Footer           from '../components/Footer.vue'
 import CabinetSidebar   from '../components/CabinetSidebar.vue'
@@ -13,7 +14,13 @@ import { useProductStore } from '../state/productStore'
 const userStore = useUserStore()
 const productStore = useProductStore()
 
-const activeTab = ref('orders')
+const route = useRoute()
+const router = useRouter()
+
+const activeTab = computed({
+  get: () => (route.query.tab as string) || 'orders',
+  set: (tab) => router.replace({ query: { ...route.query, tab } })
+})
 const isAddingProduct = ref(false)
 const isCreatingStoreForm = ref(false)
 

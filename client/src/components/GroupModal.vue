@@ -10,7 +10,10 @@ const props = defineProps<{
   productId: number
 }>()
 
-const emit = defineEmits<{ (e: 'close'): void }>()
+const emit = defineEmits<{
+  (e: 'close'): void
+  (e: 'open-auth'): void
+}>()
 const store     = useGroupBuyStore()
 const userStore = useUserStore()
 
@@ -153,6 +156,18 @@ onMounted(() => {
             <span class="text-slate-400 text-xs font-['Onest'] animate-pulse">Створюємо сесію...</span>
           </div>
 
+          <div v-else-if="!userStore.isAuthenticated" class="flex flex-col items-center justify-center py-2 gap-3">
+            <span class="text-orange-400 text-xs font-['Onest'] text-center">
+              Щоб брати участь у груповій покупці, потрібно авторизуватись.
+            </span>
+            <button
+              class="px-5 py-2 bg-[#2a2d3e] rounded-xl outline outline-1 outline-[#3d4158] text-slate-200 text-xs font-semibold font-['Onest'] transition-all hover:bg-white/5 hover:outline-orange-500/50 active:scale-95"
+              @click="emit('open-auth')"
+            >
+              Увійти або зареєструватись
+            </button>
+          </div>
+
           <div v-else-if="store.error" class="flex justify-center py-2">
             <span class="text-red-400 text-xs font-['Onest']">{{ store.error }}</span>
           </div>
@@ -191,7 +206,8 @@ onMounted(() => {
         <div class="h-px bg-white/5" />
 
         <!-- ─── Посилання + кнопки шарінгу ─────────────────────────────────── -->
-        <div class="flex flex-col gap-2">
+        <template v-if="userStore.isAuthenticated && !store.error">
+          <div class="flex flex-col gap-2">
           <span class="text-slate-600 text-[9px] font-semibold font-['Unbounded'] uppercase leading-4 tracking-wide">
             Посилання для запрошення
           </span>
@@ -256,6 +272,7 @@ onMounted(() => {
         >
           ПОДІЛИТИСЯ З ДРУЗЯМИ
         </button>
+        </template>
 
       </div>
     </div>

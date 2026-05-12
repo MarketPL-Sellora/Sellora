@@ -23,6 +23,14 @@ const productId = Number(route.params.id) || 3
 
 const isGroupBuyModalOpen = ref(false)
 const sessionData = ref<GroupBuySession | null>(null)
+const headerRef = ref<any>(null)
+
+function handleOpenAuth() {
+  isGroupBuyModalOpen.value = false;
+  if (headerRef.value) {
+    headerRef.value.isAuthModalOpen = true;
+  }
+}
 
 onMounted(async () => {
   // Завантажуємо товар з бекенду
@@ -60,7 +68,7 @@ const productBreadcrumbs = computed(() => [
 
 <template>
   <div class="min-h-screen bg-[#0f1117] flex flex-col font-['Onest'] text-white">
-    <Header :showCategories="false" />
+    <Header ref="headerRef" :showCategories="false" />
     <Breadcrumbs :items="productBreadcrumbs" />
 
     <main class="flex-1 w-full max-w-[1536px] mx-auto px-4 md:px-6 py-6 md:py-8 flex flex-col gap-8 md:gap-12 overflow-hidden">
@@ -90,6 +98,7 @@ const productBreadcrumbs = computed(() => [
       v-if="isGroupBuyModalOpen"
       :product-id="productId"
       @close="closeGroupModal"
+      @open-auth="handleOpenAuth"
     />
   </div>
 </template>
