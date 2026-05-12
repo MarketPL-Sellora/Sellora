@@ -42,13 +42,31 @@ public class AuthController {
       .httpOnly(true)
       .secure(false) // Змінити на true, коли буде HTTPS на проді
       .path("/")
-      .maxAge(86400) // 24 години
+      .maxAge(2592000) // ЗМІНЕНО: 30 днів (у секундах)
       .sameSite("Lax")
       .build();
 
     response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
 
     return ResponseEntity.ok(Map.of("message", "Вхід успішний"));
+  }
+
+  // --- НОВИЙ ЕНДПОІНТ ---
+  @Operation(summary = "Вихід з акаунта (Logout)")
+  @PostMapping("/logout")
+  public ResponseEntity<?> logout(HttpServletResponse response) {
+    // Створюємо "порожню" куку з таким самим ім'ям і шляхом, але з maxAge(0)
+    ResponseCookie cookie = ResponseCookie.from("accessToken", "")
+      .httpOnly(true)
+      .secure(false) // Змінити на true на проді
+      .path("/")
+      .maxAge(0) // Вбиваємо куку миттєво
+      .sameSite("Lax")
+      .build();
+
+    response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+
+    return ResponseEntity.ok(Map.of("message", "Успішний вихід з акаунта"));
   }
 
 
