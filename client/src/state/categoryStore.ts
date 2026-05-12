@@ -59,5 +59,35 @@ export const useCategoryStore = defineStore('category', () => {
     }
   }
 
-  return { categories, flatCategories, isLoading, error, fetchCategories, fetchFlatCategories };
+  // ─── Дія: створити нову категорію ─────────────────────────────────────────
+  async function createCategory(payload: { name: string; parentId: number | null }) {
+    isLoading.value = true;
+    error.value = null;
+    try {
+      await apiClient.post('/categories', payload);
+    } catch (err: any) {
+      error.value = err?.message || 'Помилка при створенні категорії';
+      console.error('createCategory error:', err);
+      throw err;
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  // ─── Дія: видалити категорію за ID ──────────────────────────────────────────
+  async function deleteCategory(id: number) {
+    isLoading.value = true;
+    error.value = null;
+    try {
+      await apiClient.delete('/categories/' + id);
+    } catch (err: any) {
+      error.value = err?.message || 'Помилка при видаленні категорії';
+      console.error('deleteCategory error:', err);
+      throw err;
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  return { categories, flatCategories, isLoading, error, fetchCategories, fetchFlatCategories, createCategory, deleteCategory };
 });

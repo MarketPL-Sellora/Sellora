@@ -8,6 +8,7 @@ import CabinetGroupBuys from '../components/CabinetGroupBuys.vue'
 import ProductCard      from '../components/ProductCard.vue'
 import AddProductForm   from '../components/AddProductForm.vue'
 import CreateStoreForm  from '../components/CreateStoreForm.vue'
+import CabinetCategories from '../components/CabinetCategories.vue'
 import { useUserStore } from '../state/userStore'
 import { useProductStore } from '../state/productStore'
 
@@ -153,6 +154,8 @@ function editStore() {
             <AddProductForm v-else @close="handleFormClose" />
           </template>
         </div>
+
+        <CabinetCategories v-else-if="activeTab === 'categories' && userStore.user?.role === 'ADMIN'" />
 
         <div v-else-if="activeTab === 'settings'">
           <div class="p-6 bg-gray-900 rounded-2xl">
