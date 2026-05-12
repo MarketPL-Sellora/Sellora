@@ -1,5 +1,7 @@
 package com.sellora.core.infrastructure.security;
 
+import com.sellora.core.domain.entities.User;
+import com.sellora.core.infrastructure.persistence.UserRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.Cookie;
@@ -7,6 +9,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -19,6 +22,7 @@ import java.util.Collections;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
   private final JwtService jwtService;
+  private final UserRepository userRepository; // НОВЕ: Інжектимо репозиторій юзерів
 
   @Override
   protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
@@ -26,17 +30,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     String jwt = null;
 
-    // 1. Спочатку шукаємо токен у 쿠ках (наш новий спосіб)
     if (request.getCookies() != null) {
       for (Cookie cookie : request.getCookies()) {
-        if ("accessToken".equals(cookie.getName())) { // Назва кукі, яку ми бачили в DevTools
+        if ("accessToken".equals(cookie.getName())) {
           jwt = cookie.getValue();
           break;
         }
       }
     }
 
-    // 2. Якщо в куках немає, перевіряємо старий заголовок Authorization (на всяк випадок)
     if (jwt == null) {
       final String authHeader = request.getHeader("Authorization");
       if (authHeader != null && authHeader.startsWith("Bearer ")) {
@@ -44,7 +46,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
       }
     }
 
-    // 3. Якщо токена так і не знайшли - пропускаємо запит (Spring Security його потім заблокує)
     if (jwt == null) {
       filterChain.doFilter(request, response);
       return;
@@ -54,16 +55,22 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
       if (jwtService.isTokenValid(jwt)) {
         Long userId = jwtService.extractUserId(jwt);
 
-        // Створюємо об'єкт аутентифікації для Spring Security
-        UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-          userId, null, Collections.emptyList() // Зверни увагу: тут поки немає ролей (Collections.emptyList())
-        );
+        // НОВЕ: Шукаємо користувача в БД
+        User user = userRepository.findById(userId).orElse(null);
 
-        // Кладемо юзера в "контекст" — тепер Спрінг знає, хто це
-        SecurityContextHolder.getContext().setAuthentication(authToken);
+        if (user != null) {
+          // Додаємо префікс "ROLE_", оскільки Spring Security очікує саме такий формат
+          var authorities = Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + user.getRole()));
+
+          UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
+            userId, null, authorities
+          );
+
+          SecurityContextHolder.getContext().setAuthentication(authToken);
+        }
       }
     } catch (Exception e) {
-      // Якщо токен битий — просто ігноруємо, SecurityConfig розбереться далі
+      // Якщо токен битий — ігноруємо
     }
 
     filterChain.doFilter(request, response);

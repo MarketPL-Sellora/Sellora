@@ -11,4 +11,8 @@ public interface CategoryRepository extends JpaRepository<Category, Long> {
 
   // Пошук головних категорій (де parent_id є NULL)
   List<Category> findAllByParentIsNull();
+
+  // НОВЕ: Для валідації при створенні та видаленні
+  boolean existsByName(String name);
+  boolean existsByParentId(Long parentId);
 }
