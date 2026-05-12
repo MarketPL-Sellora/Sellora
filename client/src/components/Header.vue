@@ -46,6 +46,10 @@ function setActive(label: string) {
   activeCategory.value = activeCategory.value === label ? null : label
 }
 
+defineExpose({
+  isAuthModalOpen
+})
+
 </script>
 
 <template>
