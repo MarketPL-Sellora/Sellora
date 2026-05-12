@@ -23,7 +23,7 @@ public class JwtService {
     return Jwts.builder()
       .setSubject(String.valueOf(userId))
       .setIssuedAt(new Date())
-      .setExpiration(new Date(System.currentTimeMillis() + 86400000)) // 24 години
+      .setExpiration(new Date(System.currentTimeMillis() + 2592000000L)) // 24 години
       .signWith(getSigningKey(), SignatureAlgorithm.HS256)
       .compact();
   }

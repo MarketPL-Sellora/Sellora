@@ -33,6 +33,7 @@ public class Product {
 
   private String description;
 
+
   @JdbcTypeCode(SqlTypes.JSON)
   @Column(name = "attributes", columnDefinition = "jsonb")
   private Map<String, Object> attributes;
