@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AuthModal from './AuthModal.vue'
 // ─── Імпорт сховища користувача ───────────────────────────────────────────────
@@ -45,6 +45,28 @@ const showCabinetBtn = computed(
 function setActive(label: string) {
   activeCategory.value = activeCategory.value === label ? null : label
 }
+
+// ─── Глобальний пошук ─────────────────────────────────────────────────────────
+function handleSearch() {
+  const keyword = searchQuery.value.trim()
+  if (keyword) {
+    router.push({ path: '/', query: { keyword } })
+  } else {
+    router.push({ path: '/' })
+  }
+}
+
+// Синхронізація інпута пошуку з URL при завантаженні та змінах
+onMounted(() => {
+  searchQuery.value = (route.query.keyword as string) || ''
+})
+
+watch(
+  () => route.query.keyword,
+  (newKeyword) => {
+    searchQuery.value = (newKeyword as string) || ''
+  }
+)
 
 defineExpose({
   isAuthModalOpen
@@ -123,9 +145,13 @@ defineExpose({
               type="text"
               placeholder="Знайди будь-що... iPhone 15, Xiaomi, Nike"
               class="flex-1 w-full min-w-0 bg-transparent text-gray-400 text-sm font-normal font-['Onest'] placeholder-gray-500 outline-none truncate"
+              @keyup.enter="handleSearch"
             />
           </div>
-          <button class="px-4 py-1.5 absolute right-1.5 bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg shadow-[0px_4px_16px_0px_rgba(249,115,22,0.35)] transition-all hover:from-orange-400 hover:to-orange-500 active:scale-95">
+          <button
+            class="px-4 py-1.5 absolute right-1.5 bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg shadow-[0px_4px_16px_0px_rgba(249,115,22,0.35)] transition-all hover:from-orange-400 hover:to-orange-500 active:scale-95"
+            @click="handleSearch"
+          >
             <span class="text-white text-xs font-semibold font-['Onest']">Знайти</span>
           </button>
         </div>

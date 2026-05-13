@@ -67,15 +67,8 @@ const isWishlisted = ref(false)
 // ─── Emits ────────────────────────────────────────────────────────────────────
 
 const emit = defineEmits<{
-  (e: 'open-group', product: any): void
   (e: 'wishlist',   product: any): void
 }>()
-
-function handleOpenGroup(e: MouseEvent) {
-  e.preventDefault()
-  e.stopPropagation()
-  emit('open-group', props.product)
-}
 
 function toggleWishlist(e: MouseEvent) {
   e.preventDefault()
@@ -134,13 +127,12 @@ function toggleWishlist(e: MouseEvent) {
           <span class="text-orange-500 text-xl font-bold font-['Unbounded'] leading-7">{{ formattedPrice }}</span>
         </div>
 
-        <button
+        <div
           v-if="!simple && item.isGroupBuy"
           class="self-stretch py-2.5 bg-gradient-to-b from-orange-500 to-orange-600 rounded-xl shadow-[0px_4px_16px_0px_rgba(249,115,22,0.35)] text-white text-sm font-semibold font-['Onest'] leading-5 text-center transition-all duration-150 hover:from-orange-400 hover:to-orange-500 hover:shadow-[0px_4px_24px_0px_rgba(249,115,22,0.55)] active:scale-[0.98] active:shadow-none"
-          @click.prevent.stop="handleOpenGroup"
         >
           🤝 Відкрити збір
-        </button>
+        </div>
       </div>
 
     </div>
