@@ -14,13 +14,12 @@ const productStore = useProductStore()
 const route = useRoute()
 
 watch(
-  () => route.query.categoryId,
-  (newCatId) => {
-    if (newCatId) {
-      productStore.fetchProducts({ categoryId: Number(newCatId), keyword: undefined, page: 0 })
-    } else {
-      productStore.fetchProducts({ categoryId: undefined, keyword: undefined, page: 0 })
-    }
+  () => route.query,
+  (newQuery) => {
+    const categoryId = newQuery.categoryId ? Number(newQuery.categoryId) : undefined
+    const keyword    = newQuery.keyword    ? String(newQuery.keyword)    : undefined
+
+    productStore.fetchProducts({ categoryId, keyword, page: 0 })
   },
   { immediate: true }
 )
