@@ -23,4 +23,6 @@ public interface GroupBuySessionRepository extends JpaRepository<GroupBuySession
   // Виправлено: звертаємось до полів
   @Query("SELECT s FROM GroupBuySession s JOIN GroupMember m ON s.id = m.sessionId WHERE m.userId = :userId AND s.status = :status ORDER BY s.createdAt DESC")
   List<GroupBuySession> findAllByUserIdAndStatus(@Param("userId") Long userId, @Param("status") String status);
+  boolean existsByProductIdAndStatus(Long productId, String status);
+// (Якщо статус у тебе Enum, то зміни String на назву твого Enum, наприклад SessionStatus)
 }
