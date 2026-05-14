@@ -24,6 +24,7 @@ const activeTab = computed({
 })
 const isAddingProduct = ref(false)
 const isCreatingStoreForm = ref(false)
+const editingProductId = ref<number | null>(null)
 
 // Магазин вважається існуючим, якщо він є в сторі
 const hasStore = computed(() => !!userStore.sellerStore)
@@ -69,6 +70,7 @@ async function handleStoreCreated() {
 // Функція для закриття форми і оновлення списку
 async function handleFormClose() {
   isAddingProduct.value = false
+  editingProductId.value = null
   if (userStore.sellerStore?.id) {
     await productStore.fetchMerchantProducts(userStore.sellerStore.id)
   }
@@ -76,6 +78,26 @@ async function handleFormClose() {
 
 function editStore() {
   console.log('Редагування магазину (заглушка)')
+}
+
+async function handleDeleteProduct(id: number) {
+  if (!confirm('Ви дійсно хочете видалити цей товар?')) return
+  const success = await productStore.deleteProduct(id)
+  if (success && userStore.sellerStore?.id) {
+    await productStore.fetchMerchantProducts(userStore.sellerStore.id)
+  }
+}
+
+async function handleChangeProductStatus(payload: { id: number; status: string }) {
+  const success = await productStore.changeProductStatus(payload.id, payload.status)
+  if (success && userStore.sellerStore?.id) {
+    await productStore.fetchMerchantProducts(userStore.sellerStore.id)
+  }
+}
+
+function openEditForm(id: number) {
+  editingProductId.value = id
+  isAddingProduct.value = true
 }
 </script>
 
@@ -143,15 +165,15 @@ function editStore() {
 
               <div class="mb-5 flex justify-between items-center">
                 <span class="text-gray-100 text-lg font-bold">Мої товари ({{ productStore.myProducts.length }})</span>
-                <button class="px-5 py-2.5 bg-orange-500 rounded-xl text-white font-semibold hover:bg-orange-400" @click="isAddingProduct = true">Додати товар</button>
+                <button class="px-5 py-2.5 bg-orange-500 rounded-xl text-white font-semibold hover:bg-orange-400" @click="editingProductId = null; isAddingProduct = true">Додати товар</button>
               </div>
 
               <div v-if="productStore.myProducts.length > 0" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
-                <ProductCard v-for="product in productStore.myProducts" :key="product.id" :product="product" :simple="true" />
+                <ProductCard v-for="product in productStore.myProducts" :key="product.id" :product="product" :simple="true" :isCabinet="true" @delete="handleDeleteProduct" @change-status="handleChangeProductStatus" @edit="openEditForm" />
               </div>
               <div v-else class="text-center py-16 text-gray-500">Ви ще не додали жодного товару.</div>
             </template>
-            <AddProductForm v-else @close="handleFormClose" />
+            <AddProductForm v-else :productId="editingProductId ?? undefined" @close="handleFormClose" />
           </template>
         </div>
 
