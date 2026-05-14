@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useCategoryStore, type Category } from '../state/categoryStore'
 import { useProductStore } from '../state/productStore' // Імпортуємо стор товарів
@@ -53,6 +53,8 @@ function syncCategoryFromUrl() {
     openCategoryId.value = null
     activeSubcategory.value = null
   }
+  // ─── Group Buy sync ───────────────────────────────────────────────────────
+  isGroupBuyActive.value = route.query.groupMode === 'ONLY_GROUP'
 }
 
 onMounted(async () => {
@@ -63,13 +65,6 @@ onMounted(async () => {
 })
 
 watch(() => route.query.categoryId, syncCategoryFromUrl)
-
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-interface Brand {
-  name: string
-  count: number
-}
 
 // ─── Accordion state ──────────────────────────────────────────────────────────
 
@@ -98,19 +93,18 @@ function selectSubcategory(sub: Category) {
   emit('category', { id: sub.id, name: sub.name })
 }
 
-// ─── Brands ───────────────────────────────────────────────────────────────────
+// ─── Group Buy toggle ────────────────────────────────────────────────────────
 
-const brands: Brand[] = [
-  { name: 'Apple',   count: 42 },
-  { name: 'Samsung', count: 38 },
-  { name: 'Xiaomi',  count: 57 },
-  { name: 'Sony',    count: 24 },
-]
+const isGroupBuyActive = ref(false)
 
-const selectedBrands = reactive<Set<string>>(new Set())
-
-function toggleBrand(name: string) {
-  selectedBrands.has(name) ? selectedBrands.delete(name) : selectedBrands.add(name)
+function toggleGroupBuy() {
+  isGroupBuyActive.value = true
+  router.replace({
+    query: {
+      ...route.query,
+      groupMode: 'ONLY_GROUP',
+    },
+  })
 }
 
 // ─── Price filter ─────────────────────────────────────────────────────────────
@@ -129,36 +123,38 @@ const sliderFillWidth = computed(() =>
 )
 
 function applyFilter() {
-  emit('filter', { priceMin: priceMin.value, priceMax: priceMax.value, brands: [...selectedBrands] })
+  emit('filter', { priceMin: priceMin.value, priceMax: priceMax.value })
 }
 
 // ─── Reset Logic ─────────────────────────────────────────────────────────────
 
 function handleReset() {
-  // 1. Скидаємо локальні фільтри ціни та брендів
+  // 1. Скидаємо локальні фільтри ціни
   priceMin.value = PRICE_ABSOLUTE_MIN
   priceMax.value = PRICE_ABSOLUTE_MAX
-  selectedBrands.clear()
 
-  // 2. Скидаємо локальні змінні активної категорії
+  // 2. Скидаємо group buy
+  isGroupBuyActive.value = false
+
+  // 3. Скидаємо локальні змінні активної категорії
   activeCategory.value = null
   openCategoryId.value = null
   activeSubcategory.value = null
 
-  // 3. Очищаємо URL від параметрів (зокрема categoryId) без перезавантаження сторінки
+  // 4. Очищаємо URL від параметрів (зокрема categoryId) без перезавантаження сторінки
   router.replace({ query: {} })
 
-  // 4. Скидаємо фільтри в сторі (це викличе новий запит за всіма товарами)
+  // 5. Скидаємо фільтри в сторі (це викличе новий запит за всіма товарами)
   productStore.resetFilters()
   
-  // 5. Закриваємо мобільне меню, якщо воно відкрите
+  // 6. Закриваємо мобільне меню, якщо воно відкрите
   emit('close')
 }
 
 // ─── Emits ────────────────────────────────────────────────────────────────────
 
 const emit = defineEmits<{
-  (e: 'filter', payload: { priceMin: number; priceMax: number; brands: string[] }): void
+  (e: 'filter', payload: { priceMin: number; priceMax: number }): void
   (e: 'category', payload: { id: number; name: string }): void
   (e: 'close'): void // ДОДАНО ДЛЯ МОБІЛЬНОГО МЕНЮ
 }>()
@@ -246,13 +242,6 @@ const emit = defineEmits<{
           </template>
         </div>
 
-        <div class="w-[calc(100%-24px)] mx-auto px-3 pt-4 pb-3 bg-gradient-to-br from-orange-500/20 to-orange-600/10 rounded-xl outline outline-1 outline-offset-[-1px] outline-orange-500/20 flex flex-col justify-start items-start gap-[3.30px] mb-3">
-          <span class="self-stretch text-orange-500 text-[10px] font-bold font-['Unbounded'] leading-4">РАЗОМ — ДЕШЕВШЕ</span>
-          <p class="self-stretch pb-1.5 text-gray-400 text-xs font-normal font-['Onest'] leading-5">Об'єднуйся з іншими та<br />купуй зі знижкою до 30%</p>
-          <button class="self-stretch py-1.5 bg-orange-500/10 rounded-lg outline outline-1 outline-offset-[-1px] outline-orange-500/25 text-orange-500 text-xs font-semibold font-['Onest'] leading-4 text-center transition-all duration-150 hover:bg-orange-500/20 hover:outline-orange-500/50 active:scale-[0.98]">
-            Дізнатись більше →
-          </button>
-        </div>
       </div>
 
       <div class="w-full shrink-0 mb-8 lg:mb-0 p-4 bg-[#1c1f2a] rounded-2xl outline outline-1 outline-offset-[-1px] outline-white/5 flex flex-col justify-start items-start gap-2">
@@ -269,20 +258,21 @@ const emit = defineEmits<{
           <div class="h-1.5 absolute top-0 bg-gradient-to-r from-orange-500 to-amber-400 rounded-full transition-all duration-200" :style="{ left: sliderFillLeft + '%', width: sliderFillWidth + '%' }" />
         </div>
 
-        <span class="self-stretch pt-2 text-gray-300 text-sm font-semibold font-['Onest'] leading-5">Бренд</span>
-
-        <div class="self-stretch pb-2 flex flex-col justify-start items-start gap-1.5">
-          <label v-for="brand in brands" :key="brand.name" class="self-stretch inline-flex justify-start items-center gap-2 cursor-pointer group" @click.prevent="toggleBrand(brand.name)">
-            <span class="w-3 h-3 shrink-0 rounded-sm border flex items-center justify-center transition-all duration-150"
-                  :class="selectedBrands.has(brand.name) ? 'bg-orange-500 border-orange-500' : 'bg-white border-[#7c6e7e] group-hover:border-orange-500/60'"
-            >
-              <svg v-if="selectedBrands.has(brand.name)" class="w-2 h-2 text-white" viewBox="0 0 8 8" fill="none">
-                <path d="M1 4L3 6L7 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-              </svg>
-            </span>
-            <span class="text-gray-400 text-xs font-normal font-['Onest'] group-hover:text-gray-200">{{ brand.name }}</span>
-            <span class="flex-1 text-right text-gray-600 text-xs font-normal font-['Onest']">{{ brand.count }}</span>
-          </label>
+        <!-- Банер "РАЗОМ — ДЕШЕВШЕ" -->
+        <div class="self-stretch mt-6 mb-4 p-3 bg-gradient-to-br from-orange-500/20 to-orange-600/10 rounded-xl outline outline-1 outline-offset-[-1px] outline-orange-500/20 flex flex-col justify-start items-start gap-[3.30px]">
+          <span class="self-stretch text-orange-500 text-[10px] font-bold font-['Unbounded'] leading-4">РАЗОМ — ДЕШЕВШЕ</span>
+          <p class="self-stretch pb-1.5 text-gray-400 text-xs font-normal font-['Onest'] leading-5">Об'єднуйся з іншими та<br />купуй зі знижкою</p>
+          <button
+            class="self-stretch py-1.5 rounded-lg outline outline-1 outline-offset-[-1px] text-xs font-semibold font-['Onest'] leading-4 text-center transition-all duration-150 active:scale-[0.98]"
+            :class="
+              isGroupBuyActive
+                ? 'bg-orange-500 text-white outline-orange-500 hover:bg-orange-400 shadow-[0px_2px_12px_0px_rgba(249,115,22,0.45)]'
+                : 'bg-orange-500/10 text-orange-500 outline-orange-500/25 hover:bg-orange-500/20 hover:outline-orange-500/50'
+            "
+            @click="toggleGroupBuy"
+          >
+            Показати товари
+          </button>
         </div>
 
         <div class="self-stretch flex flex-col gap-2">

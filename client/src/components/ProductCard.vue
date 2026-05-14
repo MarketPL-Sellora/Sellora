@@ -5,6 +5,7 @@ import { ref, computed } from 'vue'
 const props = defineProps<{
   product: any
   simple?: boolean
+  isCabinet?: boolean
 }>()
 
 // ─── Адаптер (Нормалізація даних) ─────────────────────────────────────────────
@@ -43,6 +44,7 @@ const item = computed(() => {
     groupCurrent: p.groupCurrentSize ?? p.groupCurrent ?? 0,
     groupTotal:   targetSize || totalFallback || 3,
     groupLabel:   p.groupLabel || 'Учасників',
+    status:       p.status || 'UNKNOWN',
   }
 })
 
@@ -68,6 +70,9 @@ const isWishlisted = ref(false)
 
 const emit = defineEmits<{
   (e: 'wishlist',   product: any): void
+  (e: 'delete',     id: number): void
+  (e: 'edit',       id: number): void
+  (e: 'change-status', payload: { id: number; status: string }): void
 }>()
 
 function toggleWishlist(e: MouseEvent) {
@@ -94,7 +99,18 @@ function toggleWishlist(e: MouseEvent) {
         loading="lazy"
       />
 
-      <div v-if="!simple && item.isGroupBuy" class="absolute left-3 top-3 px-2.5 py-1.5 bg-gradient-to-b from-orange-500 to-orange-600 rounded-lg shadow-[0px_4px_14px_0px_rgba(249,115,22,0.50)] z-20">
+      <!-- Бейдж статусу (тільки в кабінеті) -->
+      <div v-if="isCabinet && item.status === 'ACTIVE'" class="absolute left-3 top-3 px-2.5 py-1 bg-emerald-500/90 backdrop-blur-sm rounded-lg z-20">
+        <span class="text-white text-[10px] font-bold uppercase tracking-wide">Активний</span>
+      </div>
+      <div v-else-if="isCabinet && item.status === 'OUT_OF_STOCK'" class="absolute left-3 top-3 px-2.5 py-1 bg-red-500/90 backdrop-blur-sm rounded-lg z-20">
+        <span class="text-white text-[10px] font-bold uppercase tracking-wide">Немає в наявності</span>
+      </div>
+      <div v-else-if="isCabinet && (item.status === 'ARCHIVED')" class="absolute left-3 top-3 px-2.5 py-1 bg-gray-500/90 backdrop-blur-sm rounded-lg z-20">
+        <span class="text-white text-[10px] font-bold uppercase tracking-wide">В архіві</span>
+      </div>
+
+      <div v-if="!simple && !isCabinet && item.isGroupBuy" class="absolute left-3 top-3 px-2.5 py-1.5 bg-gradient-to-b from-orange-500 to-orange-600 rounded-lg shadow-[0px_4px_14px_0px_rgba(249,115,22,0.50)] z-20">
         <span class="text-white text-[9px] font-black font-['Unbounded'] uppercase leading-4 tracking-tight">РАЗОМ ДЕШЕВШЕ</span>
       </div>
 
@@ -127,8 +143,38 @@ function toggleWishlist(e: MouseEvent) {
           <span class="text-orange-500 text-xl font-bold font-['Unbounded'] leading-7">{{ formattedPrice }}</span>
         </div>
 
+        <!-- Кнопки управління (тільки в кабінеті) -->
+        <div v-if="isCabinet" class="flex gap-2 mt-1">
+          <button
+            class="flex-1 py-2 bg-blue-500/15 hover:bg-blue-500/25 text-blue-400 text-xs font-semibold rounded-lg transition-colors"
+            @click.prevent.stop="emit('edit', item.id)"
+          >
+            Редагувати
+          </button>
+          <button
+            class="flex-1 py-2 bg-red-500/15 hover:bg-red-500/25 text-red-400 text-xs font-semibold rounded-lg transition-colors"
+            @click.prevent.stop="emit('delete', item.id)"
+          >
+            Видалити
+          </button>
+          <button
+            v-if="item.status === 'ACTIVE' || item.status === 'OUT_OF_STOCK'"
+            class="flex-1 py-2 bg-gray-500/15 hover:bg-gray-500/25 text-gray-300 text-xs font-semibold rounded-lg transition-colors"
+            @click.prevent.stop="emit('change-status', { id: item.id, status: 'ARCHIVED' })"
+          >
+            Архівувати
+          </button>
+          <button
+            v-if="item.status === 'ARCHIVED'"
+            class="flex-1 py-2 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 text-xs font-semibold rounded-lg transition-colors"
+            @click.prevent.stop="emit('change-status', { id: item.id, status: 'ACTIVE' })"
+          >
+            Активувати
+          </button>
+        </div>
+
         <div
-          v-if="!simple && item.isGroupBuy"
+          v-if="!simple && !isCabinet && item.isGroupBuy"
           class="self-stretch py-2.5 bg-gradient-to-b from-orange-500 to-orange-600 rounded-xl shadow-[0px_4px_16px_0px_rgba(249,115,22,0.35)] text-white text-sm font-semibold font-['Onest'] leading-5 text-center transition-all duration-150 hover:from-orange-400 hover:to-orange-500 hover:shadow-[0px_4px_24px_0px_rgba(249,115,22,0.55)] active:scale-[0.98] active:shadow-none"
         >
           🤝 Відкрити збір

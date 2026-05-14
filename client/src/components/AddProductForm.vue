@@ -8,8 +8,47 @@ const productStore  = useProductStore()
 const userStore     = useUserStore()
 const categoryStore = useCategoryStore()
 
+// ─── Props ────────────────────────────────────────────────────────────────────
+const props = defineProps<{
+  productId?: number
+}>()
+
+// ─── Computed ─────────────────────────────────────────────────────────────────
+const isEditing = computed(() => !!props.productId)
+
 onMounted(async () => {
   await categoryStore.fetchFlatCategories()
+
+  // Якщо передано productId — завантажуємо існуючі дані товару
+  if (props.productId) {
+    await productStore.fetchProductById(props.productId)
+    const p = productStore.currentProduct
+    if (p) {
+      productForm.name            = p.title || ''
+      productForm.categoryId      = p.categoryId ? String(p.categoryId) : ''
+      productForm.price           = p.standardPrice ? String(p.standardPrice) : ''
+      productForm.stock           = p.stockQuantity ?? 0
+      productForm.description     = p.description || ''
+      productForm.isGroupBuy      = (p.groupTargetSize ?? 0) > 0
+      productForm.groupPrice      = p.groupPrice ? String(p.groupPrice) : ''
+      productForm.groupTargetSize = p.groupTargetSize ?? 2
+
+      // Заповнюємо характеристики з attributes
+      if (p.attributes && Object.keys(p.attributes).length > 0) {
+        characteristics.value = Object.entries(p.attributes).map(([name, value]) => ({ name, value }))
+      }
+
+      // Заповнюємо фото з images (без file, тільки URL)
+      if (p.images && p.images.length > 0) {
+        photos.value = p.images.map((url, index) => ({
+          id:      photoIdCounter++,
+          file:    undefined,
+          url,
+          isCover: index === 0,
+        }))
+      }
+    }
+  }
 })
 
 // ─── Emit ─────────────────────────────────────────────────────────────────────
@@ -27,7 +66,7 @@ interface Characteristic {
 
 interface PhotoItem {
   id:      number
-  file:    File
+  file?:   File
   url:     string
   isCover: boolean
 }
@@ -135,9 +174,9 @@ async function handleSave() {
   isSaving.value = true
 
   try {
-    // ── Крок 1: Завантажуємо всі фото паралельно ──────────────────────────
+    // ── Крок 1: Завантажуємо нові фото / залишаємо існуючі URL ────────────
     const uploadedUrls: string[] = await Promise.all(
-      photos.value.map(photo => productStore.uploadImage(photo.file))
+      photos.value.map(async (p) => p.file ? await productStore.uploadImage(p.file) : p.url)
     )
 
     // ── Крок 2: Будуємо attributes з характеристик ────────────────────────
@@ -165,13 +204,15 @@ async function handleSave() {
       attributes,
     }
 
-    // ── Крок 4: Створюємо товар ───────────────────────────────────────────
-    const success = await productStore.createProduct(payload)
+    // ── Крок 4: Створюємо або оновлюємо товар ─────────────────────────────
+    const success = isEditing.value
+      ? await productStore.updateProduct(props.productId!, payload)
+      : await productStore.createProduct(payload)
 
     if (success) {
       emit('close')
     } else {
-      alert('Не вдалося створити товар. Спробуйте ще раз.')
+      alert(isEditing.value ? 'Не вдалося оновити товар. Спробуйте ще раз.' : 'Не вдалося створити товар. Спробуйте ще раз.')
     }
 
   } catch (err: unknown) {
@@ -217,7 +258,7 @@ function handleCancel() {
       <path d="M4 2L8 6L4 10" stroke="#6B7280" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
     </svg>
     <div class="inline-flex flex-col justify-start items-start">
-      <div class="justify-center text-orange-400 text-xs font-medium font-['Onest'] leading-4">Новий товар</div>
+      <div class="justify-center text-orange-400 text-xs font-medium font-['Onest'] leading-4">{{ isEditing ? 'Редагування' : 'Новий товар' }}</div>
     </div>
   </div>
 
@@ -227,7 +268,7 @@ function handleCancel() {
     <!-- Шапка з кнопками -->
     <div class="self-stretch px-8 py-6 bg-neutral-900 border-b border-gray-800 inline-flex justify-between items-center">
       <div class="inline-flex flex-col justify-start items-start gap-0.5">
-        <div class="justify-center text-white text-lg font-bold font-['Onest'] leading-7">Створити новий товар</div>
+        <div class="justify-center text-white text-lg font-bold font-['Onest'] leading-7">{{ isEditing ? 'Редагувати товар' : 'Створити новий товар' }}</div>
         <div class="justify-center text-gray-500 text-xs font-normal font-['Onest'] leading-4">Заповніть усі поля та завантажте фотографії</div>
       </div>
       <div class="flex justify-start items-center gap-2.5">
