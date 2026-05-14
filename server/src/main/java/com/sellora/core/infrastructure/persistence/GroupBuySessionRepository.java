@@ -25,4 +25,14 @@ public interface GroupBuySessionRepository extends JpaRepository<GroupBuySession
   List<GroupBuySession> findAllByUserIdAndStatus(@Param("userId") Long userId, @Param("status") String status);
   boolean existsByProductIdAndStatus(Long productId, String status);
 // (Якщо статус у тебе Enum, то зміни String на назву твого Enum, наприклад SessionStatus)
+
+  // Перевіряємо кількість активних сесій продавця (безпечний JPQL запит без явного JOIN)
+  @Query("SELECT COUNT(s) FROM GroupBuySession s, Product p WHERE s.productId = p.id AND p.merchantId = :merchantId AND s.status = 'ACTIVE'")
+  long countActiveSessionsForMerchant(@org.springframework.data.repository.query.Param("merchantId") Long merchantId);
+
+  // Масово скасовуємо всі активні сесії для всіх товарів конкретного продавця
+  @org.springframework.data.jpa.repository.Modifying
+  @Query("UPDATE GroupBuySession s SET s.status = 'CANCELED' WHERE s.status = 'ACTIVE' AND s.productId IN (SELECT p.id FROM Product p WHERE p.merchantId = :merchantId)")
+  void cancelAllActiveSessionsForMerchant(@org.springframework.data.repository.query.Param("merchantId") Long merchantId);
+
 }
