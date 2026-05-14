@@ -1,13 +1,21 @@
 <script setup lang="ts">
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useUserStore } from '../state/userStore'
+import type { SellerStore } from '../state/userStore'
+import { apiClient } from '../api/axios'
 
 // ─── Типи ────────────────────────────────────────────────────────────────────
+const props = defineProps<{
+  initialData?: SellerStore | null
+}>()
+
 const emit = defineEmits<{
   (e: 'created', formData: Record<string, unknown>): void
+  (e: 'cancel'): void
 }>()
 
 const userStore = useUserStore()
+const isEditing = computed(() => !!props.initialData)
 
 // ─── Реактивний стан форми ────────────────────────────────────────────────────
 const storeForm = reactive({
@@ -17,9 +25,9 @@ const storeForm = reactive({
 })
 
 // —— Телефон ——
-const phoneCode   = ref('+380')
+const phoneCode   = ref('+38')
 const phoneNumber = ref('')
-const phoneCodes = ['+380', '+48', '+44', '+1', '+49', '+420', '+33', '+39', '+34']
+const phoneCodes = ['+38', '+48', '+44', '+1', '+49', '+420', '+33', '+39', '+34']
 
 // —— Логотип ——
 const logoFile    = ref<File | null>(null)
@@ -41,6 +49,30 @@ const descriptionLength = computed(() => storeForm.description.length)
 const submitted   = ref(false)
 const isLoading   = ref(false)
 const apiError    = ref<string | null>(null)
+
+// ─── Ініціалізація даних при редагуванні ──────────────────────────────────────
+onMounted(() => {
+  if (props.initialData) {
+    storeForm.name = props.initialData.name || ''
+    storeForm.description = props.initialData.description || ''
+    storeForm.city = props.initialData.address || ''
+
+    // Парсимо телефон: визначаємо код країни та номер
+    const phone = props.initialData.contactPhone || ''
+    const matchedCode = phoneCodes.find(c => phone.startsWith(c))
+    if (matchedCode) {
+      phoneCode.value = matchedCode
+      phoneNumber.value = phone.slice(matchedCode.length)
+    } else {
+      phoneNumber.value = phone
+    }
+
+    // Якщо є логотип — показуємо превʼю
+    if (props.initialData.logoUrl) {
+      logoPreview.value = props.initialData.logoUrl
+    }
+  }
+})
 
 // ─── Валідація ────────────────────────────────────────────────────────────────
 const PHONE_REGEX = /^\d{7,15}$/
@@ -64,19 +96,35 @@ async function handleCreate() {
 
   if (!validate()) return
 
-  const contactPhone = phoneCode.value + phoneNumber.value.replace(/[\s\-()]/g, '')
-
-  const payload = {
-    name:         storeForm.name.trim(),
-    address:      storeForm.city.trim(),
-    contactPhone,
-    description:  storeForm.description.trim(),
-    logoUrl:      '',
-  }
-
   isLoading.value = true
+  let uploadedLogoUrl = props.initialData?.logoUrl || ''
+
   try {
-    const responseData = await userStore.createStore(payload)
+    if (logoFile.value) {
+      const formData = new FormData()
+      formData.append('file', logoFile.value)
+      const uploadRes = await apiClient.post('/uploads/image', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      })
+      uploadedLogoUrl = uploadRes.data?.url || uploadRes.data || ''
+    }
+
+    const contactPhone = phoneCode.value + phoneNumber.value.replace(/[\s\-()]/g, '')
+
+    const payload = {
+      name:         storeForm.name.trim(),
+      address:      storeForm.city.trim(),
+      contactPhone,
+      description:  storeForm.description.trim(),
+      logoUrl:      uploadedLogoUrl,
+    }
+
+    let responseData
+    if (isEditing.value && props.initialData) {
+      responseData = await userStore.updateStore(props.initialData.id, payload)
+    } else {
+      responseData = await userStore.createStore(payload)
+    }
     emit('created', {
       ...payload,
       logoFile: logoFile.value,
@@ -91,7 +139,7 @@ async function handleCreate() {
     ) {
       apiError.value = (err as { response: { data: { message: string } } }).response.data.message
     } else {
-      apiError.value = 'Виникла помилка при створенні магазину. Спробуйте ще раз.'
+      apiError.value = 'Виникла помилка при збереженні магазину. Спробуйте ще раз.'
     }
   } finally {
     isLoading.value = false
@@ -112,9 +160,9 @@ async function handleCreate() {
     <div class="self-stretch h-[3px] bg-gradient-to-r from-orange-500 via-orange-400 to-orange-400/0 shrink-0"></div>
 
     <div class="self-stretch px-5 md:px-8 pt-8 pb-6 border-b border-[#141d2b] flex flex-col justify-start items-center gap-2">
-      <div class="text-center text-slate-100 text-xl md:text-2xl font-extrabold font-['Onest'] leading-7">Відкрити свій магазин</div>
+      <div class="text-center text-slate-100 text-xl md:text-2xl font-extrabold font-['Onest'] leading-7">{{ isEditing ? 'Редагувати магазин' : 'Відкрити свій магазин' }}</div>
       <div class="text-center text-slate-500 text-xs md:text-sm font-normal font-['Onest'] leading-5 px-2">
-        Заповніть дані, щоб почати продавати.<br class="hidden sm:block"/> Налаштування можна змінити пізніше.
+        {{ isEditing ? 'Оновіть інформацію про ваш магазин.' : 'Заповніть дані, щоб почати продавати.' }}<br class="hidden sm:block"/> {{ isEditing ? '' : 'Налаштування можна змінити пізніше.' }}
       </div>
     </div>
 
@@ -232,6 +280,7 @@ async function handleCreate() {
           type="button"
           :disabled="isLoading"
           class="flex-1 sm:flex-none px-6 py-2.5 rounded-xl border border-[#1e2535] text-slate-500 text-xs font-medium hover:bg-white/5 transition-all"
+          @click="emit('cancel')"
         >
           Скасувати
         </button>
@@ -242,7 +291,7 @@ async function handleCreate() {
           @click="handleCreate"
         >
           <svg v-if="isLoading" class="animate-spin w-3 h-3" viewBox="0 0 12 12"><circle cx="6" cy="6" r="5" stroke="currentColor" stroke-width="2" stroke-dasharray="15 15"/></svg>
-          <span class="text-white text-xs font-bold">{{ isLoading ? 'Збереження…' : 'Створити' }}</span>
+          <span class="text-white text-xs font-bold">{{ isLoading ? 'Збереження…' : (isEditing ? 'Зберегти зміни' : 'Створити') }}</span>
         </button>
       </div>
     </div>

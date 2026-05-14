@@ -9,6 +9,7 @@ import ProductCard      from '../components/ProductCard.vue'
 import AddProductForm   from '../components/AddProductForm.vue'
 import CreateStoreForm  from '../components/CreateStoreForm.vue'
 import CabinetCategories from '../components/CabinetCategories.vue'
+import CabinetStores from '../components/CabinetStores.vue'
 import { useUserStore } from '../state/userStore'
 import { useProductStore } from '../state/productStore'
 
@@ -77,7 +78,7 @@ async function handleFormClose() {
 }
 
 function editStore() {
-  console.log('Редагування магазину (заглушка)')
+  isCreatingStoreForm.value = true
 }
 
 async function handleDeleteProduct(id: number) {
@@ -98,6 +99,24 @@ async function handleChangeProductStatus(payload: { id: number; status: string }
 function openEditForm(id: number) {
   editingProductId.value = id
   isAddingProduct.value = true
+}
+
+async function handleDeleteStore() {
+  if (!userStore.sellerStore?.id) return
+  if (!confirm('Ви дійсно хочете видалити свій магазин? Цю дію неможливо скасувати.')) return
+
+  await userStore.deleteStore(userStore.sellerStore.id)
+}
+
+async function handleStoreStatus(newStatus: string) {
+  if (!userStore.sellerStore?.id) return
+  const actionText = newStatus === 'CLOSED' ? 'закрити' : 'активувати'
+  if (!confirm(`Ви дійсно хочете ${actionText} свій магазин?`)) return
+
+  const success = await userStore.changeStoreStatus(userStore.sellerStore.id, newStatus)
+  if (success) {
+    await userStore.fetchUserStore(userStore.user!.id) // Оновлюємо дані магазину
+  }
 }
 </script>
 
@@ -142,7 +161,7 @@ function openEditForm(id: number) {
             </div>
           </template>
 
-          <CreateStoreForm v-else-if="!hasStore && isCreatingStoreForm" @created="handleStoreCreated" />
+          <CreateStoreForm v-else-if="isCreatingStoreForm" :initialData="hasStore ? userStore.sellerStore : null" @created="handleStoreCreated" @cancel="isCreatingStoreForm = false" />
 
           <template v-else-if="hasStore">
             <template v-if="!isAddingProduct">
@@ -153,23 +172,54 @@ function openEditForm(id: number) {
                     <svg v-else class="w-10 h-10 text-[#3d5070]" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/></svg>
                   </div>
                   <div class="flex-1">
-                    <h2 class="text-gray-100 text-xl font-bold">{{ userStore.sellerStore?.name }}</h2>
+                    <div class="flex items-center gap-3">
+                      <h2 class="text-gray-100 text-xl font-bold">{{ userStore.sellerStore?.name }}</h2>
+                      <span v-if="userStore.sellerStore?.status === 'ACTIVE'" class="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 text-[10px] font-bold rounded uppercase tracking-wide">Активний</span>
+                      <span v-else-if="userStore.sellerStore?.status === 'PENDING'" class="px-2 py-0.5 bg-yellow-500/20 text-yellow-400 text-[10px] font-bold rounded uppercase tracking-wide">Очікує</span>
+                      <span v-else-if="userStore.sellerStore?.status === 'BLOCKED'" class="px-2 py-0.5 bg-red-500/20 text-red-400 text-[10px] font-bold rounded uppercase tracking-wide">Заблоковано</span>
+                      <span v-else-if="userStore.sellerStore?.status === 'CLOSED'" class="px-2 py-0.5 bg-gray-500/20 text-gray-400 text-[10px] font-bold rounded uppercase tracking-wide">Закрито</span>
+                    </div>
                     <div class="flex gap-4 mt-2">
                       <span v-if="userStore.sellerStore?.address" class="text-gray-400 text-xs">📍 {{ userStore.sellerStore.address }}</span>
                       <span v-if="userStore.sellerStore?.contactPhone" class="text-gray-400 text-xs">📞 {{ userStore.sellerStore.contactPhone }}</span>
                     </div>
                   </div>
-                  <button class="px-4 py-2 border border-[#1e2535] rounded-xl text-xs text-gray-400 hover:bg-white/5" @click="editStore">Редагувати</button>
+                  <div class="flex flex-wrap items-center gap-2">
+                    <button class="px-4 py-2 border border-[#1e2535] rounded-xl text-xs text-gray-400 hover:bg-white/5 transition-all" @click="editStore">Редагувати</button>
+
+                    <button 
+                      v-if="userStore.sellerStore?.status === 'ACTIVE'" 
+                      class="px-4 py-2 bg-gray-500/15 text-gray-300 rounded-xl text-xs font-semibold hover:bg-gray-500/25 transition-all" 
+                      @click="handleStoreStatus('CLOSED')"
+                    >
+                      Закрити магазин
+                    </button>
+
+                    <button 
+                      v-if="userStore.sellerStore?.status === 'CLOSED'" 
+                      class="px-4 py-2 bg-emerald-500/15 text-emerald-400 rounded-xl text-xs font-semibold hover:bg-emerald-500/25 transition-all" 
+                      @click="handleStoreStatus('ACTIVE')"
+                    >
+                      Активувати магазин
+                    </button>
+
+                    <button 
+                      class="px-4 py-2 bg-red-500/15 text-red-400 rounded-xl text-xs font-semibold hover:bg-red-500/25 transition-all" 
+                      @click="handleDeleteStore"
+                    >
+                      Видалити
+                    </button>
+                  </div>
                 </div>
               </div>
 
               <div class="mb-5 flex justify-between items-center">
                 <span class="text-gray-100 text-lg font-bold">Мої товари ({{ productStore.myProducts.length }})</span>
-                <button class="px-5 py-2.5 bg-orange-500 rounded-xl text-white font-semibold hover:bg-orange-400" @click="editingProductId = null; isAddingProduct = true">Додати товар</button>
+                <button class="px-5 py-2.5 bg-orange-500 rounded-xl text-white font-semibold hover:bg-orange-400 disabled:opacity-50 disabled:cursor-not-allowed" :disabled="userStore.sellerStore?.status !== 'ACTIVE'" @click="editingProductId = null; isAddingProduct = true">Додати товар</button>
               </div>
 
               <div v-if="productStore.myProducts.length > 0" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
-                <ProductCard v-for="product in productStore.myProducts" :key="product.id" :product="product" :simple="true" :isCabinet="true" @delete="handleDeleteProduct" @change-status="handleChangeProductStatus" @edit="openEditForm" />
+                <ProductCard v-for="product in productStore.myProducts" :key="product.id" :product="product" :simple="true" :isCabinet="true" :isStoreActive="userStore.sellerStore?.status === 'ACTIVE'" @delete="handleDeleteProduct" @change-status="handleChangeProductStatus" @edit="openEditForm" />
               </div>
               <div v-else class="text-center py-16 text-gray-500">Ви ще не додали жодного товару.</div>
             </template>
@@ -177,6 +227,7 @@ function openEditForm(id: number) {
           </template>
         </div>
 
+        <CabinetStores v-else-if="activeTab === 'stores' && userStore.user?.role === 'ADMIN'" />
         <CabinetCategories v-else-if="activeTab === 'categories' && userStore.user?.role === 'ADMIN'" />
 
         <div v-else-if="activeTab === 'settings'">

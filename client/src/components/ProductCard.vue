@@ -6,6 +6,7 @@ const props = defineProps<{
   product: any
   simple?: boolean
   isCabinet?: boolean
+  isStoreActive?: boolean
 }>()
 
 // ─── Адаптер (Нормалізація даних) ─────────────────────────────────────────────
@@ -146,27 +147,31 @@ function toggleWishlist(e: MouseEvent) {
         <!-- Кнопки управління (тільки в кабінеті) -->
         <div v-if="isCabinet" class="flex gap-2 mt-1">
           <button
-            class="flex-1 py-2 bg-blue-500/15 hover:bg-blue-500/25 text-blue-400 text-xs font-semibold rounded-lg transition-colors"
+            class="flex-1 py-2 bg-blue-500/15 hover:bg-blue-500/25 text-blue-400 text-xs font-semibold rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-inherit"
+            :disabled="!isStoreActive"
             @click.prevent.stop="emit('edit', item.id)"
           >
             Редагувати
           </button>
           <button
-            class="flex-1 py-2 bg-red-500/15 hover:bg-red-500/25 text-red-400 text-xs font-semibold rounded-lg transition-colors"
+            class="flex-1 py-2 bg-red-500/15 hover:bg-red-500/25 text-red-400 text-xs font-semibold rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-inherit"
+            :disabled="!isStoreActive"
             @click.prevent.stop="emit('delete', item.id)"
           >
             Видалити
           </button>
           <button
             v-if="item.status === 'ACTIVE' || item.status === 'OUT_OF_STOCK'"
-            class="flex-1 py-2 bg-gray-500/15 hover:bg-gray-500/25 text-gray-300 text-xs font-semibold rounded-lg transition-colors"
+            class="flex-1 py-2 bg-gray-500/15 hover:bg-gray-500/25 text-gray-300 text-xs font-semibold rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-inherit"
+            :disabled="!isStoreActive"
             @click.prevent.stop="emit('change-status', { id: item.id, status: 'ARCHIVED' })"
           >
             Архівувати
           </button>
           <button
             v-if="item.status === 'ARCHIVED'"
-            class="flex-1 py-2 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 text-xs font-semibold rounded-lg transition-colors"
+            class="flex-1 py-2 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 text-xs font-semibold rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-inherit"
+            :disabled="!isStoreActive"
             @click.prevent.stop="emit('change-status', { id: item.id, status: 'ACTIVE' })"
           >
             Активувати

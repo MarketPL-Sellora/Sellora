@@ -34,7 +34,8 @@ const router = useRouter()
 const userStore = useUserStore()
 
 // ─── Модальне вікно авторизації ───────────────────────────────────────────────
-const isAuthModalOpen = ref(false)
+// Використовуємо стан зі сховища
+// const isAuthModalOpen = ref(false)
 
 // ─── Чи відображати кнопку «Кабінет» ─────────────────────────────────────────
 // Показуємо лише якщо: користувач залогінений І НЕ знаходиться на /cabinet
@@ -69,7 +70,7 @@ watch(
 )
 
 defineExpose({
-  isAuthModalOpen
+  // isAuthModalOpen
 })
 
 </script>
@@ -106,7 +107,7 @@ defineExpose({
           <button
             v-if="!userStore.isAuthenticated"
             class="p-2 bg-[#1a1f2e] rounded-xl outline outline-1 outline-white/5 flex items-center justify-center transition-all hover:bg-[#22273a] active:scale-95"
-            @click="isAuthModalOpen = true"
+            @click="userStore.isAuthModalOpen = true"
           >
             <svg class="w-5 h-5 text-gray-400" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M3.33 14v-1.33A2.67 2.67 0 016 10h4a2.67 2.67 0 012.67 2.67V14" stroke="currentColor" stroke-width="1.33" stroke-linecap="round" />
@@ -175,7 +176,7 @@ defineExpose({
         <button
           v-if="!userStore.isAuthenticated"
           class="px-3 py-2 bg-[#1a1f2e] rounded-xl outline outline-1 outline-white/5 flex items-center gap-2 transition-all hover:bg-[#22273a] hover:outline-white/10 group"
-          @click="isAuthModalOpen = true"
+          @click="userStore.isAuthModalOpen = true"
         >
           <svg class="w-4 h-4 text-gray-400 group-hover:text-gray-200 transition-colors" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M3.33 14v-1.33A2.67 2.67 0 016 10h4a2.67 2.67 0 012.67 2.67V14" stroke="currentColor" stroke-width="1.33" stroke-linecap="round" />
@@ -254,8 +255,8 @@ defineExpose({
   </header>
 
   <AuthModal
-    v-if="isAuthModalOpen"
-    @close="isAuthModalOpen = false"
-    @login-success="isAuthModalOpen = false"
+    v-if="userStore.isAuthModalOpen"
+    @close="userStore.isAuthModalOpen = false"
+    @login-success="userStore.isAuthModalOpen = false"
   />
 </template>

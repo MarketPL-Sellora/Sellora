@@ -19,8 +19,9 @@ watch(
     const categoryId = newQuery.categoryId ? Number(newQuery.categoryId) : undefined
     const keyword    = newQuery.keyword    ? String(newQuery.keyword)    : undefined
     const groupMode  = newQuery.groupMode  ? String(newQuery.groupMode)  : undefined
+    const storeId    = newQuery.storeId    ? Number(newQuery.storeId)    : undefined
 
-    productStore.fetchProducts({ categoryId, keyword, status: 'ACTIVE', groupMode, page: 0 })
+    productStore.fetchProducts({ categoryId, keyword, status: 'ACTIVE', groupMode, storeId, page: 0 })
   },
   { immediate: true }
 )
@@ -36,6 +37,7 @@ function handleFilter(payload: { priceMin: number; priceMax: number }) {
     maxPrice: payload.priceMax,
     status: 'ACTIVE',
     groupMode: route.query.groupMode ? String(route.query.groupMode) : undefined,
+    storeId: route.query.storeId ? Number(route.query.storeId) : undefined,
     page: 0 // Скидаємо на першу сторінку
   })
   isMobileMenuOpen.value = false // Закриваємо меню після застосування
@@ -48,6 +50,7 @@ function handleCategory(payload: { id: number; name: string }) {
     keyword: undefined, // Скидаємо попередній пошук по слову, якщо був
     status: 'ACTIVE',
     groupMode: route.query.groupMode ? String(route.query.groupMode) : undefined,
+    storeId: route.query.storeId ? Number(route.query.storeId) : undefined,
     page: 0
   })
   isMobileMenuOpen.value = false // Закриваємо меню після вибору
