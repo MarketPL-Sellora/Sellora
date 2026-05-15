@@ -29,7 +29,7 @@ interface TrustBadge {
 const item = ref<OrderItem>({
   id:    1,
   name:  'Ноутбук ASUS ProArt 16"',
-  image: '../assets/product-placeholder.png',
+  image: '../../assets/product-placeholder.png',
   badge: 'Групова покупка',
   specs: 'OLED · 32 ГБ · 1 ТБ SSD',
   qty:   1,

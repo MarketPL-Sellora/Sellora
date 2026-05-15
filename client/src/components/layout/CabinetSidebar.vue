@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { useUserStore } from '../state/userStore'
-import { useGroupBuyStore } from '../state/groupBuyStore'
-import { useProductStore } from '../state/productStore'
+import { useUserStore } from '../../state/userStore'
+import { useGroupBuyStore } from '../../state/groupBuyStore'
+import { useProductStore } from '../../state/productStore'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 

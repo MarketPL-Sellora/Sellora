@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue'
-import { useUserStore } from '../state/userStore'
-import type { SellerStore } from '../state/userStore'
-import { apiClient } from '../api/axios'
+import { useUserStore } from '../../state/userStore'
+import type { SellerStore } from '../../state/userStore'
+import { apiClient } from '../../api/axios'
 
 // ─── Типи ────────────────────────────────────────────────────────────────────
 const props = defineProps<{

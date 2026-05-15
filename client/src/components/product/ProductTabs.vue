@@ -215,7 +215,7 @@ function setTab(id: string) {
         <!-- Banner 1 — Camera -->
         <div class="self-stretch py-20 md:py-44 relative bg-[#1c1f2a] rounded-xl outline outline-1 outline-offset-[-1px] outline-[#2a2d3e] flex justify-center items-center overflow-hidden">
           <div class="absolute inset-0 bg-gradient-to-br from-[#1a1040] to-[#0d1022]" />
-          <!-- Replace with: <img src="../assets/banner-camera.jpg" alt="Камерна система 200 Мп" class="absolute inset-0 w-full h-full object-cover" /> -->
+          <!-- Replace with: <img src="../../assets/banner-camera.jpg" alt="Камерна система 200 Мп" class="absolute inset-0 w-full h-full object-cover" /> -->
           <div class="relative z-10 flex flex-col items-center gap-2">
             <svg class="w-10 h-10 text-[#c8ccdf]" viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.5" xmlns="http://www.w3.org/2000/svg">
               <rect x="5" y="11" width="30" height="22" rx="3"/>
@@ -233,7 +233,7 @@ function setTab(id: string) {
         <!-- Banner 2 — AI -->
         <div class="self-stretch py-20 md:py-44 relative bg-[#1c1f2a] rounded-xl outline outline-1 outline-offset-[-1px] outline-[#2a2d3e] flex justify-center items-center overflow-hidden">
           <div class="absolute inset-0 bg-gradient-to-br from-[#0f2027] to-[#203a43]" />
-          <!-- Replace with: <img src="../assets/banner-ai.jpg" alt="Galaxy AI функції" class="absolute inset-0 w-full h-full object-cover" /> -->
+          <!-- Replace with: <img src="../../assets/banner-ai.jpg" alt="Galaxy AI функції" class="absolute inset-0 w-full h-full object-cover" /> -->
           <div class="relative z-10 flex flex-col items-center gap-2">
             <svg class="w-10 h-10 text-[#c8ccdf]" viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.5" xmlns="http://www.w3.org/2000/svg">
               <circle cx="20" cy="20" r="14"/>

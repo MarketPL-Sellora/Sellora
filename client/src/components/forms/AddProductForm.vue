@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue'
-import { useProductStore }         from '../state/productStore'
-import { useUserStore }            from '../state/userStore'
-import { useCategoryStore }        from '../state/categoryStore'
+import { useProductStore }         from '../../state/productStore'
+import { useUserStore }            from '../../state/userStore'
+import { useCategoryStore }        from '../../state/categoryStore'
 
 const productStore  = useProductStore()
 const userStore     = useUserStore()

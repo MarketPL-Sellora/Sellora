@@ -32,7 +32,7 @@ const slides: Slide[] = [
     price: '45 999 ₴',
     oldPrice: '52 000 ₴',
     discount: '-12%',
-    image: '../assets/iphone.png',
+    image: '../../assets/iphone.png',
     imageAlt: 'iPhone 15 Pro',
   },
   {
@@ -43,7 +43,7 @@ const slides: Slide[] = [
     price: '42 499 ₴',
     oldPrice: '49 000 ₴',
     discount: '-13%',
-    image: '../assets/samsung.png',
+    image: '../../assets/samsung.png',
     imageAlt: 'Samsung Galaxy S24 Ultra',
   },
   {
@@ -54,7 +54,7 @@ const slides: Slide[] = [
     price: '89 999 ₴',
     oldPrice: '102 000 ₴',
     discount: '-12%',
-    image: '../assets/macbook.png',
+    image: '../../assets/macbook.png',
     imageAlt: 'MacBook Pro M3',
   },
 ]

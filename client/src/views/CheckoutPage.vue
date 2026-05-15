@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import Header from './Header.vue'
-import Footer from './Footer.vue'
-import CheckoutForm from './CheckoutForm.vue'
-import CheckoutSummary from './CheckoutSummary.vue'
+import Header from '../components/layout/Header.vue'
+import Footer from '../components/layout/Footer.vue'
+import CheckoutForm from '../components/forms/CheckoutForm.vue'
+import CheckoutSummary from '../components/forms/CheckoutSummary.vue'
 </script>
 
 <template>

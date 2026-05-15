@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import Header from './Header.vue'
-import Sidebar from './Sidebar.vue'
-import HeroBanner from './HeroBanner.vue'
-import ProductGrid from './ProductGrid.vue'
-import Footer from './Footer.vue'
+import Header from '../components/layout/Header.vue'
+import Sidebar from '../components/layout/Sidebar.vue'
+import HeroBanner from '../components/layout/HeroBanner.vue'
+import ProductGrid from '../components/product/ProductGrid.vue'
+import Footer from '../components/layout/Footer.vue'
 
 // 1. Імпортуємо стор, щоб викликати завантаження даних
 import { useProductStore } from '../state/productStore'

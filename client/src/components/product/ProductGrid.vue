@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { onMounted, computed } from 'vue'
 import { useRoute } from 'vue-router'
-import { useProductStore } from '../state/productStore'
-import { useCategoryStore } from '../state/categoryStore'
+import { useProductStore } from '../../state/productStore'
+import { useCategoryStore } from '../../state/categoryStore'
 import ProductCard from './ProductCard.vue'
 
 const route = useRoute()

@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useCategoryStore, type Category } from '../state/categoryStore'
-import { useProductStore } from '../state/productStore' // Імпортуємо стор товарів
+import { useCategoryStore, type Category } from '../../state/categoryStore'
+import { useProductStore } from '../../state/productStore' // Імпортуємо стор товарів
 
 // --- ДОДАНО ДЛЯ МОБІЛЬНОГО МЕНЮ ---
 const props = defineProps<{

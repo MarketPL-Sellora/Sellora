@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref, watch, onMounted } from 'vue'
 import ProductCard from './ProductCard.vue'
-import { apiClient } from '../api/axios'
-import type { ProductApiItem } from '../state/productStore'
+import { apiClient } from '../../api/axios'
+import type { ProductApiItem } from '../../state/productStore'
 
 const props = defineProps<{
   categoryId: number

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { apiClient } from '../api/axios'
+import { apiClient } from '../../api/axios'
 
 interface StoreItem {
   id: number

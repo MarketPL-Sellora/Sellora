@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import AuthModal from './AuthModal.vue'
+import AuthModal from '../modals/AuthModal.vue'
 // ─── Імпорт сховища користувача ───────────────────────────────────────────────
-import { useUserStore } from '../state/userStore'
+import { useUserStore } from '../../state/userStore'
 
 interface Category {
   label: string
@@ -86,7 +86,7 @@ defineExpose({
           to="/"
           class="flex items-center gap-2 shrink-0 cursor-pointer transition-transform duration-200 hover:scale-105"
         >
-          <img src="../assets/logo.png" alt="Sellora" class="w-8 h-8 rounded-lg object-cover" />
+          <img src="../../assets/logo.png" alt="Sellora" class="w-8 h-8 rounded-lg object-cover" />
           <span class="text-orange-500 text-lg font-bold font-['Unbounded'] leading-7 select-none">
             Sellora
           </span>

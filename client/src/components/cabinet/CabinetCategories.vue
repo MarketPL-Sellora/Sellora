@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
-import { useCategoryStore } from '../state/categoryStore'
+import { useCategoryStore } from '../../state/categoryStore'
 
 // ─── Ініціалізація store ──────────────────────────────────────────────────────
 const categoryStore = useCategoryStore()

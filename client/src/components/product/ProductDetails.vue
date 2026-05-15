@@ -3,9 +3,9 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import dayjs from 'dayjs'
 import utc from 'dayjs/plugin/utc'
 dayjs.extend(utc)
-import type { GroupBuySession } from '../state/groupBuyStore'
-import { useGroupBuyStore }     from '../state/groupBuyStore'
-import type { ProductApiItem }  from '../state/productStore'
+import type { GroupBuySession } from '../../state/groupBuyStore'
+import { useGroupBuyStore }     from '../../state/groupBuyStore'
+import type { ProductApiItem }  from '../../state/productStore'
 
 const props = defineProps<{
   apiProduct?: ProductApiItem | null

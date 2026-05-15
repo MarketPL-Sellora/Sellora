@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { useGroupBuyStore }         from '../state/groupBuyStore'
-import { useUserStore }             from '../state/userStore'
-import { apiClient }                from '../api/axios'
+import { useGroupBuyStore }         from '../../state/groupBuyStore'
+import { useUserStore }             from '../../state/userStore'
+import { apiClient }                from '../../api/axios'
 
 // ─── Props & Emits ────────────────────────────────────────────────────────────
 const props = defineProps<{

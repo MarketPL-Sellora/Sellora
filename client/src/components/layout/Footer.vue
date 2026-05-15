@@ -74,7 +74,7 @@ const currentYear = new Date().getFullYear()
           <!-- Logo + wordmark -->
           <div class="inline-flex items-center gap-2">
             <img
-              src="../assets/logo.png"
+              src="../../assets/logo.png"
               alt="Sellora"
               class="w-auto h-8 rounded-lg object-contain"
             />
