@@ -16,6 +16,8 @@ public record CreateProductDto(
   @Size(max = 255, message = "Назва не може перевищувати 255 символів")
   String title,
 
+  @NotBlank(message = "Опис товару не може бути порожнім")
+  @Size(min = 50, message = "Опис товару має містити щонайменше 50 символів")
   String description,
 
   @NotNull(message = "Категорія є обов'язковою")
