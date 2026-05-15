@@ -1,12 +1,9 @@
 databaseChangeLog:
   - include:
-      file: changes/001-init-schema.sql
+      file: changes/init-schema-2026-05-10.sql
       relativeToChangelogFile: true
   - include:
-      file: changes/002-seed-data.sql
+      file: changes/seed-data-2026-05-10.sql
       relativeToChangelogFile: true
       context: dev
-  - include:
-      file: changes/003-add-uuid-to-sessions.sql
-      relativeToChangelogFile: true
-      context: dev
+

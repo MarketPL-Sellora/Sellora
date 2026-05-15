@@ -2,12 +2,24 @@ import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import './style.css'
 import App from './App.vue'
-import { router } from './router.ts' // 1. Додали імпорт нашого роутера
+import { router } from './router.ts'
+import { useUserStore } from './state/userStore' 
 
-const app   = createApp(App)  // 2. Створили сам додаток і записали в змінну app
-const pinia = createPinia()   // 3. Створюємо Pinia — централізоване сховище стану
+const app   = createApp(App)
+const pinia = createPinia()
 
-app.use(pinia)  // 4. Підключаємо Pinia до додатку
-app.use(router) // 5. Підключаємо роутер
+app.use(pinia) 
 
-app.mount('#app') // 6. Запускаємо додаток на екрані
+// Асинхронна ініціалізація додатку
+async function initApp() {
+  const userStore = useUserStore()
+  
+  // Чекаємо перевірку сесії ДО запуску роутера
+  await userStore.fetchMe()
+
+  // Тепер роутер точно знає статус авторизації і не помилиться в beforeEach
+  app.use(router)
+  app.mount('#app')
+}
+
+initApp()

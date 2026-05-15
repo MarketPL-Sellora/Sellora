@@ -46,8 +46,8 @@ INSERT INTO products (id, store_id, category_id, title, description, stock_quant
 (1, 1, 2, 'iPhone 15 Pro 128GB', 'Колір: Natural Titanium', 50, 48000.00, 44000.00, 3, 'ACTIVE'),
 (2, 2, 2, 'Samsung Galaxy S24 Ultra', 'З підтримкою S-Pen', 30, 52000.00, 47000.00, 3, 'ACTIVE'),
 (3, 3, 4, 'Nike Air Max 270', 'Розмір 42, Чорні', 100, 5600.00, 4800.00, 5, 'ACTIVE'),
-(4, 5, 1, 'Кавомолка електрична', 'Жорнова з нержавіючої сталі', 15, 3200.00, 2700.00, 4, 'ACTIVE'),
-(5, 1, 3, 'MacBook Air M2 13"', '8GB RAM, 256GB SSD', 10, 42000.00, 38500.00, 2, 'ACTIVE');
+(4, 5, 1, 'Кавомолка електрична', 'Жорнова з нержавіючої сталі', 15, 3200.00, NULL, NULL, 'ACTIVE'),
+(5, 1, 3, 'MacBook Air M2 13"', '8GB RAM, 256GB SSD', 10, 42000.00, NULL, NULL, 'ACTIVE');
 
 -- 6. CARTS (For 4 buyers)
 INSERT INTO carts (id, user_id) VALUES 
@@ -58,12 +58,12 @@ INSERT INTO cart_items (id, cart_id, product_id, quantity) VALUES
 (1, 1, 1, 1), (2, 1, 3, 2), (3, 2, 4, 1), (4, 3, 2, 1), (5, 4, 1, 1);
 
 -- 8. GROUP BUY SESSIONS
-INSERT INTO group_buy_sessions (id, product_id, initiator_id, status, locked_price, locked_target_size, expires_at) VALUES 
-(1, 1, 7, 'ACTIVE', 44000.00, 3, CURRENT_TIMESTAMP + INTERVAL '24 hours'),
-(2, 2, 8, 'ACTIVE', 47000.00, 3, CURRENT_TIMESTAMP + INTERVAL '12 hours'),
-(3, 3, 9, 'COMPLETED', 48000.00, 5, CURRENT_TIMESTAMP - INTERVAL '1 hour'),
-(4, 4, 10, 'CANCELLED', 2700.00, 4, CURRENT_TIMESTAMP - INTERVAL '2 days'),
-(5, 5, 7, 'ACTIVE', 38500.00, 2, CURRENT_TIMESTAMP + INTERVAL '48 hours');
+INSERT INTO group_buy_sessions (id, uuid, product_id, initiator_id, status, locked_price, locked_target_size, expires_at) VALUES 
+(1, 'a1b2c3d4-1000-4000-8000-000000000001', 1, 7, 'ACTIVE', 44000.00, 3, CURRENT_TIMESTAMP + INTERVAL '24 hours'),
+(2, 'a1b2c3d4-2000-4000-8000-000000000002', 2, 8, 'ACTIVE', 47000.00, 3, CURRENT_TIMESTAMP + INTERVAL '12 hours'),
+(3, 'a1b2c3d4-3000-4000-8000-000000000003', 3, 9, 'COMPLETED', 48000.00, 5, CURRENT_TIMESTAMP - INTERVAL '1 hour'),
+(4, 'a1b2c3d4-4000-4000-8000-000000000004', 1, 10, 'CANCELLED', 44000.00, 3, CURRENT_TIMESTAMP - INTERVAL '2 days'),
+(5, 'a1b2c3d4-5000-4000-8000-000000000005', 2, 7, 'ACTIVE', 47000.00, 3, CURRENT_TIMESTAMP + INTERVAL '48 hours');
 
 -- 9. GROUP MEMBERS
 INSERT INTO group_members (id, session_id, user_id) VALUES 

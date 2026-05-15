@@ -1,10 +1,57 @@
 <script setup lang="ts">
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
+import { useProductStore }         from '../../state/productStore'
+import { useUserStore }            from '../../state/userStore'
+import { useCategoryStore }        from '../../state/categoryStore'
 
-// —— Оголошення подій форми ——
-// 'close' — єдина зовнішня подія: сигналізує батьківському CabinetPage,
-// що форму потрібно закрити (незалежно від причини: збереження чи скасування).
-// Батько отримує цю подію через @close і повертає isAddingProduct = false.
+const productStore  = useProductStore()
+const userStore     = useUserStore()
+const categoryStore = useCategoryStore()
+
+// ─── Props ────────────────────────────────────────────────────────────────────
+const props = defineProps<{
+  productId?: number
+}>()
+
+// ─── Computed ─────────────────────────────────────────────────────────────────
+const isEditing = computed(() => !!props.productId)
+
+onMounted(async () => {
+  await categoryStore.fetchFlatCategories()
+
+  // Якщо передано productId — завантажуємо існуючі дані товару
+  if (props.productId) {
+    await productStore.fetchProductById(props.productId)
+    const p = productStore.currentProduct
+    if (p) {
+      productForm.name            = p.title || ''
+      productForm.categoryId      = p.categoryId ? String(p.categoryId) : ''
+      productForm.price           = p.standardPrice ? String(p.standardPrice) : ''
+      productForm.stock           = p.stockQuantity ?? 0
+      productForm.description     = p.description || ''
+      productForm.isGroupBuy      = (p.groupTargetSize ?? 0) > 0
+      productForm.groupPrice      = p.groupPrice ? String(p.groupPrice) : ''
+      productForm.groupTargetSize = p.groupTargetSize ?? 2
+
+      // Заповнюємо характеристики з attributes
+      if (p.attributes && Object.keys(p.attributes).length > 0) {
+        characteristics.value = Object.entries(p.attributes).map(([name, value]) => ({ name, value }))
+      }
+
+      // Заповнюємо фото з images (без file, тільки URL)
+      if (p.images && p.images.length > 0) {
+        photos.value = p.images.map((url, index) => ({
+          id:      photoIdCounter++,
+          file:    undefined,
+          url,
+          isCover: index === 0,
+        }))
+      }
+    }
+  }
+})
+
+// ─── Emit ─────────────────────────────────────────────────────────────────────
 const emit = defineEmits<{
   (e: 'close'): void
   (e: 'save', product: Record<string, unknown>): void
@@ -18,48 +65,41 @@ interface Characteristic {
 }
 
 interface PhotoItem {
-  id: number
-  file: File
-  url: string       // blob URL для попереднього перегляду
+  id:      number
+  file?:   File
+  url:     string
   isCover: boolean
 }
 
 // ─── 1. Реактивний стан форми ─────────────────────────────────────────────────
 
 const productForm = reactive({
-  name:        '',  // Назва товару
-  category:    '',  // Категорія
-  price:       '',  // Вартість
-  sku:         '',  // Артикул
-  stock:       0,   // Кількість на складі
-  description: '',  // Детальний опис
+  name:            '',
+  categoryId:      '',
+  price:           '',
+  stock:           0,
+  description:     '',
+  isGroupBuy:      false,
+  groupPrice:      '',
+  groupTargetSize: 2,
 })
 
-// Лічильник символів опису
 const descriptionLength = computed(() => productForm.description.length)
 
-// Категорії для <select>
-const categoryOptions = [
-  'Смартфони', 'Ноутбуки', 'Ігрові консолі',
-  'Аудіотехніка', 'Фото та відео', 'Взуття',
-  'Одяг', 'Дім і сад', 'Краса та догляд',
-  'Інструменти', 'Авто товари', 'Зоотовари', 'Книги',
-]
+
 
 // ─── 2. Логіка фотографій ─────────────────────────────────────────────────────
 
 const photos = ref<PhotoItem[]>([])
 let photoIdCounter = 1
 
-// Додавання файлів через <input type="file">
 function handleFileInput(event: Event) {
   const input = event.target as HTMLInputElement
   if (!input.files) return
   addFiles(Array.from(input.files))
-  input.value = '' // скидаємо input, щоб можна було завантажити той самий файл знову
+  input.value = ''
 }
 
-// Додавання файлів через Drag & Drop
 function handleDrop(event: DragEvent) {
   isDragging.value = false
   const files = Array.from(event.dataTransfer?.files ?? [])
@@ -68,7 +108,6 @@ function handleDrop(event: DragEvent) {
 
 function addFiles(files: File[]) {
   files.forEach(file => {
-    // Перший доданий файл автоматично стає обкладинкою
     photos.value.push({
       id:      photoIdCounter++,
       file,
@@ -78,90 +117,126 @@ function addFiles(files: File[]) {
   })
 }
 
-// Видалення фото по індексу; якщо видаляємо обкладинку — перша фото стає нею
 function removePhoto(index: number) {
   const wascover = photos.value[index].isCover
-  URL.revokeObjectURL(photos.value[index].url) // звільняємо пам'ять
+  URL.revokeObjectURL(photos.value[index].url)
   photos.value.splice(index, 1)
   if (wascover && photos.value.length > 0) {
     photos.value[0].isCover = true
   }
 }
 
-// Стан drag-over для виділення зони
 const isDragging = ref(false)
 
-// ─── 3. Динамічні характеристики ─────────────────────────────────────────────
+// ─── 3. Характеристики ───────────────────────────────────────────────────────
 
 const characteristics = ref<Characteristic[]>([
-  { name: 'Бренд',   value: 'Apple'          },
-  { name: 'Модель',  value: 'iPhone 15 Pro Max' },
-  { name: 'Колір',   value: 'Natural Titanium' },
-  { name: "Пам'ять", value: '256 ГБ'          },
+  { name: 'Бренд',   value: 'Apple'             },
+  { name: 'Модель',  value: 'iPhone 15 Pro Max'  },
+  { name: 'Колір',   value: 'Natural Titanium'   },
+  { name: "Пам'ять", value: '256 ГБ'             },
 ])
 
-// Додати порожній рядок характеристики
 function addCharacteristic() {
   characteristics.value.push({ name: '', value: '' })
 }
 
-// Видалити характеристику за індексом
 function removeCharacteristic(index: number) {
   characteristics.value.splice(index, 1)
 }
 
-// ─── 4. Збереження форми ─────────────────────────────────────────────────────
+// ─── 4. Стан збереження ───────────────────────────────────────────────────────
 
-function handleSave() {
-  const data = {
-    ...productForm,
-    photos:          photos.value.map(p => ({ name: p.file.name, size: p.file.size, isCover: p.isCover })),
-    characteristics: characteristics.value.filter(c => c.name.trim() !== ''),
-  }
-  console.log('Дані на відправку:', data)
-  // TODO: тут замінити на реальний API-виклик
+const isSaving = ref(false)
 
-  // Формуємо об'єкт товару для додавання у масив myStoreProducts батьківського компонента.
-  // Використовуємо дані з форми та mock-значення для полів, яких немає у формі.
-  const coverPhoto = photos.value.find(p => p.isCover)
-  const newProduct = {
-    id:           Date.now(),
-    brand:        'Мій магазин',
-    name:         productForm.name || 'Новий товар',
-    image:        coverPhoto ? coverPhoto.url : 'https://via.placeholder.com/400x400?text=No+Image',
-    imageAlt:     productForm.name || 'Товар',
-    rating:       0,
-    reviewCount:  0,
-    groupLabel:   'Учасників',
-    groupCurrent: 0,
-    groupTotal:   5,
-    price:        Number(productForm.price) || 0,
-    oldPrice:     Math.round((Number(productForm.price) || 0) * 1.2),
+// ─── 5. Збереження форми (реальний API-виклик) ────────────────────────────────
+
+async function handleSave() {
+  // ── Валідація групової покупки ─────────────────────────────────────────
+  const stock = Number(productForm.stock) || 0
+  const targetSize = Number(productForm.groupTargetSize) || 0
+
+  if (productForm.isGroupBuy) {
+    if (targetSize < 2) {
+      alert('Для групової покупки потрібно мінімум 2 людини.')
+      return
+    }
+    if (targetSize > stock) {
+      alert('Помилка: кількість людей для групової покупки не може перевищувати залишок товару на складі!')
+      return
+    }
+    if (!Number(productForm.groupPrice)) {
+      alert('Вкажіть ціну для групової покупки.')
+      return
+    }
   }
 
-  // Повідомляємо батьківський компонент про збережений товар —
-  // CabinetPage додасть його у масив myStoreProducts через unshift.
-  emit('save', newProduct)
+  isSaving.value = true
 
-  // Повідомляємо батьківський компонент про успішне збереження —
-  // CabinetPage закриє форму і поверне список товарів.
-  emit('close')
+  try {
+    // ── Крок 1: Завантажуємо нові фото / залишаємо існуючі URL ────────────
+    const uploadedUrls: string[] = await Promise.all(
+      photos.value.map(async (p) => p.file ? await productStore.uploadImage(p.file) : p.url)
+    )
+
+    // ── Крок 2: Будуємо attributes з характеристик ────────────────────────
+    const attributes: Record<string, string> = {}
+    characteristics.value
+      .filter(c => c.name.trim() !== '')
+      .forEach(c => { attributes[c.name.trim()] = c.value.trim() })
+
+    const standardPrice = Number(productForm.price) || 0
+    // Змінити:
+    const groupPrice      = productForm.isGroupBuy ? Number(productForm.groupPrice) : null;
+    const groupTargetSize = productForm.isGroupBuy ? Number(productForm.groupTargetSize) : null;
+
+    // ── Крок 3: Формуємо payload для POST /products ───────────────────────
+    const payload = {
+      title:           productForm.name,
+      description:     productForm.description,
+      categoryId:      Number(productForm.categoryId),
+      standardPrice,
+      groupPrice,
+      groupTargetSize,
+      stockQuantity:   productForm.stock,
+      merchantId:      userStore.sellerStore?.id ?? 0,
+      images:          uploadedUrls,
+      attributes,
+    }
+
+    // ── Крок 4: Створюємо або оновлюємо товар ─────────────────────────────
+    const success = isEditing.value
+      ? await productStore.updateProduct(props.productId!, payload)
+      : await productStore.createProduct(payload)
+
+    if (success) {
+      emit('close')
+    } else {
+      alert(isEditing.value ? 'Не вдалося оновити товар. Спробуйте ще раз.' : 'Не вдалося створити товар. Спробуйте ще раз.')
+    }
+
+  } catch (err: unknown) {
+    console.error('[AddProductForm] handleSave error:', err)
+    alert(err instanceof Error ? err.message : 'Помилка при збереженні товару')
+  } finally {
+    isSaving.value = false
+  }
 }
 
-// Скасувати — скидаємо форму і повертаємось до списку товарів
-function handleCancel() {
-  productForm.name        = ''
-  productForm.category    = ''
-  productForm.price       = ''
-  productForm.sku         = ''
-  productForm.stock       = 0
-  productForm.description = ''
-  photos.value.forEach(p => URL.revokeObjectURL(p.url))
-  photos.value = []
-  characteristics.value = [{ name: '', value: '' }]
+// ─── 6. Скасування ───────────────────────────────────────────────────────────
 
-  // Повідомляємо батьківський компонент про закриття —
-  // CabinetPage поверне isAddingProduct у false.
+function handleCancel() {
+  productForm.name            = ''
+  productForm.categoryId      = ''
+  productForm.price           = ''
+  productForm.stock           = 0
+  productForm.description     = ''
+  productForm.isGroupBuy      = false
+  productForm.groupPrice      = ''
+  productForm.groupTargetSize = 2
+  photos.value.forEach(p => URL.revokeObjectURL(p.url))
+  photos.value          = []
+  characteristics.value = [{ name: '', value: '' }]
   emit('close')
 }
 </script>
@@ -183,7 +258,7 @@ function handleCancel() {
       <path d="M4 2L8 6L4 10" stroke="#6B7280" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
     </svg>
     <div class="inline-flex flex-col justify-start items-start">
-      <div class="justify-center text-orange-400 text-xs font-medium font-['Onest'] leading-4">Новий товар</div>
+      <div class="justify-center text-orange-400 text-xs font-medium font-['Onest'] leading-4">{{ isEditing ? 'Редагування' : 'Новий товар' }}</div>
     </div>
   </div>
 
@@ -193,13 +268,13 @@ function handleCancel() {
     <!-- Шапка з кнопками -->
     <div class="self-stretch px-8 py-6 bg-neutral-900 border-b border-gray-800 inline-flex justify-between items-center">
       <div class="inline-flex flex-col justify-start items-start gap-0.5">
-        <div class="justify-center text-white text-lg font-bold font-['Onest'] leading-7">Створити новий товар</div>
+        <div class="justify-center text-white text-lg font-bold font-['Onest'] leading-7">{{ isEditing ? 'Редагувати товар' : 'Створити новий товар' }}</div>
         <div class="justify-center text-gray-500 text-xs font-normal font-['Onest'] leading-4">Заповніть усі поля та завантажте фотографії</div>
       </div>
       <div class="flex justify-start items-center gap-2.5">
-        <!-- Кнопка Скасувати -->
         <button
-          class="w-32 h-11 flex items-center justify-center gap-2 bg-gray-800 rounded-xl outline outline-1 outline-offset-[-1px] outline-gray-700 transition-all hover:bg-gray-700 active:scale-95"
+          class="w-32 h-11 flex items-center justify-center gap-2 bg-gray-800 rounded-xl outline outline-1 outline-offset-[-1px] outline-gray-700 transition-all hover:bg-gray-700 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+          :disabled="isSaving"
           @click="handleCancel"
         >
           <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
@@ -207,15 +282,21 @@ function handleCancel() {
           </svg>
           <span class="text-gray-400 text-xs font-medium font-['Onest'] leading-5">Скасувати</span>
         </button>
-        <!-- Кнопка Зберегти -->
         <button
-          class="px-6 py-2.5 bg-orange-500 rounded-xl shadow-[0px_4px_14px_0px_rgba(249,115,22,0.30)] flex justify-start items-center gap-2 transition-all hover:bg-orange-400 hover:shadow-[0px_4px_20px_0px_rgba(249,115,22,0.45)] active:scale-95"
+          class="px-6 py-2.5 bg-orange-500 rounded-xl shadow-[0px_4px_14px_0px_rgba(249,115,22,0.30)] flex justify-start items-center gap-2 transition-all hover:bg-orange-400 hover:shadow-[0px_4px_20px_0px_rgba(249,115,22,0.45)] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100"
+          :disabled="isSaving"
           @click="handleSave"
         >
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+          <svg v-if="!isSaving" width="14" height="14" viewBox="0 0 14 14" fill="none">
             <path d="M2 7.5L5.5 11L12 4" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
-          <span class="text-white text-xs font-semibold font-['Onest'] leading-5">Зберегти товар</span>
+          <!-- Спінер під час збереження -->
+          <svg v-else class="animate-spin" width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <circle cx="7" cy="7" r="5.5" stroke="white" stroke-width="1.5" stroke-dasharray="28" stroke-dashoffset="10" stroke-linecap="round"/>
+          </svg>
+          <span class="text-white text-xs font-semibold font-['Onest'] leading-5">
+            {{ isSaving ? 'Збереження...' : 'Зберегти товар' }}
+          </span>
         </button>
       </div>
     </div>
@@ -225,7 +306,6 @@ function handleCancel() {
 
       <!-- ── Секція 1: Основна інформація ─────────────────────────────────── -->
       <div class="self-stretch flex flex-col justify-start items-start gap-5">
-        <!-- Заголовок секції -->
         <div class="self-stretch inline-flex justify-start items-center gap-2.5">
           <div class="w-6 h-6 bg-orange-500/20 rounded-xl flex justify-center items-center">
             <span class="text-orange-500 text-xs font-bold font-['Onest'] leading-4">1</span>
@@ -236,7 +316,6 @@ function handleCancel() {
 
         <div class="self-stretch flex flex-col gap-4">
 
-          <!-- Назва товару -->
           <div class="flex flex-col gap-2">
             <label class="text-gray-500 text-xs font-medium font-['Onest'] uppercase leading-4 tracking-wide">
               Назва товару <span class="text-orange-500">*</span>
@@ -249,27 +328,26 @@ function handleCancel() {
             />
           </div>
 
-          <!-- Категорія -->
           <div class="flex flex-col gap-2">
             <label class="text-gray-500 text-xs font-medium font-['Onest'] uppercase leading-4 tracking-wide">
               Категорія <span class="text-orange-500">*</span>
             </label>
             <div class="self-stretch relative">
               <select
-                v-model="productForm.category"
+                v-model="productForm.categoryId"
                 class="w-full appearance-none pl-4 pr-10 py-3 bg-neutral-900 rounded-xl outline outline-1 outline-offset-[-1px] outline-gray-800 text-gray-200 text-sm font-normal font-['Onest'] leading-5 transition-all focus:outline-orange-500/40 focus:outline-none cursor-pointer"
               >
                 <option value="" disabled>Оберіть категорію…</option>
-                <option v-for="cat in categoryOptions" :key="cat" :value="cat">{{ cat }}</option>
+                <option v-for="cat in categoryStore.flatCategories" :key="cat.id" :value="cat.id">
+                  {{ cat.name }}
+                </option>
               </select>
-              <!-- Стрілка вниз -->
               <svg class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" width="14" height="14" viewBox="0 0 14 14" fill="none">
                 <path d="M3 5L7 9L11 5" stroke="#6B7280" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
               </svg>
             </div>
           </div>
 
-          <!-- Вартість -->
           <div class="flex flex-col gap-2">
             <label class="text-gray-500 text-xs font-medium font-['Onest'] uppercase leading-4 tracking-wide">
               Вартість <span class="text-orange-500">*</span>
@@ -282,27 +360,12 @@ function handleCancel() {
                 placeholder="0.00"
                 class="w-full h-12 pl-14 pr-4 bg-neutral-900 rounded-xl outline outline-1 outline-offset-[-1px] outline-gray-800 text-gray-200 text-sm font-normal font-['Onest'] transition-all focus:outline-orange-500/40 focus:outline-none placeholder-gray-600"
               />
-              <!-- Префікс ₴ -->
               <div class="w-11 h-12 absolute left-0 top-0 bg-gray-800 rounded-tl-xl rounded-bl-xl border-r border-gray-800 flex justify-center items-center pointer-events-none">
                 <span class="text-gray-400 text-sm font-semibold font-['Onest'] leading-5">₴</span>
               </div>
             </div>
           </div>
 
-          <!-- Артикул SKU -->
-          <div class="flex flex-col gap-2">
-            <label class="text-gray-500 text-xs font-medium font-['Onest'] uppercase leading-4 tracking-wide">
-              Артикул (SKU)
-            </label>
-            <input
-              v-model="productForm.sku"
-              type="text"
-              placeholder="Наприклад: APPL-IP15PM-256-NT"
-              class="self-stretch px-4 py-3.5 bg-neutral-900 rounded-xl outline outline-1 outline-offset-[-1px] outline-gray-800 text-gray-200 text-sm font-normal font-['Onest'] placeholder-gray-600 transition-all focus:outline-orange-500/40 focus:ring-1 focus:ring-orange-500/30 focus:outline-none"
-            />
-          </div>
-
-          <!-- Кількість на складі -->
           <div class="flex flex-col gap-2">
             <label class="text-gray-500 text-xs font-medium font-['Onest'] uppercase leading-4 tracking-wide">
               Кількість на складі <span class="text-orange-500">*</span>
@@ -315,12 +378,72 @@ function handleCancel() {
               class="self-stretch h-12 px-4 bg-neutral-900 rounded-xl outline outline-1 outline-offset-[-1px] outline-gray-800 text-gray-200 text-sm font-normal font-['Onest'] transition-all focus:outline-orange-500/40 focus:outline-none"
             />
           </div>
+
+          <!-- ── Групова покупка: Toggle ────────────────────────────────── -->
+          <div class="flex flex-col gap-4 pt-2">
+            <label class="inline-flex items-center gap-3 cursor-pointer select-none group">
+              <button
+                type="button"
+                role="switch"
+                :aria-checked="productForm.isGroupBuy"
+                class="relative w-11 h-6 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-orange-500/30"
+                :class="productForm.isGroupBuy ? 'bg-orange-500' : 'bg-gray-700'"
+                @click="productForm.isGroupBuy = !productForm.isGroupBuy"
+              >
+                <span
+                  class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200"
+                  :class="productForm.isGroupBuy ? 'translate-x-5' : 'translate-x-0'"
+                />
+              </button>
+              <span class="text-gray-300 text-sm font-medium font-['Onest'] leading-5 group-hover:text-gray-100 transition-colors">
+                Дозволити групову покупку
+              </span>
+            </label>
+
+            <!-- ── Групова покупка: Поля ──────────────────────────────── -->
+            <div
+              v-if="productForm.isGroupBuy"
+              class="grid grid-cols-2 gap-4 p-4 bg-orange-500/5 rounded-xl outline outline-1 outline-offset-[-1px] outline-orange-500/20"
+            >
+              <!-- Ціна для групи -->
+              <div class="flex flex-col gap-2">
+                <label class="text-gray-500 text-xs font-medium font-['Onest'] uppercase leading-4 tracking-wide">
+                  Ціна для групи <span class="text-orange-500">*</span>
+                </label>
+                <div class="self-stretch relative">
+                  <input
+                    v-model="productForm.groupPrice"
+                    type="number"
+                    min="0"
+                    placeholder="0.00"
+                    class="w-full h-12 pl-14 pr-4 bg-neutral-900 rounded-xl outline outline-1 outline-offset-[-1px] outline-gray-800 text-gray-200 text-sm font-normal font-['Onest'] transition-all focus:outline-orange-500/40 focus:outline-none placeholder-gray-600"
+                  />
+                  <div class="w-11 h-12 absolute left-0 top-0 bg-gray-800 rounded-tl-xl rounded-bl-xl border-r border-gray-800 flex justify-center items-center pointer-events-none">
+                    <span class="text-gray-400 text-sm font-semibold font-['Onest'] leading-5">₴</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Кількість людей -->
+              <div class="flex flex-col gap-2">
+                <label class="text-gray-500 text-xs font-medium font-['Onest'] uppercase leading-4 tracking-wide">
+                  Кількість людей <span class="text-orange-500">*</span>
+                </label>
+                <input
+                  v-model.number="productForm.groupTargetSize"
+                  type="number"
+                  min="2"
+                  placeholder="2"
+                  class="self-stretch h-12 px-4 bg-neutral-900 rounded-xl outline outline-1 outline-offset-[-1px] outline-gray-800 text-gray-200 text-sm font-normal font-['Onest'] transition-all focus:outline-orange-500/40 focus:outline-none"
+                />
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
       <!-- ── Секція 2: Фотографії товару ──────────────────────────────────── -->
       <div class="self-stretch flex flex-col justify-start items-start gap-3">
-        <!-- Заголовок секції -->
         <div class="self-stretch inline-flex justify-start items-center gap-2.5">
           <div class="w-6 h-6 bg-orange-500/20 rounded-xl flex justify-center items-center">
             <span class="text-orange-500 text-xs font-bold font-['Onest'] leading-4">2</span>
@@ -329,7 +452,6 @@ function handleCancel() {
           <div class="flex-1 h-px bg-gray-800"></div>
         </div>
 
-        <!-- Зона Drag & Drop -->
         <div
           class="self-stretch px-10 pt-12 pb-10 bg-neutral-900 rounded-xl outline outline-2 outline-offset-[-2px] flex flex-col justify-center items-center gap-3 transition-all duration-150 cursor-pointer"
           :class="isDragging ? 'outline-orange-500/60 bg-orange-500/5' : 'outline-gray-700'"
@@ -338,7 +460,6 @@ function handleCancel() {
           @drop.prevent="handleDrop"
           @click="($refs.fileInput as HTMLInputElement).click()"
         >
-          <!-- Прихований input для завантаження файлів -->
           <input
             ref="fileInput"
             type="file"
@@ -348,7 +469,6 @@ function handleCancel() {
             @change="handleFileInput"
           />
 
-          <!-- Іконка завантаження -->
           <div class="w-14 h-14 bg-gray-800 rounded-2xl outline outline-1 outline-offset-[-1px] outline-gray-700 flex justify-center items-center">
             <svg width="26" height="26" viewBox="0 0 26 26" fill="none">
               <path d="M13 16V9M13 9L10 12M13 9L16 12" stroke="#F97316" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
@@ -367,7 +487,6 @@ function handleCancel() {
             </div>
           </div>
 
-          <!-- Роздільник "або" -->
           <div class="pt-1 flex items-center gap-2">
             <div class="w-12 h-px bg-[#2D3748]"></div>
             <span class="text-gray-600 text-xs font-normal font-['Onest'] leading-4">або</span>
@@ -385,7 +504,6 @@ function handleCancel() {
           </button>
         </div>
 
-        <!-- Сітка попереднього перегляду завантажених фото -->
         <div v-if="photos.length > 0" class="self-stretch pt-2 grid grid-cols-4 gap-2">
           <div
             v-for="(photo, index) in photos"
@@ -395,17 +513,8 @@ function handleCancel() {
               ? 'outline outline-2 outline-offset-[-2px] outline-orange-500/60'
               : 'outline outline-1 outline-offset-[-1px] outline-gray-800'"
           >
-            <!-- Прев'ю зображення -->
-            <img
-              :src="photo.url"
-              :alt="`Фото ${index + 1}`"
-              class="w-full h-full object-cover"
-            />
-
-            <!-- Оверлей при наведенні — кнопка видалення -->
-            <div
-              class="absolute inset-0 bg-black/50 opacity-0 group-hover/photo:opacity-100 transition-opacity duration-150 flex justify-center items-center"
-            >
+            <img :src="photo.url" :alt="`Фото ${index + 1}`" class="w-full h-full object-cover" />
+            <div class="absolute inset-0 bg-black/50 opacity-0 group-hover/photo:opacity-100 transition-opacity duration-150 flex justify-center items-center">
               <button
                 class="w-7 h-7 bg-red-500 rounded-full shadow-lg flex justify-center items-center hover:bg-red-400 active:scale-90 transition-all"
                 @click.stop="removePhoto(index)"
@@ -415,18 +524,12 @@ function handleCancel() {
                 </svg>
               </button>
             </div>
-
-            <!-- Бейдж обкладинки (тільки для першого фото) -->
-            <div
-              v-if="photo.isCover"
-              class="absolute bottom-0 left-0 right-0 pt-2.5 pb-1.5 bg-orange-500/90 flex justify-center"
-            >
+            <div v-if="photo.isCover" class="absolute bottom-0 left-0 right-0 pt-2.5 pb-1.5 bg-orange-500/90 flex justify-center">
               <span class="text-white text-[10px] font-semibold font-['Onest'] leading-4 tracking-tight">Обкладинка</span>
             </div>
           </div>
         </div>
 
-        <!-- Підказка під сіткою фото -->
         <div class="self-stretch">
           <span class="text-gray-600 text-xs font-normal font-['Onest'] leading-4">
             Перша фотографія — обкладинка товару. Перетягніть, щоб змінити порядок.
@@ -436,7 +539,6 @@ function handleCancel() {
 
       <!-- ── Секція 3: Опис товару ─────────────────────────────────────────── -->
       <div class="self-stretch flex flex-col justify-start items-start gap-5">
-        <!-- Заголовок секції -->
         <div class="self-stretch inline-flex justify-start items-center gap-2.5">
           <div class="w-6 h-6 bg-orange-500/20 rounded-xl flex justify-center items-center">
             <span class="text-orange-500 text-xs font-bold font-['Onest'] leading-4">3</span>
@@ -456,7 +558,6 @@ function handleCancel() {
             placeholder="Детально опишіть товар: матеріал, розміри, особливості використання, комплектацію тощо. Хороший опис підвищує конверсію."
             class="self-stretch px-4 pt-3 pb-6 bg-neutral-900 rounded-xl outline outline-1 outline-offset-[-1px] outline-gray-800 text-gray-200 text-sm font-normal font-['Onest'] leading-6 placeholder-gray-600 resize-none transition-all focus:outline-orange-500/40 focus:outline-none"
           />
-          <!-- Лічильник символів + підказка -->
           <div class="self-stretch pt-1 inline-flex justify-between items-center">
             <span class="text-gray-600 text-xs font-normal font-['Onest'] leading-4">
               Мінімум 50 символів. Рекомендовано 150–500.
@@ -473,7 +574,6 @@ function handleCancel() {
 
       <!-- ── Секція 4: Характеристики ─────────────────────────────────────── -->
       <div class="self-stretch flex flex-col justify-start items-start gap-4">
-        <!-- Заголовок секції -->
         <div class="self-stretch inline-flex justify-start items-center gap-2.5">
           <div class="w-6 h-6 bg-orange-500/20 rounded-xl flex justify-center items-center">
             <span class="text-orange-500 text-xs font-bold font-['Onest'] leading-4">4</span>
@@ -483,34 +583,29 @@ function handleCancel() {
         </div>
 
         <div class="self-stretch pt-1 flex flex-col gap-3">
-          <!-- Заголовки колонок -->
           <div class="self-stretch grid grid-cols-[1fr_1fr_36px] gap-2 px-1">
             <span class="text-gray-500 text-xs font-medium font-['Onest'] uppercase leading-4 tracking-wide">Назва характеристики</span>
             <span class="text-gray-500 text-xs font-medium font-['Onest'] uppercase leading-4 tracking-wide">Значення</span>
             <span></span>
           </div>
 
-          <!-- Рядки характеристик — виводяться через v-for -->
           <div
             v-for="(char, index) in characteristics"
             :key="index"
             class="self-stretch grid grid-cols-[1fr_1fr_36px] gap-2 items-center"
           >
-            <!-- Поле "Назва" -->
             <input
               v-model="char.name"
               type="text"
               placeholder="Наприклад: Бренд"
               class="px-4 py-3 bg-neutral-900 rounded-xl outline outline-1 outline-offset-[-1px] outline-gray-800 text-gray-200 text-sm font-normal font-['Onest'] leading-5 placeholder-gray-600 transition-all focus:outline-orange-500/40 focus:outline-none"
             />
-            <!-- Поле "Значення" -->
             <input
               v-model="char.value"
               type="text"
               placeholder="Наприклад: Apple"
               class="px-4 py-3 bg-neutral-900 rounded-xl outline outline-1 outline-offset-[-1px] outline-gray-800 text-gray-200 text-sm font-normal font-['Onest'] leading-5 placeholder-gray-600 transition-all focus:outline-orange-500/40 focus:outline-none"
             />
-            <!-- Кнопка видалення рядка -->
             <button
               class="w-9 h-9 bg-neutral-900 rounded-[10px] outline outline-1 outline-offset-[-1px] outline-gray-800 flex justify-center items-center transition-all hover:bg-red-500/10 hover:outline-red-500/30 active:scale-95 group/del"
               @click="removeCharacteristic(index)"
@@ -522,7 +617,6 @@ function handleCancel() {
           </div>
         </div>
 
-        <!-- Кнопка "+ Додати характеристику" -->
         <div class="self-stretch">
           <button
             class="px-4 py-2.5 rounded-xl outline outline-1 outline-offset-[-1px] outline-gray-700 flex items-center gap-1.5 transition-all hover:bg-white/5 hover:outline-gray-500 active:scale-95"
@@ -540,7 +634,6 @@ function handleCancel() {
 
     <!-- ── Нижня панель з кнопками ────────────────────────────────────────── -->
     <div class="self-stretch px-8 py-5 bg-neutral-900 border-t border-gray-800 inline-flex justify-between items-center">
-      <!-- Підказка про обов'язкові поля -->
       <div class="flex justify-start items-center gap-1.5">
         <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
           <circle cx="7" cy="7" r="5.5" stroke="#4B5563" stroke-width="1.2"/>
@@ -551,10 +644,10 @@ function handleCancel() {
           Усі поля, позначені зірочкою *, є обов'язковими
         </span>
       </div>
-      <!-- Дублікат кнопок -->
       <div class="flex items-center gap-2.5">
         <button
-          class="w-32 h-11 flex items-center justify-center gap-2 bg-gray-800 rounded-xl outline outline-1 outline-offset-[-1px] outline-gray-700 transition-all hover:bg-gray-700 active:scale-95"
+          class="w-32 h-11 flex items-center justify-center gap-2 bg-gray-800 rounded-xl outline outline-1 outline-offset-[-1px] outline-gray-700 transition-all hover:bg-gray-700 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+          :disabled="isSaving"
           @click="handleCancel"
         >
           <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
@@ -563,13 +656,19 @@ function handleCancel() {
           <span class="text-gray-400 text-xs font-medium font-['Onest'] leading-5">Скасувати</span>
         </button>
         <button
-          class="px-6 py-2.5 bg-orange-500 rounded-xl shadow-[0px_4px_14px_0px_rgba(249,115,22,0.30)] flex items-center gap-2 transition-all hover:bg-orange-400 hover:shadow-[0px_4px_20px_0px_rgba(249,115,22,0.45)] active:scale-95"
+          class="px-6 py-2.5 bg-orange-500 rounded-xl shadow-[0px_4px_14px_0px_rgba(249,115,22,0.30)] flex items-center gap-2 transition-all hover:bg-orange-400 hover:shadow-[0px_4px_20px_0px_rgba(249,115,22,0.45)] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100"
+          :disabled="isSaving"
           @click="handleSave"
         >
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+          <svg v-if="!isSaving" width="14" height="14" viewBox="0 0 14 14" fill="none">
             <path d="M2 7.5L5.5 11L12 4" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
-          <span class="text-white text-xs font-semibold font-['Onest'] leading-5">Зберегти товар</span>
+          <svg v-else class="animate-spin" width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <circle cx="7" cy="7" r="5.5" stroke="white" stroke-width="1.5" stroke-dasharray="28" stroke-dashoffset="10" stroke-linecap="round"/>
+          </svg>
+          <span class="text-white text-xs font-semibold font-['Onest'] leading-5">
+            {{ isSaving ? 'Збереження...' : 'Зберегти товар' }}
+          </span>
         </button>
       </div>
     </div>
@@ -585,14 +684,11 @@ function handleCancel() {
 </template>
 
 <style scoped>
-/* Прибираємо стрілки у числових інпутів */
 input[type='number']::-webkit-inner-spin-button,
 input[type='number']::-webkit-outer-spin-button {
   -webkit-appearance: none;
   margin: 0;
 }
 input[type='number'] { -moz-appearance: textfield; }
-
-/* Прибираємо дефолтний вигляд select на webkit */
 select { -webkit-appearance: none; }
 </style>
