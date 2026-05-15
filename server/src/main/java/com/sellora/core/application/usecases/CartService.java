@@ -7,6 +7,7 @@ import com.sellora.core.infrastructure.persistence.CartItemRepository;
 import com.sellora.core.infrastructure.persistence.CartRepository;
 import com.sellora.core.infrastructure.persistence.ProductRepository;
 import com.sellora.core.presentation.dtos.AddToCartDto;
+import com.sellora.core.presentation.exceptions.ResourceNotFoundException; // <-- ДОДАНО ІМПОРТ
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,9 +29,9 @@ public class CartService {
         return cartRepository.save(newCart);
       });
 
-    // 2. Отримуємо товар з бази (Happy Path: припускаємо, що він точно існує)
+    // 2. Отримуємо товар з бази
     Product product = productRepository.findById(dto.productId())
-      .orElseThrow(() -> new RuntimeException("Product not found with id: " + dto.productId()));
+      .orElseThrow(() -> new ResourceNotFoundException("Product not found with id: " + dto.productId()));
 
     // 3. Перевіряємо, чи є вже цей товар у кошику
     return cartItemRepository.findByCartIdAndProductId(cart.getId(), product.getId())
