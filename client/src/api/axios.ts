@@ -28,18 +28,22 @@ apiClient.interceptors.response.use(
       const { useUserStore } = await import('../state/userStore');
       const userStore = useUserStore();
 
-      // Скидаємо стан авторизації
+      // Скидаємо стан авторизації та відкриваємо модалку
       userStore.$patch({
         user: null,
         isAuthenticated: false,
         sellerStore: null,
+        isAuthModalOpen: true,
       });
 
-      // Редірект з захищених сторінок на головну
+      // Редірект з захищених сторінок на головну, інакше залишаємось і показуємо модалку
       const protectedPaths = ['/cabinet'];
       if (protectedPaths.some((p) => window.location.pathname.startsWith(p))) {
         window.location.href = '/';
       }
+
+      // Повертаємо оброблений об'єкт помилки, щоб уникнути спаму "Request failed with status code 401" на UI
+      return Promise.reject({ ...error, isHandled: true });
     }
 
     return Promise.reject(error);

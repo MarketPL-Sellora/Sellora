@@ -64,7 +64,10 @@ const menuItems = computed<MenuItem[]>(() => {
   const isAdmin = userStore.user?.role === 'ADMIN'
   if (isAdmin) {
     const settingsIndex = items.findIndex(i => i.id === 'settings')
-    items.splice(settingsIndex, 0, { id: 'categories', label: 'Категорії', icon: 'settings' })
+    items.splice(settingsIndex, 0, 
+      { id: 'stores', label: 'Магазини', icon: 'groups' },
+      { id: 'categories', label: 'Категорії', icon: 'settings' }
+    )
   }
 
   return items

@@ -1,9 +1,13 @@
 <script setup lang="ts">
 import { onMounted, computed } from 'vue'
+import { useRoute } from 'vue-router'
 import { useProductStore } from '../state/productStore'
+import { useCategoryStore } from '../state/categoryStore'
 import ProductCard from './ProductCard.vue'
 
+const route = useRoute()
 const productStore = useProductStore()
+const categoryStore = useCategoryStore()
 
 onMounted(() => {
   productStore.fetchProducts()
@@ -24,6 +28,37 @@ const mappedProducts = computed(() =>
     groupLabel:   'Учасників',
   }))
 )
+
+const gridTitle = computed(() => {
+  // 1. Якщо ми дивимось товари конкретного магазину
+  if (route.query.storeId) {
+    return 'Товари продавця'
+  }
+
+  // 2. Якщо ми фільтруємо за категорією, спробуємо знайти її назву
+  if (route.query.categoryId) {
+    const catId = Number(route.query.categoryId)
+    let catName = 'Товари категорії'
+
+    for (const rootCat of categoryStore.categories) {
+      if (rootCat.id === catId) {
+        catName = rootCat.name
+        break
+      }
+      if (rootCat.children && rootCat.children.length > 0) {
+        const subCat = rootCat.children.find(c => c.id === catId)
+        if (subCat) {
+          catName = subCat.name
+          break
+        }
+      }
+    }
+    return catName
+  }
+
+  // 3. Стандартний заголовок
+  return 'Популярні товари'
+})
 </script>
 
 <template>
@@ -31,7 +66,7 @@ const mappedProducts = computed(() =>
 
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 border-b border-white/10 pb-4">
       <div class="flex items-baseline gap-3">
-        <h2 class="text-white text-2xl font-bold font-['Unbounded']">Популярні товари</h2>
+        <h2 class="text-white text-2xl font-bold font-['Unbounded']">{{ gridTitle }}</h2>
         <span class="text-gray-500 text-sm font-['Onest']">
           {{ productStore.totalElements }} позицій
         </span>

@@ -28,6 +28,7 @@ export interface ProductFilters {
   maxPrice?: number
   status?: string
   groupMode?: string
+  storeId?: number
   page: number
   size: number
 }
@@ -69,6 +70,7 @@ export const useProductStore = defineStore('products', () => {
       if (filters.maxPrice !== undefined) query.maxPrice = filters.maxPrice
       if (filters.status) query.status = filters.status
       if (filters.groupMode) query.groupMode = filters.groupMode
+      if (filters.storeId !== undefined) query.storeId = filters.storeId
 
       const response = await apiClient.get('/products', { params: query })
 
@@ -189,6 +191,7 @@ export const useProductStore = defineStore('products', () => {
     filters.minPrice = undefined
     filters.maxPrice = undefined
     filters.groupMode = undefined
+    filters.storeId = undefined
     filters.page = 0
     fetchProducts()
   }

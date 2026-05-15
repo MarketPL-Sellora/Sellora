@@ -183,8 +183,16 @@ const emit = defineEmits<{
 <template>
   <div class="w-full inline-flex flex-col justify-start items-start gap-1">
 
-    <div class="self-stretch pt-[5px] pb-[3px]">
-      <span class="text-orange-400 text-xs font-normal font-['Onest'] uppercase leading-4 tracking-wider">
+    <div class="self-stretch pt-[5px] pb-[3px] flex items-center gap-3">
+      <router-link
+        v-if="apiProduct?.merchantId"
+        :to="{ path: '/', query: { storeId: apiProduct.merchantId } }"
+        class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-orange-500/10 hover:bg-orange-500/20 text-orange-400 text-xs font-semibold font-['Onest'] uppercase leading-4 tracking-wider rounded-lg transition-colors duration-150"
+      >
+        <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
+        Товари продавця
+      </router-link>
+      <span v-else class="text-orange-400 text-xs font-normal font-['Onest'] uppercase leading-4 tracking-wider">
         {{ product.brand }}
       </span>
     </div>
