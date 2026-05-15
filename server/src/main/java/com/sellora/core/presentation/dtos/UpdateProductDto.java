@@ -1,5 +1,6 @@
 package com.sellora.core.presentation.dtos;
 
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -8,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 
 public record UpdateProductDto(
+
   @NotBlank(message = "Назва не може бути порожньою")
   String title,
 
@@ -22,6 +24,9 @@ public record UpdateProductDto(
 
   BigDecimal groupPrice,
 
+  @NotNull(message = "Розмір групи є обов'язковим")
+  @Min(value = 2, message = "Для групової покупки потрібно мінімум 2 людини")
+  @Max(value = 5, message = "Максимальна кількість учасників групової покупки не може перевищувати 5")
   Integer groupTargetSize,
 
   @NotNull(message = "Кількість на складі обов'язкова")
