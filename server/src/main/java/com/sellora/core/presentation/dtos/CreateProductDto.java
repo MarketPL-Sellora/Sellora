@@ -27,6 +27,7 @@ public record CreateProductDto(
   @Min(value = 0, message = "Стандартна ціна не може бути від'ємною")
   BigDecimal standardPrice,
 
+  @NotNull(message = "Групова ціна є обов'язковою")
   @Min(value = 0, message = "Групова ціна не може бути від'ємною")
   BigDecimal groupPrice,
 
