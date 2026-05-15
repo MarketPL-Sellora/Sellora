@@ -1,9 +1,9 @@
 <script setup lang="ts">
 
 import { ref, reactive } from 'vue'
-import { apiClient } from '../api/axios'
+import { apiClient } from '../../api/axios'
 // ─── Імпорт сховища користувача ───────────────────────────────────────────────
-import { useUserStore } from '../state/userStore'
+import { useUserStore } from '../../state/userStore'
 
 // ─── Tabs ─────────────────────────────────────────────────────────────────────
 
@@ -56,8 +56,6 @@ async function handleAuth() {
         email: loginForm.email,
         password: loginForm.password,
       })
-      // Зберігаємо email у сховищі та встановлюємо isAuthenticated = true
-      userStore.login({ email: loginForm.email })
       emit('login', { ...loginForm })
     } else {
       // ─── Реєстрація: відправляємо email + password на бекенд ──────────────
@@ -65,9 +63,10 @@ async function handleAuth() {
         email: registerForm.email,
         password: registerForm.password,
       })
-      // Зберігаємо email у сховищі та встановлюємо isAuthenticated = true
-      userStore.login({ email: registerForm.email })
     }
+
+    // Завантажуємо реальні дані юзера з бекенду (cookie вже встановлена)
+    await userStore.fetchMe()
 
     emit('login-success')
     emit('close')
