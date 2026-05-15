@@ -1,5 +1,9 @@
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref, reactive, computed } from 'vue'
+
+const props = defineProps<{
+  description?: string
+}>()
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -36,11 +40,11 @@ const activeTab = ref('desc')
 
 // ─── Description paragraphs ───────────────────────────────────────────────────
 
-const descriptionParagraphs: string[] = [
-  'Samsung Galaxy S24 Ultra — це флагман нового покоління, що встановлює нові стандарти в мобільній фотографії та штучному інтелекті. Оснащений процесором Snapdragon 8 Gen 3, він забезпечує блискавичну продуктивність у будь-яких умовах.',
-  'Революційна камерна система з 200 Мп основним сенсором та підтримкою 100-кратного оптичного зуму відкриває безмежні творчі можливості. Вбудований S Pen з нульовою затримкою дозволяє легко занотовувати ідеї та малювати прямо на екрані.',
-  'Galaxy AI — набір інтелектуальних функцій на основі штучного інтелекту, що перетворює спілкування, творчість та продуктивність. Від Circle to Search до Live Translate — телефон розуміє вас краще, ніж будь-коли.',
-]
+const descriptionParagraphs = computed(() => {
+  const desc = props.description?.trim()
+  if (!desc) return ['Опис відсутній']
+  return desc.split(/\n\s*\n/).filter(p => p.trim().length > 0)
+})
 
 // ─── Features ────────────────────────────────────────────────────────────────
 
@@ -156,7 +160,7 @@ function setTab(id: string) {
   <div class="w-full inline-flex flex-col justify-start items-start gap-8">
 
     <!-- ── Tab bar ────────────────────────────────────────────────────────── -->
-    <div class="self-stretch border-b border-[#1c1f2a] inline-flex justify-start items-start">
+    <div class="self-stretch border-b border-[#1c1f2a] flex overflow-x-auto scrollbar-none whitespace-nowrap">
       <button
         v-for="tab in tabs"
         :key="tab.id"
@@ -196,7 +200,7 @@ function setTab(id: string) {
         <!-- Description -->
         <div class="self-stretch flex flex-col gap-3">
           <h2 class="text-white text-xl font-normal font-['Unbounded'] leading-7">
-            Про Samsung Galaxy S24 Ultra
+            Опис товару
           </h2>
           <p
             v-for="(para, i) in descriptionParagraphs"
@@ -209,9 +213,9 @@ function setTab(id: string) {
         </div>
 
         <!-- Banner 1 — Camera -->
-        <div class="self-stretch py-44 relative bg-[#1c1f2a] rounded-xl outline outline-1 outline-offset-[-1px] outline-[#2a2d3e] flex justify-center items-center overflow-hidden">
+        <div class="self-stretch py-20 md:py-44 relative bg-[#1c1f2a] rounded-xl outline outline-1 outline-offset-[-1px] outline-[#2a2d3e] flex justify-center items-center overflow-hidden">
           <div class="absolute inset-0 bg-gradient-to-br from-[#1a1040] to-[#0d1022]" />
-          <!-- Replace with: <img src="../assets/banner-camera.jpg" alt="Камерна система 200 Мп" class="absolute inset-0 w-full h-full object-cover" /> -->
+          <!-- Replace with: <img src="../../assets/banner-camera.jpg" alt="Камерна система 200 Мп" class="absolute inset-0 w-full h-full object-cover" /> -->
           <div class="relative z-10 flex flex-col items-center gap-2">
             <svg class="w-10 h-10 text-[#c8ccdf]" viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.5" xmlns="http://www.w3.org/2000/svg">
               <rect x="5" y="11" width="30" height="22" rx="3"/>
@@ -227,9 +231,9 @@ function setTab(id: string) {
         </div>
 
         <!-- Banner 2 — AI -->
-        <div class="self-stretch py-44 relative bg-[#1c1f2a] rounded-xl outline outline-1 outline-offset-[-1px] outline-[#2a2d3e] flex justify-center items-center overflow-hidden">
+        <div class="self-stretch py-20 md:py-44 relative bg-[#1c1f2a] rounded-xl outline outline-1 outline-offset-[-1px] outline-[#2a2d3e] flex justify-center items-center overflow-hidden">
           <div class="absolute inset-0 bg-gradient-to-br from-[#0f2027] to-[#203a43]" />
-          <!-- Replace with: <img src="../assets/banner-ai.jpg" alt="Galaxy AI функції" class="absolute inset-0 w-full h-full object-cover" /> -->
+          <!-- Replace with: <img src="../../assets/banner-ai.jpg" alt="Galaxy AI функції" class="absolute inset-0 w-full h-full object-cover" /> -->
           <div class="relative z-10 flex flex-col items-center gap-2">
             <svg class="w-10 h-10 text-[#c8ccdf]" viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.5" xmlns="http://www.w3.org/2000/svg">
               <circle cx="20" cy="20" r="14"/>
@@ -245,7 +249,7 @@ function setTab(id: string) {
       </div>
 
       <!-- Right: key features -->
-      <div class="w-80 shrink-0 self-stretch">
+      <div class="w-full lg:w-80 shrink-0">
         <div class="self-stretch p-5 bg-[#161820] rounded-2xl outline outline-1 outline-offset-[-1px] outline-[#1c1f2a] flex flex-col gap-4">
           <h3 class="text-white text-base font-normal font-['Onest'] leading-6">
             Ключові особливості

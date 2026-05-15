@@ -1,40 +1,72 @@
 <script setup lang="ts">
 import { onMounted, computed } from 'vue'
-import { useProductStore } from '../state/productStore'
+import { useRoute } from 'vue-router'
+import { useProductStore } from '../../state/productStore'
+import { useCategoryStore } from '../../state/categoryStore'
 import ProductCard from './ProductCard.vue'
 
+const route = useRoute()
 const productStore = useProductStore()
+const categoryStore = useCategoryStore()
 
 onMounted(() => {
   productStore.fetchProducts()
 })
 
+// Ми більше не перейменовуємо price на groupPrice!
+// Ми просто передаємо об'єкт з бекенду як є, додаючи лише декілька заглушок для бренду та рейтингу.
 const mappedProducts = computed(() =>
   productStore.products.map((item) => ({
-    id:           item.id,
-    name:         item.title,
-    price:        item.groupPrice,
-    oldPrice:     item.standardPrice,
-    groupTotal:   item.groupTargetSize,
-    groupCurrent: item.groupCurrentSize ?? 1,
+    ...item, // Передаємо всі поля бекенду без змін (standardPrice, groupPrice, groupTargetSize тощо)
+    name:         item.title, // Залишаємо name для сумісності
     image:        item.images && item.images.length > 0
       ? item.images[0]
       : '/src/assets/product-placeholder.png',
     imageAlt:     item.title,
-    brand:        'Brand',
     rating:       5,
     reviewCount:  12,
     groupLabel:   'Учасників',
   }))
 )
+
+const gridTitle = computed(() => {
+  // 1. Якщо ми дивимось товари конкретного магазину
+  if (route.query.storeId) {
+    return 'Товари продавця'
+  }
+
+  // 2. Якщо ми фільтруємо за категорією, спробуємо знайти її назву
+  if (route.query.categoryId) {
+    const catId = Number(route.query.categoryId)
+    let catName = 'Товари категорії'
+
+    for (const rootCat of categoryStore.categories) {
+      if (rootCat.id === catId) {
+        catName = rootCat.name
+        break
+      }
+      if (rootCat.children && rootCat.children.length > 0) {
+        const subCat = rootCat.children.find(c => c.id === catId)
+        if (subCat) {
+          catName = subCat.name
+          break
+        }
+      }
+    }
+    return catName
+  }
+
+  // 3. Стандартний заголовок
+  return 'Популярні товари'
+})
 </script>
 
 <template>
   <div class="flex flex-col gap-6 py-8 min-h-[800px]">
 
-    <div class="flex justify-between items-end border-b border-white/10 pb-4">
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 border-b border-white/10 pb-4">
       <div class="flex items-baseline gap-3">
-        <h2 class="text-white text-2xl font-bold font-['Unbounded']">Популярні товари</h2>
+        <h2 class="text-white text-2xl font-bold font-['Unbounded']">{{ gridTitle }}</h2>
         <span class="text-gray-500 text-sm font-['Onest']">
           {{ productStore.totalElements }} позицій
         </span>
@@ -50,11 +82,11 @@ const mappedProducts = computed(() =>
 
     <Transition name="fade" mode="out-in">
 
-      <div v-if="productStore.isLoading" key="loading" class="grid grid-cols-4 gap-4">
+      <div v-if="productStore.isLoading" key="loading" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
         <div
           v-for="n in 8"
           :key="n"
-          class="w-72 h-96 bg-[#1c1f2a] rounded-2xl outline outline-1 outline-white/5 animate-pulse"
+          class="w-full h-96 bg-[#1c1f2a] rounded-2xl outline outline-1 outline-white/5 animate-pulse"
         />
       </div>
 
@@ -78,7 +110,7 @@ const mappedProducts = computed(() =>
         </p>
       </div>
 
-      <div v-else key="content" class="grid grid-cols-4 gap-4">
+      <div v-else key="content" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
         <ProductCard
           v-for="item in mappedProducts"
           :key="item.id"

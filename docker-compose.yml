@@ -73,11 +73,11 @@ services:
   #     image: liquibase/liquibase:4.29.1
   #     container_name: sellora-liquibase
   #     volumes:
-  #       - ./server/src/main/resources/db/changelog:/liquibase/changelog
+  #       - ./server/src/main/resources:/liquibase/resources
   #     command:
   #       - --url=jdbc:postgresql://db:5432/${DB_NAME:-sellora_db}
-  #       - --searchPath=/liquibase/changelog
-  #       - --changeLogFile=db.changelog-master.yaml
+  #       - --searchPath=/liquibase/resources
+  #       - --changeLogFile=db/changelog/db.changelog-master.yaml
   #       - --username=${DB_USER:-postgres}
   #       - --password=${DB_PASSWORD:-admin}
   #       - --contexts=dev

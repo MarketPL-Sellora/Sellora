@@ -62,7 +62,7 @@ public class SecurityConfig {
     CorsConfiguration configuration = new CorsConfiguration();
     // ДОЗВОЛЯЄМО ВСЕ ДЛЯ ЛОКАЛКИ (щоб пофіксити помилку зі скріншота)
     configuration.setAllowedOriginPatterns(List.of("*"));
-    configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+    configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS","PATCH"));
     configuration.setAllowCredentials(true);
     configuration.setAllowedHeaders(List.of("*"));
 

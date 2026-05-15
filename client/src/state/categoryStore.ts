@@ -11,11 +11,18 @@ export interface Category {
   children: Category[];
 }
 
+export interface FlatCategory {
+  id: number;
+  name: string;
+  parentId: number | null;
+}
+
 // ─── Pinia Store: categoryStore ──────────────────────────────────────────────
 export const useCategoryStore = defineStore('category', () => {
 
   // ─── Стан ──────────────────────────────────────────────────────────────────
   const categories = ref<Category[]>([]);
+  const flatCategories = ref<FlatCategory[]>([]);
   const isLoading = ref<boolean>(false);
   const error = ref<string | null>(null);
 
@@ -36,5 +43,51 @@ export const useCategoryStore = defineStore('category', () => {
     }
   }
 
-  return { categories, isLoading, error, fetchCategories };
+  async function fetchFlatCategories() {
+    isLoading.value = true;
+    error.value = null;
+    try {
+      // Використовуємо size=1000, щоб отримати всі категорії для селекта без складної пагінації на фронті
+      const response = await apiClient.get('/categories?page=0&size=1000');
+      // Згідно зі Swagger, масив даних лежить у полі content
+      flatCategories.value = response.data.content || [];
+    } catch (err: any) {
+      error.value = err?.message || 'Помилка при завантаженні категорій';
+      console.error('fetchFlatCategories error:', err);
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  // ─── Дія: створити нову категорію ─────────────────────────────────────────
+  async function createCategory(payload: { name: string; parentId: number | null }) {
+    isLoading.value = true;
+    error.value = null;
+    try {
+      await apiClient.post('/categories', payload);
+    } catch (err: any) {
+      error.value = err?.message || 'Помилка при створенні категорії';
+      console.error('createCategory error:', err);
+      throw err;
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  // ─── Дія: видалити категорію за ID ──────────────────────────────────────────
+  async function deleteCategory(id: number) {
+    isLoading.value = true;
+    error.value = null;
+    try {
+      await apiClient.delete('/categories/' + id);
+    } catch (err: any) {
+      error.value = err?.message || 'Помилка при видаленні категорії';
+      console.error('deleteCategory error:', err);
+      throw err;
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  return { categories, flatCategories, isLoading, error, fetchCategories, fetchFlatCategories, createCategory, deleteCategory };
 });
