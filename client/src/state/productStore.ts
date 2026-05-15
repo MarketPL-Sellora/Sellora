@@ -91,7 +91,7 @@ export const useProductStore = defineStore('products', () => {
     formData.append('file', file)
 
     const response = await apiClient.post(
-      '/upload/image',
+      '/uploads/image',
       formData,
       { headers: { 'Content-Type': 'multipart/form-data' } },
     )
