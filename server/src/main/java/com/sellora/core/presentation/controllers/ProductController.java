@@ -46,9 +46,9 @@ public class ProductController {
     @RequestParam(required = false) BigDecimal minPrice,
     @RequestParam(required = false) BigDecimal maxPrice,
     @RequestParam(required = false) Long categoryId,
-    @RequestParam(required = false) String status,           // Нове: статус
-    @RequestParam(required = false) Long storeId,            // Нове: store_id
-    @RequestParam(required = false, defaultValue = "ALL") String groupMode, // ALL, ONLY_GROUP, WITHOUT_GROUP
+    @RequestParam(required = false) String status,
+    @RequestParam(required = false) Long storeId,
+    @RequestParam(required = false, defaultValue = "ALL") String groupMode,
     @RequestParam(defaultValue = "0") int page,
     @RequestParam(defaultValue = "10") int size,
     @RequestParam(defaultValue = "id") String sortBy,
@@ -63,7 +63,6 @@ public class ProductController {
     return ResponseEntity.ok(products);
   }
 
-  // --- НОВИЙ ЕНДПОІНТ 1 ---
   @Operation(summary = "Отримання списку товарів конкретного продавця (магазину)")
   @GetMapping("/merchant/{merchantId}")
   public ResponseEntity<Page<Product>> getProductsByMerchant(
@@ -77,7 +76,6 @@ public class ProductController {
     return ResponseEntity.ok(products);
   }
 
-  // --- НОВИЙ ЕНДПОІНТ 2 ---
   @Operation(summary = "Отримання розгорнутої інформації про конкретний товар")
   @GetMapping("/{id}")
   public ResponseEntity<ProductResponseDto> getProductById(
@@ -88,7 +86,6 @@ public class ProductController {
     return ResponseEntity.ok(product);
   }
 
-  // --- НОВИЙ ЕНДПОІНТ: Оновлення товару ---
   @Operation(summary = "Оновлення існуючого товару")
   @ApiResponses(value = {
     @ApiResponse(responseCode = "200", description = "Товар успішно оновлено"),
@@ -116,11 +113,9 @@ public class ProductController {
   @DeleteMapping("/{id}")
   public ResponseEntity<Void> deleteProduct(@PathVariable Long id) {
     productService.deleteProduct(id);
-    return ResponseEntity.noContent().build(); // .noContent() автоматично дає статус 204
+    return ResponseEntity.noContent().build();
   }
 
-
-  // --- НОВИЙ ЕНДПОІНТ: Зміна статусу (PATCH) ---
   @Operation(summary = "Зміна статусу товару (ACTIVE / ARCHIVED)")
   @ApiResponses(value = {
     @ApiResponse(responseCode = "200", description = "Статус успішно змінено"),
