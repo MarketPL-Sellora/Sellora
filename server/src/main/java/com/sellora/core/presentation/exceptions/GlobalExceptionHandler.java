@@ -58,6 +58,17 @@ public class GlobalExceptionHandler {
     return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
   }
 
+  @ExceptionHandler(UnauthorizedException.class)
+  public ResponseEntity<ApiErrorResponse> handleUnauthorizedException(UnauthorizedException ex) {
+    ApiErrorResponse error = new ApiErrorResponse(
+      LocalDateTime.now().toString(),
+      "UNAUTHORIZED",
+      ex.getMessage()
+    );
+    // Повертаємо статус 401 Unauthorized
+    return new ResponseEntity<>(error, HttpStatus.UNAUTHORIZED);
+  }
+
   @ExceptionHandler(BadRequestException.class)
   public ResponseEntity<ApiErrorResponse> handleBadRequestException(BadRequestException ex) {
     ApiErrorResponse error = new ApiErrorResponse(
