@@ -1,9 +1,7 @@
 package com.sellora.core.presentation.dtos;
 
-import jakarta.validation.constraints.Max;
-import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.*;
+
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
@@ -13,6 +11,8 @@ public record UpdateProductDto(
   @NotBlank(message = "Назва не може бути порожньою")
   String title,
 
+  @NotBlank(message = "Опис товару не може бути порожнім")
+  @Size(min = 50, message = "Опис товару має містити щонайменше 50 символів")
   String description,
 
   @NotNull(message = "Категорія обов'язкова")
