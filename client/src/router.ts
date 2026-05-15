@@ -2,10 +2,10 @@ import { createRouter, createWebHistory } from 'vue-router'
 import { useUserStore } from './state/userStore'
 
 // Імпортуємо всі твої ГОЛОВНІ сторінки
-import HomePage     from './components/HomePage.vue'
-import ProductPage  from './components/ProductPage.vue'
-import CheckoutPage from './components/CheckoutPage.vue'
-import CabinetPage  from './components/CabinetPage.vue'
+import HomePage     from './views/HomePage.vue'
+import ProductPage  from './views/ProductPage.vue'
+import CheckoutPage from './views/CheckoutPage.vue'
+import CabinetPage  from './views/CabinetPage.vue'
 
 
 // Налаштовуємо шляхи (посилання)
