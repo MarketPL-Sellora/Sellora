@@ -52,7 +52,12 @@ public class ProductService {
     product.setGroupPrice(dto.groupPrice());
     product.setGroupTargetSize(dto.groupTargetSize());
     product.setStockQuantity(dto.stockQuantity());
-    product.setStatus("ACTIVE");
+    if (dto.stockQuantity() == 0) {
+      product.setStatus("OUT_OF_STOCK");
+    } else {
+      product.setStatus("ACTIVE");
+    }
+
     product.setCategoryId(dto.categoryId());
     product.setMerchantId(currentStore.getId());
 
