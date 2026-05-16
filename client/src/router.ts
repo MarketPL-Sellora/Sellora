@@ -13,7 +13,7 @@ const routes = [
   { path: '/',             component: HomePage     },
   { path: '/product/:id',
     name: 'product',
-    component: ProductPage  },  // :id — динамічний параметр
+    component: ProductPage  },
   { path: '/checkout',     component: CheckoutPage },
   { path: '/cabinet',      component: CabinetPage, meta: { requiresAuth: true } },
 ]
@@ -22,12 +22,10 @@ const routes = [
 export const router = createRouter({
   history: createWebHistory(),
   routes,
-  scrollBehavior(to, from, savedPosition) {
+  scrollBehavior(_to, _from, savedPosition) {
     if (savedPosition) {
-      // Якщо користувач натиснув "Назад" у браузері, повертаємо туди, де він був
       return savedPosition
     } else {
-      // При кожному новому переході (кліку) скролимо на самий верх
       return { top: 0, behavior: 'smooth' }
     }
   },
