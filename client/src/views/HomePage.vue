@@ -20,8 +20,10 @@ watch(
     const keyword    = newQuery.keyword    ? String(newQuery.keyword)    : undefined
     const groupMode  = newQuery.groupMode  ? String(newQuery.groupMode)  : undefined
     const storeId    = newQuery.storeId    ? Number(newQuery.storeId)    : undefined
+    const minPrice   = newQuery.minPrice   ? Number(newQuery.minPrice)   : undefined
+    const maxPrice   = newQuery.maxPrice   ? Number(newQuery.maxPrice)   : undefined
 
-    productStore.fetchProducts({ categoryId, keyword, status: 'ACTIVE', groupMode, storeId, page: 0 })
+    productStore.fetchProducts({ categoryId, keyword, status: 'ACTIVE', groupMode, storeId, minPrice, maxPrice, page: 0 })
   },
   { immediate: true }
 )
@@ -31,28 +33,12 @@ const isMobileMenuOpen = ref(false)
 
 // 2. Функція для фільтрації (ціна)
 // Спрацьовує, коли в Сайдбарі натискають "Застосувати"
-function handleFilter(payload: { priceMin: number; priceMax: number }) {
-  productStore.fetchProducts({
-    minPrice: payload.priceMin,
-    maxPrice: payload.priceMax,
-    status: 'ACTIVE',
-    groupMode: route.query.groupMode ? String(route.query.groupMode) : undefined,
-    storeId: route.query.storeId ? Number(route.query.storeId) : undefined,
-    page: 0 // Скидаємо на першу сторінку
-  })
+function handleFilter() {
   isMobileMenuOpen.value = false // Закриваємо меню після застосування
 }
 
 // 3. Функція для вибору категорії
-function handleCategory(payload: { id: number; name: string }) {
-  productStore.fetchProducts({
-    categoryId: payload.id,
-    keyword: undefined, // Скидаємо попередній пошук по слову, якщо був
-    status: 'ACTIVE',
-    groupMode: route.query.groupMode ? String(route.query.groupMode) : undefined,
-    storeId: route.query.storeId ? Number(route.query.storeId) : undefined,
-    page: 0
-  })
+function handleCategory() {
   isMobileMenuOpen.value = false // Закриваємо меню після вибору
 }
 </script>

@@ -55,6 +55,12 @@ function syncCategoryFromUrl() {
   }
   // ─── Group Buy sync ───────────────────────────────────────────────────────
   isGroupBuyActive.value = route.query.groupMode === 'ONLY_GROUP'
+
+  if (route.query.minPrice) priceMin.value = Number(route.query.minPrice)
+  else priceMin.value = PRICE_ABSOLUTE_MIN
+
+  if (route.query.maxPrice) priceMax.value = Number(route.query.maxPrice)
+  else priceMax.value = PRICE_ABSOLUTE_MAX
 }
 
 onMounted(async () => {
@@ -84,12 +90,14 @@ function selectCategory(cat: Category) {
   } else {
     toggleCategory(cat.id)
   }
+  router.replace({ query: { ...route.query, categoryId: cat.id } })
   emit('category', { id: cat.id, name: cat.name })
 }
 
 function selectSubcategory(sub: Category) {
   activeSubcategory.value = sub.id
   // Не змінюємо activeCategory, щоб підсвічувався батько, але передаємо дані саб-категорії
+  router.replace({ query: { ...route.query, categoryId: sub.id } })
   emit('category', { id: sub.id, name: sub.name })
 }
 
@@ -123,6 +131,13 @@ const sliderFillWidth = computed(() =>
 )
 
 function applyFilter() {
+  router.replace({
+    query: {
+      ...route.query,
+      minPrice: priceMin.value > PRICE_ABSOLUTE_MIN ? priceMin.value : undefined,
+      maxPrice: priceMax.value < PRICE_ABSOLUTE_MAX ? priceMax.value : undefined,
+    }
+  })
   emit('filter', { priceMin: priceMin.value, priceMax: priceMax.value })
 }
 
