@@ -9,8 +9,16 @@ import com.sellora.core.infrastructure.persistence.CartItemRepository;
 import com.sellora.core.infrastructure.persistence.CartRepository;
 import com.sellora.core.infrastructure.persistence.OrderItemRepository;
 import com.sellora.core.infrastructure.persistence.OrderRepository;
+import com.sellora.core.presentation.dtos.OrderDetailsResponseDto;
+import com.sellora.core.presentation.dtos.OrderItemDto;
+import com.sellora.core.presentation.dtos.OrderResponseDto;
+import com.sellora.core.presentation.exceptions.BadRequestException;
 import com.sellora.core.presentation.exceptions.EmptyCartException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,12 +31,12 @@ public class OrderService {
   private final OrderRepository orderRepository;
   private final CartRepository cartRepository;
   private final CartItemRepository cartItemRepository;
-  private final OrderItemRepository orderItemRepository; // ДОДАЛИ НОВИЙ РЕПОЗИТОРІЙ
+  private final OrderItemRepository orderItemRepository;
 
   @Transactional
   public Order checkout(Long userId) {
     Cart cart = cartRepository.findByUserId(userId)
-      .orElseThrow(() -> new RuntimeException("Кошик не знайдено для користувача: " + userId));
+      .orElseThrow(() -> new BadRequestException("Кошик не знайдено для користувача: " + userId));
 
     List<CartItem> items = cartItemRepository.findByCartId(cart.getId());
     if (items.isEmpty()) {
@@ -39,31 +47,26 @@ public class OrderService {
       .map(item -> item.getProduct().getStandardPrice().multiply(BigDecimal.valueOf(item.getQuantity())))
       .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-    // 1. СТВОРЮЄМО ГОЛОВНЕ ЗАМОВЛЕННЯ (Order)
     Order order = new Order();
     order.setUserId(userId);
     order.setFinalPrice(totalAmount);
     order.setPaymentStatus("PENDING");
     order.setShippingStatus("PENDING");
     order.setPurchaseType("REGULAR");
-
-    // Беремо merchantId з першого товару (якщо кошик підтримує товари тільки з одного магазину)
     order.setMerchantId(items.get(0).getProduct().getMerchantId());
 
-    // Зберігаємо в базу, щоб Postgres згенерував ID
     Order savedOrder = orderRepository.save(order);
 
-    // 2. СТВОРЮЄМО ДЕТАЛІ ЗАМОВЛЕННЯ (OrderItems)
     List<OrderItem> orderItems = items.stream().map(cartItem -> {
       Product product = cartItem.getProduct();
 
       OrderItem orderItem = new OrderItem();
-      orderItem.setOrderId(savedOrder.getId()); // Прив'язуємо до головного замовлення!
+      orderItem.setOrderId(savedOrder.getId());
       orderItem.setProductId(product.getId());
       orderItem.setQuantity(cartItem.getQuantity());
-      orderItem.setPriceSnapshot(product.getStandardPrice()); // Зберігаємо ціну на момент покупки
+      orderItem.setPriceSnapshot(product.getStandardPrice());
       orderItem.setTitleSnapshot(product.getTitle());
-      // Перевіряємо, чи є в товару картинки, і беремо першу для прев'ю в замовленні
+
       String mainImage = (product.getImages() != null && !product.getImages().isEmpty())
         ? product.getImages().get(0)
         : null;
@@ -71,12 +74,76 @@ public class OrderService {
       return orderItem;
     }).toList();
 
-    // Зберігаємо всі товари замовлення в базу одним махом
     orderItemRepository.saveAll(orderItems);
-
-    // 3. Очищаємо кошик
     cartItemRepository.deleteAll(items);
 
     return savedOrder;
+  }
+
+  public Page<OrderResponseDto> getUserOrders(
+    Long userId, String shippingStatus, String paymentStatus,
+    int page, int size, String sortBy, String sortDir) {
+
+    List<String> allowedSortFields = List.of("id", "createdAt", "finalPrice", "paymentStatus", "shippingStatus");
+    if (!allowedSortFields.contains(sortBy)) {
+      throw new BadRequestException("Недопустиме поле для сортування: " + sortBy);
+    }
+
+    Sort sort = sortDir.equalsIgnoreCase(Sort.Direction.ASC.name())
+      ? Sort.by(sortBy).ascending()
+      : Sort.by(sortBy).descending();
+
+    Pageable pageable = PageRequest.of(page, size, sort);
+
+    String cleanShipping = (shippingStatus != null && !shippingStatus.isBlank()) ? shippingStatus.trim() : null;
+    String cleanPayment = (paymentStatus != null && !paymentStatus.isBlank()) ? paymentStatus.trim() : null;
+
+    Page<Order> orders = orderRepository.findUserOrders(userId, cleanShipping, cleanPayment, pageable);
+
+    return orders.map(order -> new OrderResponseDto(
+      order.getId(),
+      order.getPurchaseType(),
+      order.getMerchantId(),
+      order.getFinalPrice(),
+      order.getPaymentStatus(),
+      order.getShippingStatus(),
+      order.getCreatedAt()
+    ));
+  }
+
+  public OrderDetailsResponseDto getOrderById(Long orderId, Long userId) {
+    // 1. Шукаємо замовлення (якщо немає - 404)
+    Order order = orderRepository.findById(orderId)
+      .orElseThrow(() -> new com.sellora.core.presentation.exceptions.ResourceNotFoundException("Замовлення не знайдено"));
+
+    // 2. БЕЗПЕКА: Перевіряємо, чи належить воно тому, хто запитує (якщо чуже - 403)
+    if (!order.getUserId().equals(userId)) {
+      throw new com.sellora.core.presentation.exceptions.ForbiddenException("Ви не маєте доступу до цього замовлення");
+    }
+
+    // 3. Дістаємо товари
+    List<OrderItem> items = orderItemRepository.findByOrderId(orderId);
+
+    // 4. Мапимо товари в DTO
+    List<OrderItemDto> itemDtos = items.stream()
+      .map(item -> new OrderItemDto(
+        item.getProductId(),
+        item.getTitleSnapshot(),
+        item.getImageSnapshot(),
+        item.getQuantity(),
+        item.getPriceSnapshot()
+      )).toList();
+
+    // 5. Збираємо фінальну відповідь
+    return new OrderDetailsResponseDto(
+      order.getId(),
+      order.getPurchaseType(),
+      order.getMerchantId(),
+      order.getFinalPrice(),
+      order.getPaymentStatus(),
+      order.getShippingStatus(),
+      order.getCreatedAt(),
+      itemDtos
+    );
   }
 }
