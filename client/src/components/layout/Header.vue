@@ -2,29 +2,15 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AuthModal from '../modals/AuthModal.vue'
-// ─── Імпорт сховища користувача ───────────────────────────────────────────────
+// ─── Імпортувати сховища ──────────────────────────────────────────────────────
 import { useUserStore } from '../../state/userStore'
+import { useCategoryStore } from '../../state/categoryStore'
 
-interface Category {
-  label: string
-  emoji: string
-}
-
-const categories: Category[] = [
-  { emoji: '📱', label: 'Смартфони' },
-  { emoji: '💻', label: 'Ноутбуки' },
-  { emoji: '👟', label: 'Взуття' },
-  { emoji: '🎮', label: 'Ігри' },
-  { emoji: '🏠', label: 'Дім' },
-  { emoji: '🧴', label: 'Краса' },
-  { emoji: '🔧', label: 'Інструменти' },
-  { emoji: '🚗', label: 'Авто' },
-  { emoji: '📦', label: 'Групові покупки' },
-]
+const categoryStore = useCategoryStore()
+const topCategories = computed(() => categoryStore.categories.slice(0, 12))
 
 const cartCount      = ref(3)
 const searchQuery    = ref('')
-const activeCategory = ref<string | null>(null)
 
 // ─── Роутер і поточний маршрут ────────────────────────────────────────────────
 const route  = useRoute()
@@ -43,8 +29,24 @@ const showCabinetBtn = computed(
   () => userStore.isAuthenticated && route.path !== '/cabinet',
 )
 
-function setActive(label: string) {
-  activeCategory.value = activeCategory.value === label ? null : label
+function goToCategory(categoryId?: number, groupMode?: string) {
+  const query = { ...route.query }
+
+  if (categoryId) {
+    query.categoryId = String(categoryId)
+    delete query.groupMode // Скидаємо групові покупки
+  } else {
+    delete query.categoryId
+  }
+
+  if (groupMode) {
+    query.groupMode = groupMode
+    delete query.categoryId // Скидаємо категорію
+  } else {
+    delete query.groupMode
+  }
+
+  router.push({ path: '/', query })
 }
 
 // ─── Глобальний пошук ─────────────────────────────────────────────────────────
@@ -60,6 +62,9 @@ function handleSearch() {
 // Синхронізація інпута пошуку з URL при завантаженні та змінах
 onMounted(() => {
   searchQuery.value = (route.query.keyword as string) || ''
+  if (categoryStore.categories.length === 0) {
+    categoryStore.fetchCategories()
+  }
 })
 
 watch(
@@ -220,8 +225,9 @@ defineExpose({
       <div class="w-full max-w-[1536px] mx-auto px-6 py-2 flex items-center gap-2 overflow-x-auto scrollbar-none">
 
         <button
-          class="px-3 py-1.5 bg-orange-500/20 rounded-lg outline outline-1 outline-orange-500/30 flex items-center gap-1.5 shrink-0 transition-all hover:bg-orange-500/30 active:scale-95"
-          @click="activeCategory = null"
+          class="px-3 py-1.5 rounded-lg flex items-center gap-1.5 shrink-0 transition-all hover:bg-orange-500/30 active:scale-95"
+          :class="!route.query.categoryId && !route.query.groupMode ? 'bg-orange-500/20 outline outline-1 outline-orange-500/30' : ''"
+          @click="goToCategory()"
         >
           <svg class="w-3 h-3 text-orange-500" viewBox="0 0 12 12" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
             <rect x="1.8" y="1.8" width="3.6" height="3.6" rx="0.6" />
@@ -235,17 +241,32 @@ defineExpose({
         <span class="text-white/10 text-base mx-1">|</span>
 
         <button
-          v-for="cat in categories"
-          :key="cat.label"
+          v-for="cat in topCategories"
+          :key="cat.id"
           class="px-3 py-1.5 rounded-lg flex items-center shrink-0 transition-all hover:bg-white/5 active:scale-95"
-          :class="activeCategory === cat.label ? 'bg-white/10' : ''"
-          @click="setActive(cat.label)"
+          :class="Number(route.query.categoryId) === cat.id ? 'bg-white/10' : ''"
+          @click="goToCategory(cat.id)"
         >
           <span
             class="text-xs font-medium font-['Onest'] whitespace-nowrap transition-colors"
-            :class="activeCategory === cat.label ? 'text-white' : 'text-gray-400 hover:text-gray-200'"
+            :class="Number(route.query.categoryId) === cat.id ? 'text-white' : 'text-gray-400 hover:text-gray-200'"
           >
-            {{ cat.emoji }} {{ cat.label }}
+            {{ cat.name }}
+          </span>
+        </button>
+
+        <span class="text-white/10 text-base mx-1">|</span>
+
+        <button
+          class="px-3 py-1.5 rounded-lg flex items-center shrink-0 transition-all hover:bg-white/5 active:scale-95"
+          :class="route.query.groupMode === 'ONLY_GROUP' ? 'bg-orange-500/10' : ''"
+          @click="goToCategory(undefined, 'ONLY_GROUP')"
+        >
+          <span
+            class="text-xs font-medium font-['Onest'] whitespace-nowrap transition-colors"
+            :class="route.query.groupMode === 'ONLY_GROUP' ? 'text-orange-400' : 'text-gray-400 hover:text-gray-200'"
+          >
+            📦 Групові покупки
           </span>
         </button>
 
