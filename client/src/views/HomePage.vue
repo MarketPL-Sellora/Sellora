@@ -23,7 +23,17 @@ watch(
     const minPrice   = newQuery.minPrice   ? Number(newQuery.minPrice)   : undefined
     const maxPrice   = newQuery.maxPrice   ? Number(newQuery.maxPrice)   : undefined
 
-    productStore.fetchProducts({ categoryId, keyword, status: 'ACTIVE', groupMode, storeId, minPrice, maxPrice, page: 0 })
+    productStore.fetchProducts({
+      categoryId,
+      keyword,
+      status: 'ACTIVE',
+      groupMode,
+      storeId,
+      minPrice,
+      maxPrice,
+      page: 0,
+      onlyFavorites: undefined // Явно скидаємо фільтр обраного
+    })
   },
   { immediate: true }
 )

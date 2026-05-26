@@ -10,6 +10,7 @@ import AddProductForm   from '../components/forms/AddProductForm.vue'
 import CreateStoreForm  from '../components/forms/CreateStoreForm.vue'
 import CabinetCategories from '../components/cabinet/CabinetCategories.vue'
 import CabinetStores from '../components/cabinet/CabinetStores.vue'
+import ProductGrid from '../components/product/ProductGrid.vue'
 import { useUserStore } from '../state/userStore'
 import { useProductStore } from '../state/productStore'
 
@@ -57,9 +58,15 @@ const mockOrders = ref([
   { id: 102, brand: 'Sony', name: 'WH-1000XM5 Headphones', image: 'https://www.bhphotovideo.com/images/images2500x2500/sony_wh1000xm5_b_wh_1000xm5_wireless_noise_canceling_over_ear_1668478.jpg', rating: 4, reviewCount: 98, groupCurrent: 2, groupTotal: 4, price: 9499, oldPrice: 11999 }
 ])
 
-const mockFavorites = ref([
-  { id: 201, brand: 'Logitech', name: 'MX Master 3S', image: 'https://resource.logitech.com/w_386,c_limit,q_auto,f_auto,dpr_1.0/d_transparent.gif/content/dam/logitech/en/products/mice/mx-master-3s/gallery/mx-master-3s-mouse-top-view-graphite.png', rating: 5, reviewCount: 341, groupCurrent: 2, groupTotal: 3, price: 3299, oldPrice: 4199 }
-])
+watch(activeTab, (newTab) => {
+  if (newTab === 'wishlist') {
+    productStore.fetchProducts({ onlyFavorites: true, page: 0 })
+  } else {
+    // Очищаємо товари, якщо юзер вийшов з вкладки, щоб не було "моргання" старих даних
+    productStore.products = []
+    productStore.totalElements = 0
+  }
+}, { immediate: true })
 
 async function handleStoreCreated() {
   isCreatingStoreForm.value = false
@@ -140,9 +147,7 @@ async function handleStoreStatus(newStatus: string) {
 
         <div v-else-if="activeTab === 'wishlist'">
           <div class="mb-6"><span class="text-gray-100 text-xl font-black font-['Unbounded']">Обране</span></div>
-          <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
-            <ProductCard v-for="item in mockFavorites" :key="item.id" :product="(item as any)" :simple="true" />
-          </div>
+          <ProductGrid />
         </div>
 
         <CabinetGroupBuys v-else-if="activeTab === 'groups'" />

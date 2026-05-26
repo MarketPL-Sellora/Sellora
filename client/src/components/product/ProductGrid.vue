@@ -59,12 +59,21 @@ const gridTitle = computed(() => {
   // 3. Стандартний заголовок
   return 'Популярні товари'
 })
+
+function handleWishlistUpdate(payload: { id: number, isFavorite: boolean }) {
+  // Якщо ми на сторінці улюблених і юзер зняв лайк
+  if (route.path === '/favorites' && !payload.isFavorite) {
+    // Видаляємо товар з локального стору для миттєвого зникнення
+    productStore.products = productStore.products.filter(p => p.id !== payload.id)
+    productStore.totalElements = Math.max(0, productStore.totalElements - 1)
+  }
+}
 </script>
 
 <template>
   <div class="flex flex-col gap-6 py-8 min-h-[800px]">
 
-    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 border-b border-white/10 pb-4">
+    <div v-if="route.path !== '/cabinet'" class="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 border-b border-white/10 pb-4">
       <div class="flex items-baseline gap-3">
         <h2 class="text-white text-2xl font-bold font-['Unbounded']">{{ gridTitle }}</h2>
         <span class="text-gray-500 text-sm font-['Onest']">
@@ -110,13 +119,14 @@ const gridTitle = computed(() => {
         </p>
       </div>
 
-      <div v-else key="content" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+      <TransitionGroup tag="div" name="list" key="content" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
         <ProductCard
           v-for="item in mappedProducts"
           :key="item.id"
           :product="item"
+          @wishlist="handleWishlistUpdate"
         />
-      </div>
+      </TransitionGroup>
     </Transition>
 
     <div
@@ -145,5 +155,20 @@ const gridTitle = computed(() => {
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
+}
+
+.list-move,
+.list-enter-active,
+.list-leave-active {
+  transition: all 0.4s ease;
+}
+.list-enter-from,
+.list-leave-to {
+  opacity: 0;
+  transform: scale(0.9);
+}
+.list-leave-active {
+  position: absolute;
+  z-index: -1;
 }
 </style>

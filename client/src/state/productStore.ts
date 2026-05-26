@@ -17,6 +17,7 @@ export interface ProductApiItem {
   stockQuantity?: number
   merchantId?: number
   attributes?: Record<string, string>
+  isFavorite?: boolean
 }
 
 // ─── Тип фільтрів ─────────────────────────────────────────────────────────────
@@ -29,6 +30,7 @@ export interface ProductFilters {
   status?: string
   groupMode?: string
   storeId?: number
+  onlyFavorites?: boolean
   page: number
   size: number
 }
@@ -43,6 +45,7 @@ export const useProductStore = defineStore('products', () => {
   const myProducts = ref<ProductApiItem[]>([])   // NEW: товари конкретного мерчанта
   const currentProduct = ref<ProductApiItem | null>(null) // Деталі одного товару
   const totalElements = ref<number>(0)
+  const favoritesCount = ref<number>(0)
   const isLoading = ref<boolean>(false)
   const error = ref<string | null>(null)
 
@@ -71,6 +74,7 @@ export const useProductStore = defineStore('products', () => {
       if (filters.status) query.status = filters.status
       if (filters.groupMode) query.groupMode = filters.groupMode
       if (filters.storeId !== undefined) query.storeId = filters.storeId
+      if (filters.onlyFavorites !== undefined) query.onlyFavorites = filters.onlyFavorites
 
       const response = await apiClient.get('/products', { params: query })
 
@@ -192,8 +196,29 @@ export const useProductStore = defineStore('products', () => {
     filters.maxPrice = undefined
     filters.groupMode = undefined
     filters.storeId = undefined
+    filters.onlyFavorites = undefined
     filters.page = 0
     fetchProducts()
+  }
+
+  // ─── Улюблені товари ──────────────────────────────────────────────────────────
+  async function fetchFavoritesCount() {
+    try {
+      const response = await apiClient.get('/products', { params: { onlyFavorites: true, size: 1 } })
+      favoritesCount.value = response.data.totalElements ?? 0
+    } catch (err) {
+      console.error('[productStore] fetchFavoritesCount error:', err)
+    }
+  }
+
+  async function addToFavorites(productId: number): Promise<void> {
+    await apiClient.post(`/favorites/${productId}`)
+    favoritesCount.value++
+  }
+
+  async function removeFromFavorites(productId: number): Promise<void> {
+    await apiClient.delete(`/favorites/${productId}`)
+    favoritesCount.value = Math.max(0, favoritesCount.value - 1)
   }
 
   return {
@@ -201,6 +226,7 @@ export const useProductStore = defineStore('products', () => {
     myProducts,
     currentProduct,
     totalElements,
+    favoritesCount,
     isLoading,
     error,
     filters,
@@ -213,5 +239,8 @@ export const useProductStore = defineStore('products', () => {
     deleteProduct,
     changeProductStatus,
     updateProduct,
+    fetchFavoritesCount,
+    addToFavorites,
+    removeFromFavorites,
   }
 })

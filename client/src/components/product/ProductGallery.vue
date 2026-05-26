@@ -1,10 +1,13 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
+import type { ProductApiItem } from '../../state/productStore'
+import { useProductStore } from '../../state/productStore'
+import { useUserStore } from '../../state/userStore'
 
 // ─── Props ───────────────────────────────────────────────────────────────────
 
 const props = defineProps<{
-  productImages?: string[] | null
+  apiProduct?: ProductApiItem | null
 }>()
 
 // ─── Computed images ─────────────────────────────────────────────────────────
@@ -15,7 +18,7 @@ interface GalleryImage {
 }
 
 const images = computed<GalleryImage[]>(() => {
-  const raw = props.productImages
+  const raw = props.apiProduct?.images
   if (!raw || raw.length === 0) return []
   return raw.map((url, i) => ({
     src: url,
@@ -28,7 +31,6 @@ const hasImages = computed(() => images.value.length > 0)
 // ─── State ───────────────────────────────────────────────────────────────────
 
 const activeImageIndex = ref(0)
-const isWishlisted     = ref(false)
 
 // ─── Zoom / Loupe state ──────────────────────────────────────────────────────
 
@@ -84,15 +86,50 @@ const lensImageStyle = computed(() => {
   }
 })
 
-// ─── Emits ───────────────────────────────────────────────────────────────────
+const productStore = useProductStore()
+const userStore = useUserStore()
+const localIsFavorite = ref(props.apiProduct?.isFavorite || false)
 
-const emit = defineEmits<{
-  (e: 'wishlist'): void
-}>()
+watch(() => props.apiProduct?.isFavorite, (newVal) => {
+  localIsFavorite.value = newVal || false
+})
 
-function toggleWishlist() {
-  isWishlisted.value = !isWishlisted.value
-  emit('wishlist')
+watch(() => userStore.isAuthenticated, (isAuth) => {
+  if (!isAuth) {
+    // При виході з акаунту миттєво знімаємо сердечко
+    localIsFavorite.value = false
+  } else {
+    // При успішному вході перевіряємо відкладений лайк
+    const pending = localStorage.getItem('pendingFavorite')
+    if (props.apiProduct && pending === String(props.apiProduct.id)) {
+      localIsFavorite.value = true
+    }
+  }
+})
+
+async function toggleWishlist() {
+  if (!props.apiProduct) return
+
+  if (!userStore.isAuthenticated) {
+    localStorage.setItem('pendingFavorite', String(props.apiProduct.id))
+    userStore.isAuthModalOpen = true
+    return
+  }
+
+  const originalState = localIsFavorite.value
+  localIsFavorite.value = !localIsFavorite.value
+
+  try {
+    if (localIsFavorite.value) {
+      await productStore.addToFavorites(props.apiProduct.id)
+    } else {
+      await productStore.removeFromFavorites(props.apiProduct.id)
+    }
+  } catch (error: any) {
+    localIsFavorite.value = originalState // Відкат при помилці
+    if (error?.isHandled) return // 401 перехоплюється глобально
+    alert('Помилка збереження. Спробуйте пізніше.')
+  }
 }
 </script>
 
@@ -153,18 +190,18 @@ function toggleWishlist() {
       </div>
 
       <button
-        :aria-label="isWishlisted ? 'Прибрати з обраного' : 'Додати до обраного'"
+        :aria-label="localIsFavorite ? 'Прибрати з обраного' : 'Додати до обраного'"
         class="absolute right-[17px] top-[17px] z-20 w-9 h-9 bg-[#1c1f2a]/80 rounded-xl outline outline-1 outline-offset-[-1px] outline-[#2a2d3e] backdrop-blur-sm flex justify-center items-center transition-all duration-150 hover:bg-[#252b3d] hover:outline-[#3d4158] hover:scale-110 active:scale-95 focus:outline-none focus:ring-2 focus:ring-orange-500/50"
         @click="toggleWishlist"
       >
         <svg
           class="w-4 h-4 transition-colors duration-150"
-          :class="isWishlisted ? 'text-orange-500' : 'text-[#787d99] hover:text-orange-400'"
+          :class="localIsFavorite ? 'text-orange-500' : 'text-[#787d99] hover:text-orange-400'"
           viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"
         >
           <path
             d="M8 13.5S2 9.5 2 5.5A3 3 0 018 3.8 3 3 0 0114 5.5C14 9.5 8 13.5 8 13.5Z"
-            :fill="isWishlisted ? 'currentColor' : 'none'"
+            :fill="localIsFavorite ? 'currentColor' : 'none'"
             stroke="currentColor"
             stroke-width="1.2"
             stroke-linecap="round"

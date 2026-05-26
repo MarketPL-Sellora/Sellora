@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
+import { useProductStore } from '../../state/productStore'
+import { useUserStore } from '../../state/userStore'
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 const props = defineProps<{
@@ -65,22 +67,61 @@ const formattedOldPrice = computed(() =>
 
 // ─── State ────────────────────────────────────────────────────────────────────
 
-const isWishlisted = ref(false)
+const productStore = useProductStore()
+const userStore = useUserStore()
+const localIsFavorite = ref(props.product?.isFavorite || false)
+
+watch(() => props.product?.isFavorite, (newVal) => {
+  localIsFavorite.value = newVal || false
+})
+
+watch(() => userStore.isAuthenticated, (isAuth) => {
+  if (!isAuth) {
+    // При виході з акаунту миттєво знімаємо сердечко
+    localIsFavorite.value = false
+  } else {
+    // При успішному вході перевіряємо, чи був це той самий товар, який юзер хотів лайкнути
+    const pending = localStorage.getItem('pendingFavorite')
+    if (pending === String(item.value.id)) {
+      localIsFavorite.value = true
+    }
+  }
+})
 
 // ─── Emits ────────────────────────────────────────────────────────────────────
 
 const emit = defineEmits<{
-  (e: 'wishlist',   product: any): void
+  (e: 'wishlist',   payload: { id: number, isFavorite: boolean }): void
   (e: 'delete',     id: number): void
   (e: 'edit',       id: number): void
   (e: 'change-status', payload: { id: number; status: string }): void
 }>()
 
-function toggleWishlist(e: MouseEvent) {
+async function toggleWishlist(e: MouseEvent) {
   e.preventDefault()
   e.stopPropagation()
-  isWishlisted.value = !isWishlisted.value
-  emit('wishlist', props.product)
+
+  if (!userStore.isAuthenticated) {
+    localStorage.setItem('pendingFavorite', String(item.value.id))
+    userStore.isAuthModalOpen = true
+    return
+  }
+
+  const originalState = localIsFavorite.value
+  localIsFavorite.value = !localIsFavorite.value // Миттєва візуальна зміна
+
+  try {
+    if (localIsFavorite.value) {
+      await productStore.addToFavorites(item.value.id)
+    } else {
+      await productStore.removeFromFavorites(item.value.id)
+    }
+    emit('wishlist', { id: item.value.id, isFavorite: localIsFavorite.value })
+  } catch (error: any) {
+    localIsFavorite.value = originalState // Rollback при помилці
+    if (error?.isHandled) return // Якщо це 401, інтерцептор вже відкрив модалку
+    alert('Помилка збереження. Спробуйте пізніше.')
+  }
 }
 </script>
 
@@ -116,12 +157,12 @@ function toggleWishlist(e: MouseEvent) {
       </div>
 
       <button
-        :aria-label="isWishlisted ? 'Прибрати з обраного' : 'Додати до обраного'"
+        :aria-label="localIsFavorite ? 'Прибрати з обраного' : 'Додати до обраного'"
         class="absolute right-3 top-3 w-8 h-8 bg-black/40 backdrop-blur-md rounded-lg flex justify-center items-center transition-all duration-150 hover:bg-black/60 active:scale-90 z-20"
         @click.prevent.stop="toggleWishlist"
       >
-        <svg class="w-4 h-4 transition-colors duration-150" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg" :class="isWishlisted ? 'text-orange-500' : 'text-gray-300 hover:text-orange-400'">
-          <path d="M7 12S1.5 8.5 1.5 4.5A2.5 2.5 0 016 3a2.5 2.5 0 015.5 1.5C11.5 8.5 7 12 7 12Z" :fill="isWishlisted ? 'currentColor' : 'none'" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" />
+        <svg class="w-4 h-4 transition-colors duration-150" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg" :class="localIsFavorite ? 'text-orange-500' : 'text-gray-300 hover:text-orange-400'">
+          <path d="M7 12S1.5 8.5 1.5 4.5A2.5 2.5 0 016 3a2.5 2.5 0 015.5 1.5C11.5 8.5 7 12 7 12Z" :fill="localIsFavorite ? 'currentColor' : 'none'" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" />
         </svg>
       </button>
     </div>
