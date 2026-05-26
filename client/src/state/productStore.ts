@@ -26,6 +26,9 @@ export interface ProductFilters {
   keyword?: string
   minPrice?: number
   maxPrice?: number
+  status?: string
+  groupMode?: string
+  storeId?: number
   page: number
   size: number
 }
@@ -36,12 +39,12 @@ export const useProductStore = defineStore('products', () => {
 
   // --- Стан -------------------------------------------------------------------
 
-  const products       = ref<ProductApiItem[]>([])
-  const myProducts     = ref<ProductApiItem[]>([])   // NEW: товари конкретного мерчанта
+  const products = ref<ProductApiItem[]>([])
+  const myProducts = ref<ProductApiItem[]>([])   // NEW: товари конкретного мерчанта
   const currentProduct = ref<ProductApiItem | null>(null) // Деталі одного товару
-  const totalElements  = ref<number>(0)
-  const isLoading      = ref<boolean>(false)
-  const error          = ref<string | null>(null)
+  const totalElements = ref<number>(0)
+  const isLoading = ref<boolean>(false)
+  const error = ref<string | null>(null)
 
   const filters = reactive<ProductFilters>({
     page: 0,
@@ -54,7 +57,7 @@ export const useProductStore = defineStore('products', () => {
     Object.assign(filters, params)
 
     isLoading.value = true
-    error.value     = null
+    error.value = null
 
     try {
       const query: Record<string, string | number> = {
@@ -62,13 +65,16 @@ export const useProductStore = defineStore('products', () => {
         size: filters.size,
       }
       if (filters.categoryId !== undefined) query.categoryId = filters.categoryId
-      if (filters.keyword)                  query.keyword    = filters.keyword
-      if (filters.minPrice !== undefined)   query.minPrice   = filters.minPrice
-      if (filters.maxPrice !== undefined)   query.maxPrice   = filters.maxPrice
+      if (filters.keyword) query.keyword = filters.keyword
+      if (filters.minPrice !== undefined) query.minPrice = filters.minPrice
+      if (filters.maxPrice !== undefined) query.maxPrice = filters.maxPrice
+      if (filters.status) query.status = filters.status
+      if (filters.groupMode) query.groupMode = filters.groupMode
+      if (filters.storeId !== undefined) query.storeId = filters.storeId
 
       const response = await apiClient.get('/products', { params: query })
 
-      products.value      = response.data.content      ?? []
+      products.value = response.data.content ?? []
       totalElements.value = response.data.totalElements ?? 0
 
     } catch (err: unknown) {
@@ -85,7 +91,7 @@ export const useProductStore = defineStore('products', () => {
     formData.append('file', file)
 
     const response = await apiClient.post(
-      '/upload/image',
+      '/uploads/image',
       formData,
       { headers: { 'Content-Type': 'multipart/form-data' } },
     )
@@ -117,12 +123,12 @@ export const useProductStore = defineStore('products', () => {
   // ─── NEW: завантажити товари конкретного мерчанта ─────────────────────────────
   async function fetchMerchantProducts(merchantId: number): Promise<void> {
     isLoading.value = true
-    error.value     = null
+    error.value = null
     try {
-      const response  = await apiClient.get(`/products/merchant/${merchantId}`)
+      const response = await apiClient.get(`/products/merchant/${merchantId}`)
       myProducts.value = response.data.content ?? response.data ?? []
     } catch (err: unknown) {
-      error.value      = err instanceof Error ? err.message : 'Помилка завантаження товарів магазину'
+      error.value = err instanceof Error ? err.message : 'Помилка завантаження товарів магазину'
       myProducts.value = []
       console.error('[productStore] fetchMerchantProducts error:', err)
     } finally {
@@ -133,7 +139,7 @@ export const useProductStore = defineStore('products', () => {
   // ─── NEW: завантажити один товар за ID ──────────────────────────────────────
   async function fetchProductById(id: number): Promise<void> {
     isLoading.value = true
-    error.value     = null
+    error.value = null
     try {
       const response = await apiClient.get('/products/' + id)
       currentProduct.value = response.data
@@ -146,12 +152,47 @@ export const useProductStore = defineStore('products', () => {
     }
   }
 
+  // ─── Видалити товар ──────────────────────────────────────────────────────────
+  async function deleteProduct(id: number): Promise<boolean> {
+    try {
+      await apiClient.delete('/products/' + id)
+      return true
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Помилка видалення товару')
+      return false
+    }
+  }
+
+  // ─── Змінити статус товару ───────────────────────────────────────────────────
+  async function changeProductStatus(id: number, status: string): Promise<boolean> {
+    try {
+      await apiClient.patch('/products/' + id + '/status', { status })
+      return true
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Помилка зміни статусу')
+      return false
+    }
+  }
+
+  // ─── Оновити товар ──────────────────────────────────────────────────────────
+  async function updateProduct(id: number, payload: Omit<ProductApiItem, 'id'>): Promise<boolean> {
+    try {
+      await apiClient.put('/products/' + id, payload)
+      return true
+    } catch (err: unknown) {
+      console.error('[productStore] updateProduct error:', err)
+      return false
+    }
+  }
+
   function resetFilters() {
     filters.categoryId = undefined
-    filters.keyword    = undefined
-    filters.minPrice   = undefined
-    filters.maxPrice   = undefined
-    filters.page       = 0
+    filters.keyword = undefined
+    filters.minPrice = undefined
+    filters.maxPrice = undefined
+    filters.groupMode = undefined
+    filters.storeId = undefined
+    filters.page = 0
     fetchProducts()
   }
 
@@ -169,5 +210,8 @@ export const useProductStore = defineStore('products', () => {
     uploadImage,
     createProduct,
     fetchMerchantProducts,
+    deleteProduct,
+    changeProductStatus,
+    updateProduct,
   }
 })

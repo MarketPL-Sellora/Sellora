@@ -1,6 +1,7 @@
 package com.sellora.core.presentation.exceptions;
 
 import com.sellora.core.presentation.dtos.ApiErrorResponse;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
@@ -22,7 +23,6 @@ public class GlobalExceptionHandler {
    */
   @ExceptionHandler(MethodArgumentNotValidException.class)
   public ResponseEntity<ApiErrorResponse> handleValidationExceptions(MethodArgumentNotValidException ex) {
-    // Збираємо всі помилки полів у зрозумілий рядок
     String details = ex.getBindingResult()
       .getFieldErrors()
       .stream()
@@ -42,11 +42,9 @@ public class GlobalExceptionHandler {
   public ResponseEntity<ApiErrorResponse> handleUserAlreadyExistsException(UserAlreadyExistsException ex) {
     ApiErrorResponse error = new ApiErrorResponse(
       LocalDateTime.now().toString(),
-      "EMAIL_ALREADY_EXISTS", // Спеціальний код помилки для фронтенда
+      "EMAIL_ALREADY_EXISTS",
       ex.getMessage()
     );
-
-    // Повертаємо 409 Conflict
     return new ResponseEntity<>(error, HttpStatus.CONFLICT);
   }
 
@@ -54,21 +52,30 @@ public class GlobalExceptionHandler {
   public ResponseEntity<ApiErrorResponse> handleResourceNotFoundException(ResourceNotFoundException ex) {
     ApiErrorResponse error = new ApiErrorResponse(
       LocalDateTime.now().toString(),
-      "NOT_FOUND", // Код помилки для фронтенда
+      "NOT_FOUND",
       ex.getMessage()
     );
-    // Повертаємо правильний статус 404
     return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+  }
+
+  @ExceptionHandler(UnauthorizedException.class)
+  public ResponseEntity<ApiErrorResponse> handleUnauthorizedException(UnauthorizedException ex) {
+    ApiErrorResponse error = new ApiErrorResponse(
+      LocalDateTime.now().toString(),
+      "UNAUTHORIZED",
+      ex.getMessage()
+    );
+    // Повертаємо статус 401 Unauthorized
+    return new ResponseEntity<>(error, HttpStatus.UNAUTHORIZED);
   }
 
   @ExceptionHandler(BadRequestException.class)
   public ResponseEntity<ApiErrorResponse> handleBadRequestException(BadRequestException ex) {
     ApiErrorResponse error = new ApiErrorResponse(
       LocalDateTime.now().toString(),
-      "BAD_REQUEST", // Код для фронтенду
+      "BAD_REQUEST",
       ex.getMessage()
     );
-    // Повертаємо правильний статус 400
     return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
   }
 
@@ -86,16 +93,48 @@ public class GlobalExceptionHandler {
   public ResponseEntity<Map<String, Object>> handleEmptyCartException(EmptyCartException ex) {
     Map<String, Object> errorResponse = new HashMap<>();
     errorResponse.put("timestamp", LocalDateTime.now());
-    errorResponse.put("errorCode", "EMPTY_CART"); // Можна зробити свій код
+    errorResponse.put("errorCode", "EMPTY_CART");
     errorResponse.put("message", ex.getMessage());
 
-    // Повертаємо 400 BAD_REQUEST
     return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+  }
+
+  @ExceptionHandler(ForbiddenException.class)
+  public ResponseEntity<ApiErrorResponse> handleForbiddenException(ForbiddenException ex) {
+    ApiErrorResponse error = new ApiErrorResponse(
+      LocalDateTime.now().toString(),
+      "FORBIDDEN",
+      ex.getMessage()
+    );
+    return new ResponseEntity<>(error, HttpStatus.FORBIDDEN);
+  }
+
+  @ExceptionHandler(ConflictException.class)
+  public ResponseEntity<ApiErrorResponse> handleConflictException(ConflictException ex) {
+    ApiErrorResponse error = new ApiErrorResponse(
+      LocalDateTime.now().toString(),
+      "CONFLICT",
+      ex.getMessage()
+    );
+    return new ResponseEntity<>(error, HttpStatus.CONFLICT);
+  }
+
+  /**
+   * Обробка помилок бази даних (наприклад, коли спрацьовує Foreign Key при видаленні)
+   */
+  @ExceptionHandler(DataIntegrityViolationException.class)
+  public ResponseEntity<ApiErrorResponse> handleDataIntegrityViolationException(DataIntegrityViolationException ex) {
+    ApiErrorResponse error = new ApiErrorResponse(
+      LocalDateTime.now().toString(),
+      "CONFLICT_DB_RELATION",
+      "Неможливо виконати дію (видалити або оновити), оскільки до цього запису вже прив'язана історія в базі даних."
+    );
+    return new ResponseEntity<>(error, HttpStatus.CONFLICT);
   }
 
   /**
    * Загальний обробник для всіх інших непередбачуваних помилок
-   * Повертає 500 Internal Server Error
+   * Повертає 500 Internal Server Error. Завжди має бути останнім.
    */
   @ExceptionHandler(Exception.class)
   public ResponseEntity<ApiErrorResponse> handleAllExceptions(Exception ex) {
@@ -106,6 +145,4 @@ public class GlobalExceptionHandler {
     );
     return new ResponseEntity<>(error, HttpStatus.INTERNAL_SERVER_ERROR);
   }
-
-
 }

@@ -5,10 +5,14 @@ import com.sellora.core.domain.entities.Product;
 import com.sellora.core.domain.entities.Store;
 import com.sellora.core.domain.specifications.ProductSpecification;
 import com.sellora.core.infrastructure.persistence.CategoryRepository;
+import com.sellora.core.infrastructure.persistence.GroupBuySessionRepository;
 import com.sellora.core.infrastructure.persistence.ProductRepository;
 import com.sellora.core.infrastructure.persistence.StoreRepository;
 import com.sellora.core.presentation.dtos.CreateProductDto;
 import com.sellora.core.presentation.dtos.ProductResponseDto;
+import com.sellora.core.presentation.exceptions.BadRequestException;
+import com.sellora.core.presentation.exceptions.ConflictException;
+import com.sellora.core.presentation.exceptions.ForbiddenException;
 import com.sellora.core.presentation.exceptions.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -19,6 +23,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -31,13 +36,18 @@ public class ProductService {
   private final ProductRepository productRepository;
   private final StoreRepository storeRepository;
   private final CategoryRepository categoryRepository;
+  private final GroupBuySessionRepository groupBuySessionRepository; // Додай у шапку класу
 
   @Transactional
   public Product createProduct(CreateProductDto dto) {
     Long currentUserId = (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
 
     Store currentStore = storeRepository.findByOwnerId(currentUserId)
-      .orElseThrow(() -> new RuntimeException("У вас немає активного магазину. Спочатку створіть магазин!"));
+      .orElseThrow(() -> new BadRequestException("У вас немає активного магазину. Спочатку створіть магазин!"));
+
+    if (dto.groupPrice().compareTo(dto.standardPrice()) >= 0) {
+      throw new BadRequestException("Ціна групової покупки має бути меншою за стандартну ціну");
+    }
 
     Product product = new Product();
     product.setTitle(dto.title());
@@ -46,7 +56,12 @@ public class ProductService {
     product.setGroupPrice(dto.groupPrice());
     product.setGroupTargetSize(dto.groupTargetSize());
     product.setStockQuantity(dto.stockQuantity());
-    product.setStatus("ACTIVE");
+    if (dto.stockQuantity() == 0) {
+      product.setStatus("OUT_OF_STOCK");
+    } else {
+      product.setStatus("ACTIVE");
+    }
+
     product.setCategoryId(dto.categoryId());
     product.setMerchantId(currentStore.getId());
 
@@ -56,15 +71,18 @@ public class ProductService {
     return productRepository.save(product);
   }
 
-  // Оновлено Double на BigDecimal для точності
   public Page<Product> filterProducts(
     String keyword, BigDecimal minPrice, BigDecimal maxPrice, Long categoryId,
+    String status, Long storeId, String groupMode, // Змінено на String
     int page, int size, String sortBy, String sortDir) {
 
     Specification<Product> spec = Specification.where(ProductSpecification.hasTitle(keyword))
       .and(ProductSpecification.priceGreaterThanOrEqual(minPrice))
       .and(ProductSpecification.priceLessThanOrEqual(maxPrice))
-      .and(ProductSpecification.hasCategoryId(categoryId));
+      .and(ProductSpecification.hasCategoryId(categoryId))
+      .and(ProductSpecification.hasStatus(status))
+      .and(ProductSpecification.hasStoreId(storeId))
+      .and(ProductSpecification.hasGroupSession(groupMode));
 
     Sort sort = sortDir.equalsIgnoreCase(Sort.Direction.ASC.name())
       ? Sort.by(sortBy).ascending()
@@ -121,5 +139,102 @@ public class ProductService {
       product.getImages(),
       product.getStatus()
     );
+  }
+
+  // Додай цей метод в ProductService.java
+
+  @Transactional
+  public Product updateProduct(Long productId, com.sellora.core.presentation.dtos.UpdateProductDto dto) {
+
+    Long currentUserId = (Long) org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+    Store currentStore = storeRepository.findByOwnerId(currentUserId)
+      .orElseThrow(() -> new BadRequestException("У вас немає активного магазину"));
+
+    if (dto.groupPrice().compareTo(dto.standardPrice()) >= 0) {
+      throw new BadRequestException("Ціна групової покупки має бути меншою за стандартну ціну");
+    }
+
+    Product product = productRepository.findById(productId)
+      .orElseThrow(() -> new com.sellora.core.presentation.exceptions.ResourceNotFoundException("Товар не знайдено"));
+
+    if (!product.getMerchantId().equals(currentStore.getId())) {
+      throw new ForbiddenException("Ви не можете редагувати чужий товар");
+    }
+
+    if (!product.getCategoryId().equals(dto.categoryId())) {
+      if (!categoryRepository.existsById(dto.categoryId())) {
+        throw new BadRequestException("Вибраної категорії не існує");
+      }
+    }
+
+    product.setTitle(dto.title());
+    product.setDescription(dto.description());
+    product.setCategoryId(dto.categoryId());
+    product.setStandardPrice(dto.standardPrice());
+    product.setGroupPrice(dto.groupPrice());
+    product.setGroupTargetSize(dto.groupTargetSize());
+    product.setImages(dto.images() != null ? dto.images() : java.util.List.of());
+    product.setAttributes(dto.attributes() != null ? dto.attributes() : java.util.Map.of());
+
+    int newStock = dto.stockQuantity();
+    product.setStockQuantity(newStock);
+
+    if (newStock == 0) {
+      product.setStatus("OUT_OF_STOCK");
+    } else if (newStock > 0 && "OUT_OF_STOCK".equals(product.getStatus())) {
+      product.setStatus("ACTIVE");
+    }
+
+    return productRepository.save(product);
+  }
+
+  @Transactional
+  public void deleteProduct(Long productId) {
+
+    Long currentUserId = (Long) org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+    Store currentStore = storeRepository.findByOwnerId(currentUserId)
+      .orElseThrow(() -> new BadRequestException("У вас немає активного магазину"));
+
+    Product product = productRepository.findById(productId)
+      .orElseThrow(() -> new ResourceNotFoundException("Товар не знайдено"));
+
+    if (!product.getMerchantId().equals(currentStore.getId())) {
+      throw new ForbiddenException("Ви не можете видалити чужий товар");
+    }
+
+    if (groupBuySessionRepository.existsByProductIdAndStatus(productId, "ACTIVE")) {
+      throw new ConflictException("Неможливо видалити товар: існують активні сесії групових покупок");
+    }
+
+    productRepository.delete(product);
+  }
+
+  @Transactional
+  public Product updateProductStatus(Long productId, String newStatus) {
+
+    Long currentUserId = (Long) org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+    Store currentStore = storeRepository.findByOwnerId(currentUserId)
+      .orElseThrow(() -> new BadRequestException("У вас немає активного магазину"));
+
+    Product product = productRepository.findById(productId)
+      .orElseThrow(() -> new ResourceNotFoundException("Товар не знайдено"));
+
+    if (!product.getMerchantId().equals(currentStore.getId())) {
+      throw new ForbiddenException("Ви не можете редагувати чужий товар");
+    }
+
+    String oldStatus = product.getStatus();
+
+    if ("ARCHIVED".equalsIgnoreCase(newStatus)) {
+      product.setStatus("ARCHIVED");
+
+    } else if ("ACTIVE".equalsIgnoreCase(newStatus)) {
+      if (product.getStockQuantity() == 0) {
+        throw new BadRequestException("Не можна активувати товар з кількістю 0 на складі");
+      }
+      product.setStatus("ACTIVE");
+    }
+
+    return productRepository.save(product);
   }
 }

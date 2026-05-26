@@ -7,6 +7,7 @@ import com.sellora.core.presentation.dtos.LoginRequest;
 import com.sellora.core.presentation.dtos.RegisterRequest;
 import com.sellora.core.presentation.dtos.UserResponseDto;
 import com.sellora.core.presentation.exceptions.ResourceNotFoundException;
+import com.sellora.core.presentation.exceptions.UnauthorizedException; // <--- ДОДАНО ІМПОРТ
 import com.sellora.core.presentation.exceptions.UserAlreadyExistsException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -27,18 +28,18 @@ public class AuthService {
 
     User user = new User();
     user.setEmail(request.getEmail());
-    user.setPasswordHash(passwordEncoder.encode(request.getPassword())); // Обов'язково хешуємо!
-    user.setRole("BUYER"); // Значення за замовчуванням для БД, як домовилися
+    user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
+    user.setRole("BUYER");
 
     userRepository.save(user);
   }
 
   public String login(LoginRequest request) {
     User user = userRepository.findByEmail(request.getEmail())
-      .orElseThrow(() -> new RuntimeException("Невірний email або пароль"));
+      .orElseThrow(() -> new UnauthorizedException("Невірний email або пароль"));
 
     if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
-      throw new RuntimeException("Невірний email або пароль");
+      throw new UnauthorizedException("Невірний email або пароль");
     }
 
     return jwtService.generateToken(user.getId());
@@ -51,7 +52,7 @@ public class AuthService {
     return new UserResponseDto(
       user.getId(),
       user.getEmail(),
-      user.getRole(), // Припускаємо, що Role - це Enum
+      user.getRole(),
       user.getAvatarUrl(),
       user.getCreatedAt(),
       user.getUpdatedAt()

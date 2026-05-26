@@ -4,6 +4,8 @@ import com.sellora.core.application.usecases.ProductService;
 import com.sellora.core.domain.entities.Product;
 import com.sellora.core.presentation.dtos.CreateProductDto;
 import com.sellora.core.presentation.dtos.ProductResponseDto;
+import com.sellora.core.presentation.dtos.UpdateProductDto;
+import com.sellora.core.presentation.dtos.UpdateProductStatusDto;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -41,19 +43,26 @@ public class ProductController {
   @GetMapping
   public ResponseEntity<Page<Product>> getProducts(
     @RequestParam(required = false) String keyword,
-    @RequestParam(required = false) BigDecimal minPrice, // Змінено на BigDecimal
-    @RequestParam(required = false) BigDecimal maxPrice, // Змінено на BigDecimal
+    @RequestParam(required = false) BigDecimal minPrice,
+    @RequestParam(required = false) BigDecimal maxPrice,
     @RequestParam(required = false) Long categoryId,
+    @RequestParam(required = false) String status,
+    @RequestParam(required = false) Long storeId,
+    @RequestParam(required = false, defaultValue = "ALL") String groupMode,
     @RequestParam(defaultValue = "0") int page,
     @RequestParam(defaultValue = "10") int size,
     @RequestParam(defaultValue = "id") String sortBy,
     @RequestParam(defaultValue = "asc") String sortDir) {
 
-    Page<Product> products = productService.filterProducts(keyword, minPrice, maxPrice, categoryId, page, size, sortBy, sortDir);
+    Page<Product> products = productService.filterProducts(
+      keyword, minPrice, maxPrice, categoryId,
+      status, storeId, groupMode,
+      page, size, sortBy, sortDir
+    );
+
     return ResponseEntity.ok(products);
   }
 
-  // --- НОВИЙ ЕНДПОІНТ 1 ---
   @Operation(summary = "Отримання списку товарів конкретного продавця (магазину)")
   @GetMapping("/merchant/{merchantId}")
   public ResponseEntity<Page<Product>> getProductsByMerchant(
@@ -67,7 +76,6 @@ public class ProductController {
     return ResponseEntity.ok(products);
   }
 
-  // --- НОВИЙ ЕНДПОІНТ 2 ---
   @Operation(summary = "Отримання розгорнутої інформації про конкретний товар")
   @GetMapping("/{id}")
   public ResponseEntity<ProductResponseDto> getProductById(
@@ -76,5 +84,52 @@ public class ProductController {
 
     ProductResponseDto product = productService.getProductById(id, full);
     return ResponseEntity.ok(product);
+  }
+
+  @Operation(summary = "Оновлення існуючого товару")
+  @ApiResponses(value = {
+    @ApiResponse(responseCode = "200", description = "Товар успішно оновлено"),
+    @ApiResponse(responseCode = "403", description = "Спроба редагувати чужий товар"),
+    @ApiResponse(responseCode = "404", description = "Товар не знайдено")
+  })
+  @PreAuthorize("isAuthenticated()")
+  @PutMapping("/{id}")
+  public ResponseEntity<Product> updateProduct(
+    @PathVariable Long id,
+    @Valid @RequestBody UpdateProductDto request) {
+
+    Product updatedProduct = productService.updateProduct(id, request);
+    return ResponseEntity.ok(updatedProduct);
+  }
+
+  @Operation(summary = "Видалення товару")
+  @ApiResponses(value = {
+    @ApiResponse(responseCode = "204", description = "Товар успішно видалено"),
+    @ApiResponse(responseCode = "403", description = "Спроба видалити чужий товар"),
+    @ApiResponse(responseCode = "404", description = "Товар не знайдено"),
+    @ApiResponse(responseCode = "409", description = "Товар має активні групові сесії (Conflict)")
+  })
+  @PreAuthorize("isAuthenticated()")
+  @DeleteMapping("/{id}")
+  public ResponseEntity<Void> deleteProduct(@PathVariable Long id) {
+    productService.deleteProduct(id);
+    return ResponseEntity.noContent().build();
+  }
+
+  @Operation(summary = "Зміна статусу товару (ACTIVE / ARCHIVED)")
+  @ApiResponses(value = {
+    @ApiResponse(responseCode = "200", description = "Статус успішно змінено"),
+    @ApiResponse(responseCode = "400", description = "Помилка (наприклад, спроба активувати товар з 0 залишком)"),
+    @ApiResponse(responseCode = "403", description = "Спроба редагувати чужий товар"),
+    @ApiResponse(responseCode = "404", description = "Товар не знайдено")
+  })
+  @PreAuthorize("isAuthenticated()")
+  @PatchMapping("/{id}/status")
+  public ResponseEntity<Product> updateProductStatus(
+    @PathVariable Long id,
+    @Valid @RequestBody UpdateProductStatusDto request) {
+
+    Product updatedProduct = productService.updateProductStatus(id, request.status());
+    return ResponseEntity.ok(updatedProduct);
   }
 }

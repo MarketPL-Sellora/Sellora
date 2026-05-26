@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -27,7 +28,7 @@ public class AuthController {
   private final AuthService authService;
 
   @PostMapping("/register")
-  public ResponseEntity<?> register(@RequestBody RegisterRequest request) {
+  public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest request) {
     authService.register(request);
     return ResponseEntity.status(HttpStatus.CREATED)
       .body(Map.of("message", "Реєстрація успішна"));
@@ -42,7 +43,7 @@ public class AuthController {
       .httpOnly(true)
       .secure(false) // Змінити на true, коли буде HTTPS на проді
       .path("/")
-      .maxAge(2592000) // ЗМІНЕНО: 30 днів (у секундах)
+      .maxAge(2592000)
       .sameSite("Lax")
       .build();
 
@@ -51,16 +52,14 @@ public class AuthController {
     return ResponseEntity.ok(Map.of("message", "Вхід успішний"));
   }
 
-  // --- НОВИЙ ЕНДПОІНТ ---
   @Operation(summary = "Вихід з акаунта (Logout)")
   @PostMapping("/logout")
   public ResponseEntity<?> logout(HttpServletResponse response) {
-    // Створюємо "порожню" куку з таким самим ім'ям і шляхом, але з maxAge(0)
     ResponseCookie cookie = ResponseCookie.from("accessToken", "")
       .httpOnly(true)
       .secure(false) // Змінити на true на проді
       .path("/")
-      .maxAge(0) // Вбиваємо куку миттєво
+      .maxAge(0)
       .sameSite("Lax")
       .build();
 

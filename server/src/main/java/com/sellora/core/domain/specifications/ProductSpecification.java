@@ -2,48 +2,63 @@ package com.sellora.core.domain.specifications;
 
 import com.sellora.core.domain.entities.Product;
 import org.springframework.data.jpa.domain.Specification;
-
 import java.math.BigDecimal;
 
 public class ProductSpecification {
 
-  // 1. Фільтр за назвою (замінить наш старий метод)
   public static Specification<Product> hasTitle(String keyword) {
-    return (root, query, criteriaBuilder) -> {
-      if (keyword == null || keyword.trim().isEmpty()) {
-        return criteriaBuilder.conjunction(); // Це означає "ігнорувати цей фільтр" (WHERE 1=1)
-      }
-      return criteriaBuilder.like(criteriaBuilder.lower(root.get("title")), "%" + keyword.toLowerCase() + "%");
-    };
+    return (root, query, cb) -> keyword == null ? null :
+      cb.like(cb.lower(root.get("title")), "%" + keyword.toLowerCase() + "%");
   }
 
-  // 2. Фільтр: Ціна ВІД (мінімальна) - Виправлено на BigDecimal
   public static Specification<Product> priceGreaterThanOrEqual(BigDecimal minPrice) {
-    return (root, query, criteriaBuilder) -> {
-      if (minPrice == null) {
-        return criteriaBuilder.conjunction();
-      }
-      return criteriaBuilder.greaterThanOrEqualTo(root.get("standardPrice"), minPrice);
-    };
+    return (root, query, cb) -> minPrice == null ? null :
+      cb.greaterThanOrEqualTo(root.get("standardPrice"), minPrice);
   }
 
-  // 3. Фільтр: Ціна ДО (максимальна) - Виправлено на BigDecimal
   public static Specification<Product> priceLessThanOrEqual(BigDecimal maxPrice) {
-    return (root, query, criteriaBuilder) -> {
-      if (maxPrice == null) {
-        return criteriaBuilder.conjunction();
-      }
-      return criteriaBuilder.lessThanOrEqualTo(root.get("standardPrice"), maxPrice);
-    };
+    return (root, query, cb) -> maxPrice == null ? null :
+      cb.lessThanOrEqualTo(root.get("standardPrice"), maxPrice);
   }
 
-  // 4. Фільтр за категорією
   public static Specification<Product> hasCategoryId(Long categoryId) {
-    return (root, query, criteriaBuilder) -> {
-      if (categoryId == null) {
-        return criteriaBuilder.conjunction();
+    return (root, query, cb) -> categoryId == null ? null :
+      cb.equal(root.get("categoryId"), categoryId);
+  }
+
+  // --- НОВІ СПЕЦИФІКАЦІЇ ---
+
+  public static Specification<Product> hasStatus(String status) {
+    return (root, query, cb) -> status == null ? null :
+      cb.equal(root.get("status"), status);
+  }
+
+  public static Specification<Product> hasStoreId(Long storeId) {
+    return (root, query, cb) -> storeId == null ? null :
+      cb.equal(root.get("merchantId"), storeId);
+  }
+
+  public static Specification<Product> hasGroupSession(String mode) {
+    return (root, query, cb) -> {
+      if (mode == null || mode.equalsIgnoreCase("ALL")) {
+        return null; // Виводимо всі товари
       }
-      return criteriaBuilder.equal(root.get("categoryId"), categoryId);
+
+      if (mode.equalsIgnoreCase("ONLY_GROUP")) {
+        return cb.and(
+          cb.isNotNull(root.get("groupPrice")),
+          cb.isNotNull(root.get("groupTargetSize"))
+        );
+      }
+
+      if (mode.equalsIgnoreCase("WITHOUT_GROUP")) {
+        return cb.or(
+          cb.isNull(root.get("groupPrice")),
+          cb.isNull(root.get("groupTargetSize"))
+        );
+      }
+
+      return null;
     };
   }
 }

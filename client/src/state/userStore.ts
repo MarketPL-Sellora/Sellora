@@ -3,54 +3,55 @@ import { ref } from 'vue'
 import { apiClient } from '../api/axios'
 
 interface UserData {
-  id:        number
-  email:     string
-  role:      string
+  id: number
+  email: string
+  role: string
   avatarUrl: string
   createdAt: string
   updatedAt: string
 }
 
 export interface StorePayload {
-  name:         string
-  address:      string
+  name: string
+  address: string
   contactPhone: string
-  description:  string
-  logoUrl:      string
+  description: string
+  logoUrl: string
 }
 
 export interface StoreResponse {
-  id?:          number | string
-  name:         string
-  address:      string
+  id?: number | string
+  name: string
+  address: string
   contactPhone: string
-  description:  string
-  logoUrl:      string
+  description: string
+  logoUrl: string
   [key: string]: unknown
 }
 
 export interface SellerStore {
-  id:           number
-  ownerId:      number
-  name:         string
-  slug:         string
-  address:      string
+  id: number
+  ownerId: number
+  name: string
+  slug: string
+  address: string
   contactPhone: string
-  description:  string
-  logoUrl:      string
-  rating:       number
-  status:       string
-  createdAt:    string
-  updatedAt:    string
+  description: string
+  logoUrl: string
+  rating: number
+  status: string
+  createdAt: string
+  updatedAt: string
 }
 
 export const useUserStore = defineStore('user', () => {
-  const user            = ref<UserData | null>(null)
+  const user = ref<UserData | null>(null)
   const isAuthenticated = ref<boolean>(false)
 
   const isCreatingStore = ref<boolean>(false)
-  const sellerStore     = ref<SellerStore | null>(null)
-  const isLoadingStore  = ref<boolean>(false)
+  const sellerStore = ref<SellerStore | null>(null)
+  const isLoadingStore = ref<boolean>(false)
+  const isAuthModalOpen = ref<boolean>(false)
 
   // ─── ЛОГІКА LOCALSTORAGE (ІЗОЛЯЦІЯ ЮЗЕРІВ) ─────────────────────────────
   function getCurrentUserEmail(): string {
@@ -137,9 +138,48 @@ export const useUserStore = defineStore('user', () => {
     }
   }
 
+  async function updateStore(storeId: number, payload: StorePayload): Promise<StoreResponse> {
+    isCreatingStore.value = true
+    try {
+      const response = await apiClient.put<StoreResponse>(`/stores/${storeId}`, payload)
+      return response.data
+    } catch (error) {
+      throw error
+    } finally {
+      isCreatingStore.value = false
+    }
+  }
+
+  async function deleteStore(storeId: number): Promise<boolean> {
+    try {
+      await apiClient.delete(`/stores/${storeId}`)
+      sellerStore.value = null // Очищаємо локальний стейт
+      await fetchMe() // Оновлюємо юзера, бо його роль могла змінитись на BUYER
+      alert('Магазин успішно видалено')
+      return true
+    } catch (error: any) {
+      if (error.response?.status === 409) {
+        alert('Помилка: У магазину є існуючі товари. Спочатку видаліть їх.')
+      } else {
+        alert(error.response?.data?.message || 'Помилка при видаленні магазину')
+      }
+      return false
+    }
+  }
+
+  async function changeStoreStatus(storeId: number, status: string): Promise<boolean> {
+    try {
+      await apiClient.patch(`/stores/${storeId}/status`, { status })
+      return true
+    } catch (error: any) {
+      alert(error.response?.data?.message || 'Помилка при зміні статусу')
+      return false
+    }
+  }
+
   return {
-    user, isAuthenticated, isCreatingStore, sellerStore, isLoadingStore,
-    login, logout, fetchMe, fetchUserStore, createStore,
+    user, isAuthenticated, isCreatingStore, sellerStore, isLoadingStore, isAuthModalOpen,
+    login, logout, fetchMe, fetchUserStore, createStore, updateStore, deleteStore, changeStoreStatus,
     isJoinedLocally, markAsJoinedLocally
   }
 })
