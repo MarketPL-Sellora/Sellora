@@ -106,7 +106,7 @@ const productBreadcrumbs = computed(() => {
     <main class="flex-1 w-full max-w-[1536px] mx-auto px-4 md:px-6 py-6 md:py-8 flex flex-col gap-8 md:gap-12 overflow-hidden">
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-10 items-start">
         <div class="w-full">
-          <ProductGallery :product-images="productStore.currentProduct?.images" />
+          <ProductGallery :api-product="productStore.currentProduct" />
         </div>
 
         <div class="w-full">

@@ -32,6 +32,7 @@ const router        = useRouter()
 // ─── Завантаження сесій при монтуванні (щоб лічильник був актуальним) ──────────
 onMounted(() => {
   groupBuyStore.fetchMySessions()
+  productStore.fetchFavoritesCount()
 
   if (props.isUserSeller && userStore.sellerStore?.id) {
     productStore.fetchMerchantProducts(userStore.sellerStore.id)
@@ -44,10 +45,10 @@ const userBadge = 'Pro учасник'
 // ─── Menu items ───────────────────────────────────────────────────────────────
 // Базові пункти меню (доступні всім користувачам)
 const baseMenuItems = computed<MenuItem[]>(() => [
-  { id: 'orders',   label: 'Мої замовлення',      count: 4,                                icon: 'orders'   },
-  { id: 'groups',   label: 'Мої групові покупки',  count: groupBuyStore.mySessions.length,  icon: 'groups'   },
-  { id: 'wishlist', label: 'Обране',               count: 12,                               icon: 'wishlist' },
-  { id: 'settings', label: 'Налаштування',                                                  icon: 'settings' },
+  { id: 'orders',   label: 'Мої замовлення',      count: 4,                                      icon: 'orders'   },
+  { id: 'groups',   label: 'Мої групові покупки', count: groupBuyStore.mySessions.length,  icon: 'groups'   },
+  { id: 'wishlist', label: 'Обране',              count: productStore.favoritesCount,             icon: 'wishlist' },
+  { id: 'settings', label: 'Налаштування',                                                       icon: 'settings' },
 ])
 
 // Крок 4 (US 4.2): Пункт «Мої товари» додається до меню тільки для продавця.
@@ -88,10 +89,16 @@ function navigate(id: string) {
 
 // ─── Логіка виходу ────────────────────────────────────────────────────────────
 // Показуємо підтвердження перед виходом, щоб уникнути випадкового натискання.
-function handleLogout() {
+async function handleLogout() {
   if (window.confirm('Ви точно хочете вийти?')) {
-    userStore.logout()
-    router.push('/')
+    try {
+      await userStore.logout() // Обов'язково чекаємо, поки токен успішно видалиться
+    } catch (err) {
+      console.error('Помилка при виході:', err)
+    } finally {
+      localStorage.removeItem('pendingFavorite')
+      window.location.href = '/' // Жорсткий рефреш тільки ПІСЛЯ логауту
+    }
   }
 }
 </script>
@@ -188,18 +195,14 @@ function handleLogout() {
           <!-- Count badge -->
           <div v-if="item.count != null && item.count > 0" class="flex-1 inline-flex justify-end">
             <div
-              class="px-2 py-[1.6px] rounded-full"
-              :class="
-                props.activeTab === item.id
-                  ? 'bg-orange-500/20'
-                  : 'bg-gray-800'
-              "
+              class="px-2 py-[1.6px] rounded-full flex items-center justify-center min-w-[24px]"
+              :class="props.activeTab === item.id ? 'bg-orange-500/20' : 'bg-gray-800'"
             >
               <span
-                class="text-xs font-medium font-['Onest'] leading-4"
+                class="text-xs font-medium font-['Onest'] leading-4 text-center"
                 :class="props.activeTab === item.id ? 'text-orange-500' : 'text-gray-500'"
               >
-                {{ item.count }}
+                {{ item.count > 99 ? '99+' : item.count }}
               </span>
             </div>
           </div>

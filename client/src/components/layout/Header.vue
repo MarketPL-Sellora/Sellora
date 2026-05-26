@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import AuthModal from '../modals/AuthModal.vue'
 // ─── Імпортувати сховища ──────────────────────────────────────────────────────
 import { useUserStore } from '../../state/userStore'
+import { useProductStore } from '../../state/productStore'
 import { useCategoryStore } from '../../state/categoryStore'
 
 const categoryStore = useCategoryStore()
@@ -18,6 +19,7 @@ const router = useRouter()
 
 // ─── Сховище користувача (замість локального ref) ─────────────────────────────
 const userStore = useUserStore()
+const productStore = useProductStore()
 
 // ─── Модальне вікно авторизації ───────────────────────────────────────────────
 // Використовуємо стан зі сховища
@@ -73,6 +75,39 @@ watch(
     searchQuery.value = (newKeyword as string) || ''
   }
 )
+
+function handleFavoritesClick() {
+  if (userStore.isAuthenticated) {
+    router.push('/cabinet?tab=wishlist')
+  } else {
+    userStore.isAuthModalOpen = true
+  }
+}
+
+watch(() => userStore.isAuthenticated, async (isAuth, wasAuth) => {
+  if (isAuth && !wasAuth) {
+    // Юзер успішно увійшов
+    const pendingFav = localStorage.getItem('pendingFavorite')
+    if (pendingFav) {
+      await productStore.addToFavorites(Number(pendingFav))
+      localStorage.removeItem('pendingFavorite')
+    }
+    // Оновлюємо кількість улюблених
+    productStore.fetchFavoritesCount()
+    // Оновлюємо поточні товари, щоб сердечка підтягнулися з сервера
+    if (route.name === 'product') {
+      productStore.fetchProductById(Number(route.params.id))
+    } else {
+      productStore.fetchProducts()
+    }
+  } else if (!isAuth && wasAuth) {
+    // Юзер вийшов - миттєво знімаємо всі сердечка локально
+    productStore.products.forEach(p => p.isFavorite = false)
+    if (productStore.currentProduct) productStore.currentProduct.isFavorite = false
+    productStore.favoritesCount = 0
+    localStorage.removeItem('pendingFavorite')
+  }
+})
 
 defineExpose({
   // isAuthModalOpen
@@ -190,14 +225,14 @@ defineExpose({
           <span class="text-gray-400 group-hover:text-gray-200 text-xs font-normal font-['Onest'] transition-colors">Увійти</span>
         </button>
 
-        <button class="px-3 py-2 bg-[#1a1f2e] rounded-xl outline outline-1 outline-white/5 flex items-center gap-2 transition-all hover:bg-[#22273a] hover:outline-white/10 group">
-          <svg class="w-4 h-4 text-gray-400 group-hover:text-gray-200 transition-colors" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect x="2" y="2" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.33" />
-            <rect x="9" y="2" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.33" />
-            <rect x="2" y="9" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.33" />
-            <rect x="9" y="9" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.33" />
+        <button
+          class="px-3 py-2 bg-[#1a1f2e] rounded-xl outline outline-1 outline-white/5 flex items-center gap-2 transition-all hover:bg-[#22273a] hover:outline-white/10 group"
+          @click="handleFavoritesClick"
+        >
+          <svg class="w-4 h-4 text-gray-400 group-hover:text-gray-200 transition-colors" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M7 12S1.5 8.5 1.5 4.5A2.5 2.5 0 016 3a2.5 2.5 0 015.5 1.5C11.5 8.5 7 12 7 12Z" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" />
           </svg>
-          <span class="text-gray-400 group-hover:text-gray-200 text-xs font-normal font-['Onest'] transition-colors">Порівняти</span>
+          <span class="text-gray-400 group-hover:text-gray-200 text-xs font-normal font-['Onest'] transition-colors">Улюблені</span>
         </button>
 
         <router-link
