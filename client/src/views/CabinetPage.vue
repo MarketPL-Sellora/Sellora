@@ -10,6 +10,7 @@ import AddProductForm   from '../components/forms/AddProductForm.vue'
 import CreateStoreForm  from '../components/forms/CreateStoreForm.vue'
 import CabinetCategories from '../components/cabinet/CabinetCategories.vue'
 import CabinetStores from '../components/cabinet/CabinetStores.vue'
+import CabinetSettings from '../components/cabinet/CabinetSettings.vue'
 import ProductGrid from '../components/product/ProductGrid.vue'
 import { useUserStore } from '../state/userStore'
 import { useProductStore } from '../state/productStore'
@@ -236,17 +237,8 @@ async function handleStoreStatus(newStatus: string) {
         <CabinetCategories v-else-if="activeTab === 'categories' && userStore.user?.role === 'ADMIN'" />
 
         <div v-else-if="activeTab === 'settings'">
-          <div class="p-6 bg-gray-900 rounded-2xl">
-            <div class="flex items-center gap-4">
-              <div class="w-16 h-16 bg-orange-500 rounded-full flex justify-center items-center text-white text-xl font-bold">
-                {{ (userStore.user?.email?.[0] || 'M').toUpperCase() }}
-              </div>
-              <div>
-                <div class="text-white font-bold">{{ userStore.user?.role }}</div>
-                <div class="text-gray-500 text-sm">{{ userStore.user?.email }}</div>
-              </div>
-            </div>
-          </div>
+          <div class="mb-6"><span class="text-gray-100 text-xl font-black font-['Unbounded']">Налаштування</span></div>
+          <CabinetSettings />
         </div>
 
       </div>

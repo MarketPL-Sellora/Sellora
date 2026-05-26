@@ -11,6 +11,10 @@ interface UserData {
   updatedAt: string
 }
 
+export interface UserSettings {
+  notifyEmailOnOrderStatus: boolean
+}
+
 export interface StorePayload {
   name: string
   address: string
@@ -52,6 +56,7 @@ export const useUserStore = defineStore('user', () => {
   const sellerStore = ref<SellerStore | null>(null)
   const isLoadingStore = ref<boolean>(false)
   const isAuthModalOpen = ref<boolean>(false)
+  const settings = ref<UserSettings | null>(null)
 
   // ─── ЛОГІКА LOCALSTORAGE (ІЗОЛЯЦІЯ ЮЗЕРІВ) ─────────────────────────────
   function getCurrentUserEmail(): string {
@@ -177,9 +182,37 @@ export const useUserStore = defineStore('user', () => {
     }
   }
 
+  async function fetchUserSettings(): Promise<void> {
+    try {
+      const response = await apiClient.get<UserSettings>('/user-settings/me')
+      settings.value = response.data
+    } catch {
+      settings.value = null
+    }
+  }
+
+  async function updateUserSettings(payload: Partial<UserSettings>): Promise<void> {
+    await apiClient.put('/user-settings/me', payload)
+    if (settings.value) {
+      Object.assign(settings.value, payload)
+    } else {
+      settings.value = payload as UserSettings
+    }
+  }
+
+  async function updateProfile(payload: { email: string; avatarUrl: string | null }): Promise<void> {
+    const response = await apiClient.put<UserData>('/users/me', payload)
+    user.value = response.data
+  }
+
+  async function changePassword(payload: { oldPassword: string; newPassword: string }): Promise<void> {
+    await apiClient.patch('/users/me/password', payload)
+  }
+
   return {
-    user, isAuthenticated, isCreatingStore, sellerStore, isLoadingStore, isAuthModalOpen,
+    user, isAuthenticated, isCreatingStore, sellerStore, isLoadingStore, isAuthModalOpen, settings,
     login, logout, fetchMe, fetchUserStore, createStore, updateStore, deleteStore, changeStoreStatus,
-    isJoinedLocally, markAsJoinedLocally
+    isJoinedLocally, markAsJoinedLocally,
+    fetchUserSettings, updateUserSettings, updateProfile, changePassword
   }
 })

@@ -39,8 +39,6 @@ onMounted(() => {
   }
 })
 
-// ─── Статичні дані профілю ────────────────────────────────────────────────────
-const userBadge = 'Pro учасник'
 
 // ─── Menu items ───────────────────────────────────────────────────────────────
 // Базові пункти меню (доступні всім користувачам)
@@ -111,9 +109,10 @@ async function handleLogout() {
       <div class="self-stretch flex flex-col items-center gap-2 pt-4 pb-2">
         <!-- Gradient avatar ring -->
         <div class="w-14 h-14 p-0.5 bg-gradient-to-br from-orange-500 to-violet-600 rounded-[30px] flex justify-center items-center shrink-0">
-          <div class="w-full h-full bg-[#1a2235] rounded-3xl flex justify-center items-center">
-            <span class="text-orange-500 text-xl font-bold font-['Unbounded'] leading-7">
-              <!--{{ user.initials }}-->
+          <div class="w-full h-full bg-[#1a2235] rounded-[28px] overflow-hidden flex justify-center items-center">
+            <img v-if="userStore.user?.avatarUrl" :src="userStore.user.avatarUrl" alt="Аватар" class="w-full h-full object-cover" />
+            <span v-else class="text-orange-500 text-xl font-bold font-['Unbounded'] leading-7">
+              {{ userStore.user?.email?.[0]?.toUpperCase() || 'U' }}
             </span>
           </div>
         </div>
@@ -130,12 +129,6 @@ async function handleLogout() {
           {{ userStore.user?.email }}
         </span>
 
-        <!-- Badge -->
-        <div class="px-2.5 py-[3px] bg-orange-500/10 rounded-full outline outline-1 outline-offset-[-1px] outline-orange-500/20">
-          <span class="text-orange-500 text-xs font-normal font-['Onest'] leading-4">
-            {{ userBadge }}
-          </span>
-        </div>
       </div>
 
       <div class="self-stretch h-px bg-[#1e2d3d]" />
