@@ -4,30 +4,30 @@ import com.sellora.core.domain.entities.Category;
 import com.sellora.core.domain.entities.Product;
 import com.sellora.core.domain.entities.Store;
 import com.sellora.core.domain.specifications.ProductSpecification;
-import com.sellora.core.infrastructure.persistence.CategoryRepository;
-import com.sellora.core.infrastructure.persistence.GroupBuySessionRepository;
-import com.sellora.core.infrastructure.persistence.ProductRepository;
-import com.sellora.core.infrastructure.persistence.StoreRepository;
+import com.sellora.core.infrastructure.persistence.*;
 import com.sellora.core.presentation.dtos.CreateProductDto;
 import com.sellora.core.presentation.dtos.ProductResponseDto;
 import com.sellora.core.presentation.exceptions.BadRequestException;
 import com.sellora.core.presentation.exceptions.ConflictException;
 import com.sellora.core.presentation.exceptions.ForbiddenException;
 import com.sellora.core.presentation.exceptions.ResourceNotFoundException;
+import com.sellora.core.presentation.exceptions.UnauthorizedException; // Додано
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-
 import java.math.BigDecimal;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -36,11 +36,22 @@ public class ProductService {
   private final ProductRepository productRepository;
   private final StoreRepository storeRepository;
   private final CategoryRepository categoryRepository;
-  private final GroupBuySessionRepository groupBuySessionRepository; // Додай у шапку класу
+  private final GroupBuySessionRepository groupBuySessionRepository;
+  private final UserFavoriteRepository userFavoriteRepository; // НОВИЙ РЕПОЗИТОРІЙ
+
+  // --- ХЕЛПЕР ДЛЯ БЕЗПЕЧНОГО ОТРИМАННЯ ID ---
+  private Long getCurrentUserIdOrNull() {
+    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+    if (auth != null && auth.isAuthenticated() && !auth.getPrincipal().equals("anonymousUser")) {
+      return (Long) auth.getPrincipal();
+    }
+    return null;
+  }
 
   @Transactional
   public Product createProduct(CreateProductDto dto) {
-    Long currentUserId = (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+    Long currentUserId = getCurrentUserIdOrNull();
+    if (currentUserId == null) throw new UnauthorizedException("Потрібна авторизація");
 
     Store currentStore = storeRepository.findByOwnerId(currentUserId)
       .orElseThrow(() -> new BadRequestException("У вас немає активного магазину. Спочатку створіть магазин!"));
@@ -56,25 +67,27 @@ public class ProductService {
     product.setGroupPrice(dto.groupPrice());
     product.setGroupTargetSize(dto.groupTargetSize());
     product.setStockQuantity(dto.stockQuantity());
-    if (dto.stockQuantity() == 0) {
-      product.setStatus("OUT_OF_STOCK");
-    } else {
-      product.setStatus("ACTIVE");
-    }
-
+    product.setStatus(dto.stockQuantity() == 0 ? "OUT_OF_STOCK" : "ACTIVE");
     product.setCategoryId(dto.categoryId());
     product.setMerchantId(currentStore.getId());
-
     product.setAttributes(dto.attributes() != null ? dto.attributes() : Map.of());
     product.setImages(dto.images() != null ? dto.images() : List.of());
 
     return productRepository.save(product);
   }
 
-  public Page<Product> filterProducts(
+  // --- ОНОВЛЕНИЙ МЕТОД ФІЛЬТРАЦІЇ ---
+  public Page<ProductResponseDto> filterProducts(
     String keyword, BigDecimal minPrice, BigDecimal maxPrice, Long categoryId,
-    String status, Long storeId, String groupMode, // Змінено на String
+    String status, Long storeId, String groupMode, boolean onlyFavorites,
     int page, int size, String sortBy, String sortDir) {
+
+    Long currentUserId = getCurrentUserIdOrNull();
+
+    // Захист: якщо хочуть улюблені, але юзер не авторизований - кидаємо красиву 401
+    if (onlyFavorites && currentUserId == null) {
+      throw new UnauthorizedException("Для перегляду улюблених товарів потрібно авторизуватись");
+    }
 
     Specification<Product> spec = Specification.where(ProductSpecification.hasTitle(keyword))
       .and(ProductSpecification.priceGreaterThanOrEqual(minPrice))
@@ -84,69 +97,79 @@ public class ProductService {
       .and(ProductSpecification.hasStoreId(storeId))
       .and(ProductSpecification.hasGroupSession(groupMode));
 
-    Sort sort = sortDir.equalsIgnoreCase(Sort.Direction.ASC.name())
-      ? Sort.by(sortBy).ascending()
-      : Sort.by(sortBy).descending();
+    // Якщо увімкнено фільтр - додаємо Specification з сабкверією
+    if (onlyFavorites) {
+      spec = spec.and(ProductSpecification.isFavorite(currentUserId));
+    }
 
-    Pageable pageable = PageRequest.of(page, size, sort);
-    return productRepository.findAll(spec, pageable);
-  }
-
-  // --- НОВИЙ МЕТОД 1: Товари конкретного продавця ---
-  public Page<Product> getProductsByMerchant(Long merchantId, int page, int size, String sortBy, String sortDir) {
-    Sort sort = sortDir.equalsIgnoreCase(Sort.Direction.ASC.name())
-      ? Sort.by(sortBy).ascending()
-      : Sort.by(sortBy).descending();
+    Sort sort = sortDir.equalsIgnoreCase(Sort.Direction.ASC.name()) ? Sort.by(sortBy).ascending() : Sort.by(sortBy).descending();
     Pageable pageable = PageRequest.of(page, size, sort);
 
-    return productRepository.findAllByMerchantId(merchantId, pageable);
+    Page<Product> productsPage = productRepository.findAll(spec, pageable);
+
+    // Використовуємо наш новий метод для швидкого мапінгу
+    return mapToProductResponseDtoPage(productsPage, currentUserId);
   }
 
-  // --- НОВИЙ МЕТОД 2: Конкретний товар з параметром full ---
+  public Page<ProductResponseDto> getProductsByMerchant(Long merchantId, int page, int size, String sortBy, String sortDir) {
+    Sort sort = sortDir.equalsIgnoreCase(Sort.Direction.ASC.name()) ? Sort.by(sortBy).ascending() : Sort.by(sortBy).descending();
+    Pageable pageable = PageRequest.of(page, size, sort);
+
+    Page<Product> productsPage = productRepository.findAllByMerchantId(merchantId, pageable);
+    return mapToProductResponseDtoPage(productsPage, getCurrentUserIdOrNull());
+  }
+
+  // --- ХЕЛПЕР ДЛЯ ПАКЕТНОЇ ПЕРЕВІРКИ УЛЮБЛЕНИХ ---
+  // --- ХЕЛПЕР ДЛЯ ПАКЕТНОЇ ПЕРЕВІРКИ УЛЮБЛЕНИХ ---
+  private Page<ProductResponseDto> mapToProductResponseDtoPage(Page<Product> productsPage, Long currentUserId) {
+    List<Long> productIds = productsPage.getContent().stream().map(Product::getId).toList();
+
+    // ВИПРАВЛЕННЯ: Ініціалізуємо змінну один раз за допомогою тернарного оператора
+    final Set<Long> favoriteIds = (currentUserId != null && !productIds.isEmpty())
+      ? userFavoriteRepository.findFavoriteProductIdsByUserAndProducts(currentUserId, productIds)
+      : new HashSet<>();
+
+    // Мапінг DTO з підставленим isFavorite
+    return productsPage.map(product -> new ProductResponseDto(
+      product.getId(), product.getTitle(), product.getDescription(),
+      product.getStandardPrice(), product.getGroupPrice(), product.getGroupTargetSize(),
+      product.getStockQuantity(), product.getCategoryId(), null, product.getMerchantId(), null,
+      product.getAttributes(), product.getImages(), product.getStatus(),
+      favoriteIds.contains(product.getId())
+    ));
+  }
+
   public ProductResponseDto getProductById(Long id, boolean full) {
     Product product = productRepository.findById(id)
       .orElseThrow(() -> new ResourceNotFoundException("Товар не знайдено"));
 
     String storeName = null;
     String categoryName = null;
+    boolean isFavorite = false;
 
-    // Якщо фронтенд попросив повну інформацію, робимо додаткові запити до БД
     if (full) {
-      storeName = storeRepository.findById(product.getMerchantId())
-        .map(Store::getName)
-        .orElse(null);
-
-      // Виправлено: звертаємось до змінної categoryRepository (з малої літери)
-      categoryName = categoryRepository.findById(product.getCategoryId())
-        .map(Category::getName)
-        .orElse(null);
+      storeName = storeRepository.findById(product.getMerchantId()).map(Store::getName).orElse(null);
+      categoryName = categoryRepository.findById(product.getCategoryId()).map(Category::getName).orElse(null);
     }
 
-    // Збираємо все в красивий DTO
+    Long currentUserId = getCurrentUserIdOrNull();
+    if (currentUserId != null) {
+      isFavorite = userFavoriteRepository.existsByUserIdAndProductId(currentUserId, id);
+    }
+
     return new ProductResponseDto(
-      product.getId(),
-      product.getTitle(),
-      product.getDescription(),
-      product.getStandardPrice(),
-      product.getGroupPrice(),
-      product.getGroupTargetSize(),
-      product.getStockQuantity(),
-      product.getCategoryId(),
-      categoryName,
-      product.getMerchantId(),
-      storeName,
-      product.getAttributes(),
-      product.getImages(),
-      product.getStatus()
+      product.getId(), product.getTitle(), product.getDescription(),
+      product.getStandardPrice(), product.getGroupPrice(), product.getGroupTargetSize(),
+      product.getStockQuantity(), product.getCategoryId(), categoryName,
+      product.getMerchantId(), storeName, product.getAttributes(), product.getImages(), product.getStatus(),
+      isFavorite
     );
   }
 
-  // Додай цей метод в ProductService.java
-
   @Transactional
   public Product updateProduct(Long productId, com.sellora.core.presentation.dtos.UpdateProductDto dto) {
-
-    Long currentUserId = (Long) org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+    Long currentUserId = getCurrentUserIdOrNull();
+    if (currentUserId == null) throw new UnauthorizedException("Потрібна авторизація");
     Store currentStore = storeRepository.findByOwnerId(currentUserId)
       .orElseThrow(() -> new BadRequestException("У вас немає активного магазину"));
 
@@ -155,16 +178,14 @@ public class ProductService {
     }
 
     Product product = productRepository.findById(productId)
-      .orElseThrow(() -> new com.sellora.core.presentation.exceptions.ResourceNotFoundException("Товар не знайдено"));
+      .orElseThrow(() -> new ResourceNotFoundException("Товар не знайдено"));
 
     if (!product.getMerchantId().equals(currentStore.getId())) {
       throw new ForbiddenException("Ви не можете редагувати чужий товар");
     }
 
-    if (!product.getCategoryId().equals(dto.categoryId())) {
-      if (!categoryRepository.existsById(dto.categoryId())) {
-        throw new BadRequestException("Вибраної категорії не існує");
-      }
+    if (!product.getCategoryId().equals(dto.categoryId()) && !categoryRepository.existsById(dto.categoryId())) {
+      throw new BadRequestException("Вибраної категорії не існує");
     }
 
     product.setTitle(dto.title());
@@ -173,12 +194,11 @@ public class ProductService {
     product.setStandardPrice(dto.standardPrice());
     product.setGroupPrice(dto.groupPrice());
     product.setGroupTargetSize(dto.groupTargetSize());
-    product.setImages(dto.images() != null ? dto.images() : java.util.List.of());
-    product.setAttributes(dto.attributes() != null ? dto.attributes() : java.util.Map.of());
+    product.setImages(dto.images() != null ? dto.images() : List.of());
+    product.setAttributes(dto.attributes() != null ? dto.attributes() : Map.of());
 
     int newStock = dto.stockQuantity();
     product.setStockQuantity(newStock);
-
     if (newStock == 0) {
       product.setStatus("OUT_OF_STOCK");
     } else if (newStock > 0 && "OUT_OF_STOCK".equals(product.getStatus())) {
@@ -190,8 +210,8 @@ public class ProductService {
 
   @Transactional
   public void deleteProduct(Long productId) {
-
-    Long currentUserId = (Long) org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+    Long currentUserId = getCurrentUserIdOrNull();
+    if (currentUserId == null) throw new UnauthorizedException("Потрібна авторизація");
     Store currentStore = storeRepository.findByOwnerId(currentUserId)
       .orElseThrow(() -> new BadRequestException("У вас немає активного магазину"));
 
@@ -211,8 +231,8 @@ public class ProductService {
 
   @Transactional
   public Product updateProductStatus(Long productId, String newStatus) {
-
-    Long currentUserId = (Long) org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+    Long currentUserId = getCurrentUserIdOrNull();
+    if (currentUserId == null) throw new UnauthorizedException("Потрібна авторизація");
     Store currentStore = storeRepository.findByOwnerId(currentUserId)
       .orElseThrow(() -> new BadRequestException("У вас немає активного магазину"));
 
@@ -223,11 +243,8 @@ public class ProductService {
       throw new ForbiddenException("Ви не можете редагувати чужий товар");
     }
 
-    String oldStatus = product.getStatus();
-
     if ("ARCHIVED".equalsIgnoreCase(newStatus)) {
       product.setStatus("ARCHIVED");
-
     } else if ("ACTIVE".equalsIgnoreCase(newStatus)) {
       if (product.getStockQuantity() == 0) {
         throw new BadRequestException("Не можна активувати товар з кількістю 0 на складі");

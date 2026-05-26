@@ -13,6 +13,7 @@ databaseChangeLog:
       file: changes/user-settings-seed-2026-05-14.sql
       relativeToChangelogFile: true
       context: dev
+  - include:
       file: changes/user-favorites-schema-2026-05-14.sql
       relativeToChangelogFile: true
   - include:

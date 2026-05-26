@@ -18,5 +18,6 @@ public record ProductResponseDto(
   String storeName,    // Заповнюється, якщо full=true
   Map<String, Object> attributes,
   List<String> images,
-  String status
+  String status,
+  boolean isFavorite
 ) {}
