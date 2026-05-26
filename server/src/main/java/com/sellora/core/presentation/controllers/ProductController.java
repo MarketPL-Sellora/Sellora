@@ -41,7 +41,7 @@ public class ProductController {
 
   @Operation(summary = "Отримання списку продуктів з фільтрацією та пагінацією")
   @GetMapping
-  public ResponseEntity<Page<Product>> getProducts(
+  public ResponseEntity<Page<ProductResponseDto>> getProducts(
     @RequestParam(required = false) String keyword,
     @RequestParam(required = false) BigDecimal minPrice,
     @RequestParam(required = false) BigDecimal maxPrice,
@@ -49,14 +49,15 @@ public class ProductController {
     @RequestParam(required = false) String status,
     @RequestParam(required = false) Long storeId,
     @RequestParam(required = false, defaultValue = "ALL") String groupMode,
+    @RequestParam(required = false, defaultValue = "false") boolean onlyFavorites, // <--- НОВИЙ ПАРАМЕТР
     @RequestParam(defaultValue = "0") int page,
     @RequestParam(defaultValue = "10") int size,
     @RequestParam(defaultValue = "id") String sortBy,
     @RequestParam(defaultValue = "asc") String sortDir) {
 
-    Page<Product> products = productService.filterProducts(
+    Page<ProductResponseDto> products = productService.filterProducts(
       keyword, minPrice, maxPrice, categoryId,
-      status, storeId, groupMode,
+      status, storeId, groupMode, onlyFavorites,
       page, size, sortBy, sortDir
     );
 
@@ -65,14 +66,14 @@ public class ProductController {
 
   @Operation(summary = "Отримання списку товарів конкретного продавця (магазину)")
   @GetMapping("/merchant/{merchantId}")
-  public ResponseEntity<Page<Product>> getProductsByMerchant(
+  public ResponseEntity<Page<ProductResponseDto>> getProductsByMerchant(
     @PathVariable Long merchantId,
     @RequestParam(defaultValue = "0") int page,
     @RequestParam(defaultValue = "10") int size,
     @RequestParam(defaultValue = "id") String sortBy,
     @RequestParam(defaultValue = "asc") String sortDir) {
 
-    Page<Product> products = productService.getProductsByMerchant(merchantId, page, size, sortBy, sortDir);
+    Page<ProductResponseDto> products = productService.getProductsByMerchant(merchantId, page, size, sortBy, sortDir);
     return ResponseEntity.ok(products);
   }
 

@@ -1,6 +1,9 @@
 package com.sellora.core.domain.specifications;
 
 import com.sellora.core.domain.entities.Product;
+import com.sellora.core.domain.entities.UserFavorite;
+import jakarta.persistence.criteria.Root;
+import jakarta.persistence.criteria.Subquery;
 import org.springframework.data.jpa.domain.Specification;
 import java.math.BigDecimal;
 
@@ -59,6 +62,18 @@ public class ProductSpecification {
       }
 
       return null;
+    };
+  }
+
+  public static Specification<Product> isFavorite(Long userId) {
+    return (root, query, cb) -> {
+      if (userId == null) return null;
+      Subquery<Long> subquery = query.subquery(Long.class);
+      Root<UserFavorite> ufRoot = subquery.from(UserFavorite.class);
+      subquery.select(ufRoot.get("productId"))
+        .where(cb.equal(ufRoot.get("userId"), userId),
+          cb.equal(ufRoot.get("productId"), root.get("id")));
+      return cb.exists(subquery);
     };
   }
 }
