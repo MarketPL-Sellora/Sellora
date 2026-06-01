@@ -2,16 +2,28 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AuthModal from '../modals/AuthModal.vue'
+import CartModal from '../modals/CartModal.vue'
 // ─── Імпортувати сховища ──────────────────────────────────────────────────────
 import { useUserStore } from '../../state/userStore'
 import { useProductStore } from '../../state/productStore'
 import { useCategoryStore } from '../../state/categoryStore'
+import { useCartStore } from '../../state/cartStore'
 
 const categoryStore = useCategoryStore()
 const topCategories = computed(() => categoryStore.categories.slice(0, 12))
 
-const cartCount      = ref(3)
+const cartStore = useCartStore()
+const cartCount = computed(() => cartStore.cart?.items?.length || 0)
+const isCartOpen = ref(false)
 const searchQuery    = ref('')
+
+function openCart() {
+  if (!userStore.isAuthenticated) {
+    userStore.isAuthModalOpen = true
+  } else {
+    isCartOpen.value = true
+  }
+}
 
 // ─── Роутер і поточний маршрут ────────────────────────────────────────────────
 const route  = useRoute()
@@ -94,6 +106,8 @@ watch(() => userStore.isAuthenticated, async (isAuth, wasAuth) => {
     }
     // Оновлюємо кількість улюблених
     productStore.fetchFavoritesCount()
+    // Завантажуємо кошик
+    cartStore.fetchCart()
     // Оновлюємо поточні товари, щоб сердечка підтягнулися з сервера
     if (route.name === 'product') {
       productStore.fetchProductById(Number(route.params.id))
@@ -155,9 +169,9 @@ defineExpose({
             </svg>
           </button>
 
-          <router-link
-            to="/checkout"
+          <button
             class="p-2 relative bg-[#1a1f2e] rounded-xl outline outline-1 outline-white/5 flex items-center justify-center transition-all hover:bg-[#22273a] active:scale-95"
+            @click="openCart"
           >
             <svg class="w-5 h-5 text-gray-400" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M2 2h1.5l1.8 7h7l1.5-5H5" stroke="currentColor" stroke-width="1.33" stroke-linecap="round" stroke-linejoin="round" />
@@ -170,7 +184,7 @@ defineExpose({
             >
               {{ cartCount }}
             </span>
-          </router-link>
+          </button>
         </div>
       </div>
 
@@ -235,9 +249,9 @@ defineExpose({
           <span class="text-gray-400 group-hover:text-gray-200 text-xs font-normal font-['Onest'] transition-colors">Улюблені</span>
         </button>
 
-        <router-link
-          to="/checkout"
+        <button
           class="px-3 py-2 relative bg-[#1a1f2e] rounded-xl outline outline-1 outline-white/5 flex items-center gap-2 transition-all hover:bg-[#22273a] hover:outline-white/10 group"
+          @click="openCart"
         >
           <svg class="w-4 h-4 text-gray-400 group-hover:text-gray-200 transition-colors" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M2 2h1.5l1.8 7h7l1.5-5H5" stroke="currentColor" stroke-width="1.33" stroke-linecap="round" stroke-linejoin="round" />
@@ -251,7 +265,7 @@ defineExpose({
           >
             {{ cartCount }}
           </span>
-        </router-link>
+        </button>
 
       </div>
     </div>
@@ -315,4 +329,6 @@ defineExpose({
     @close="userStore.isAuthModalOpen = false"
     @login-success="userStore.isAuthModalOpen = false"
   />
+
+  <CartModal v-if="isCartOpen" @close="isCartOpen = false" />
 </template>
