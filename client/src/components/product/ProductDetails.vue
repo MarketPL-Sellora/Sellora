@@ -6,6 +6,8 @@ dayjs.extend(utc)
 import type { GroupBuySession } from '../../state/groupBuyStore'
 import { useGroupBuyStore }     from '../../state/groupBuyStore'
 import type { ProductApiItem }  from '../../state/productStore'
+import { useCartStore }         from '../../state/cartStore'
+import { useUserStore }         from '../../state/userStore'
 
 const props = defineProps<{
   apiProduct?: ProductApiItem | null
@@ -13,6 +15,24 @@ const props = defineProps<{
 }>()
 
 const groupBuyStore = useGroupBuyStore()
+const cartStore = useCartStore()
+const userStore = useUserStore()
+const showCartToast = ref(false)
+
+async function handleAddToCart() {
+  if (!props.apiProduct?.id) return
+
+  if (!userStore.isAuthenticated) {
+    userStore.isAuthModalOpen = true
+    return
+  }
+
+  const success = await cartStore.addToCart(props.apiProduct.id)
+  if (success) {
+    showCartToast.value = true
+    setTimeout(() => { showCartToast.value = false }, 3000)
+  }
+}
 const joinSuccess = computed(() => {
   if (!props.sessionData?.uuid) return false;
   return groupBuyStore.mySessions.some(s => s.uuid === props.sessionData!.uuid);
@@ -365,20 +385,22 @@ const emit = defineEmits<{
     <!-- Кнопка стандартної ціни під блоком групової покупки -->
     <button
       v-if="product.isGroupBuyAvailable"
-      class="self-stretch py-3 rounded-xl outline outline-1 outline-offset-[-1px] outline-[#2a2d3e] text-[#787d99] text-sm font-normal font-['Onest'] leading-5 text-center transition-all duration-150 hover:outline-[#3d4158] hover:text-gray-400 hover:bg-white/5 active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-white/10"
-      @click="emit('buy-standard')"
+      class="self-stretch py-3 rounded-xl outline outline-1 outline-offset-[-1px] outline-[#2a2d3e] text-[#787d99] text-sm font-normal font-['Onest'] leading-5 text-center transition-all duration-150 hover:outline-[#3d4158] hover:text-gray-400 hover:bg-white/5 active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+      :disabled="cartStore.isLoading"
+      @click="handleAddToCart"
     >
-      Купити за стандартною ціною ({{ fmt(product.standardPrice) }})
+      {{ cartStore.isLoading ? 'Додаємо...' : `Купити за стандартною ціною (${fmt(product.standardPrice)})` }}
     </button>
 
     <!-- Блок ціни для звичайного товару (без групової покупки) -->
     <div v-if="!product.isGroupBuyAvailable" class="self-stretch mt-4 px-5 py-6 bg-[#161820] rounded-2xl outline outline-1 outline-offset-[-1px] outline-[#1c1f2a] flex flex-col gap-4">
       <span class="text-white text-3xl md:text-4xl font-semibold font-['Unbounded'] leading-tight">{{ fmt(product.standardPrice) }}</span>
       <button
-        class="w-full py-4 bg-gradient-to-r from-orange-500 to-amber-500 rounded-xl text-white text-base font-semibold font-['Unbounded'] leading-6 text-center uppercase tracking-wide transition-all duration-200 hover:from-orange-400 hover:to-amber-400 hover:shadow-[0px_6px_32px_0px_rgba(249,115,22,0.55)] active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 focus:ring-offset-[#0f1117]"
-        @click="emit('buy-standard')"
+        class="w-full py-4 bg-gradient-to-r from-orange-500 to-amber-500 rounded-xl text-white text-base font-semibold font-['Unbounded'] leading-6 text-center uppercase tracking-wide transition-all duration-200 hover:from-orange-400 hover:to-amber-400 hover:shadow-[0px_6px_32px_0px_rgba(249,115,22,0.55)] active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 focus:ring-offset-[#0f1117] disabled:opacity-50 disabled:cursor-not-allowed"
+        :disabled="cartStore.isLoading"
+        @click="handleAddToCart"
       >
-        Купити
+        {{ cartStore.isLoading ? 'Додаємо...' : 'Купити' }}
       </button>
     </div>
 
@@ -404,5 +426,18 @@ const emit = defineEmits<{
       </div>
     </div>
 
+    <!-- Toast: товар додано до кошика -->
+    <Transition name="fade">
+      <div v-if="showCartToast" class="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-emerald-600 to-emerald-700 rounded-xl shadow-[0_10px_30px_rgba(16,185,129,0.3)] text-white text-sm font-semibold font-['Onest'] tracking-wide">
+        <svg class="w-5 h-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+        Товар додано до кошика!
+      </div>
+    </Transition>
+
   </div>
 </template>
+
+<style scoped>
+.fade-enter-active, .fade-leave-active { transition: opacity 0.3s, transform 0.3s; }
+.fade-enter-from, .fade-leave-to { opacity: 0; transform: translate(-50%, 20px); }
+</style>
