@@ -81,7 +81,7 @@ const fmt = (n: number) => (n || 0).toLocaleString('uk-UA') + ' ₴'
             <img :src="item.image || 'https://via.placeholder.com/80'" class="w-20 h-20 object-cover rounded-lg bg-white/5" />
             <div class="flex flex-col flex-1 justify-between">
               <div class="pr-6">
-                <h3 class="text-sm font-semibold text-white leading-tight line-clamp-2">{{ item.name }}</h3>
+                <h3 class="text-sm font-semibold text-white leading-tight line-clamp-2">{{ item.title }}</h3>
                 <p class="text-xs text-gray-500 mt-1">Продавець: <span class="text-orange-400">{{ item.merchantName || 'Sellora' }}</span></p>
               </div>
               <div class="flex justify-between items-end mt-2">
