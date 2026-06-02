@@ -315,7 +315,7 @@ defineExpose({
             class="text-xs font-medium font-['Onest'] whitespace-nowrap transition-colors"
             :class="route.query.groupMode === 'ONLY_GROUP' ? 'text-orange-400' : 'text-gray-400 hover:text-gray-200'"
           >
-            📦 Групові покупки
+            Групові покупки
           </span>
         </button>
 

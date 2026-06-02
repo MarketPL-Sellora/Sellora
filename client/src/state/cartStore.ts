@@ -4,13 +4,13 @@ import { apiClient } from '../api/axios'
 
 export interface CartItem {
   productId: number
-  name: string
+  title: string
   brand?: string
   image?: string
   price: number
   oldPrice?: number
   quantity: number
-  totalPrice: number
+  subTotal: number
   merchantName?: string
   stockQuantity?: number
 }
