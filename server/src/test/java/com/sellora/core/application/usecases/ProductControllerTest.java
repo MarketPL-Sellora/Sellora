@@ -1,6 +1,5 @@
 package com.sellora.core.application.usecases;
 
-import com.sellora.core.application.usecases.ProductService;
 import com.sellora.core.domain.entities.Product;
 import com.sellora.core.presentation.controllers.ProductController;
 import com.sellora.core.presentation.dtos.CreateProductDto;
@@ -37,7 +36,6 @@ public class ProductControllerTest {
 
   @Test
   void createProduct_ValidDto_ReturnsCreated() {
-    // Arrange
     CreateProductDto dto = new CreateProductDto(
       "Title", "Description", 1L, BigDecimal.valueOf(100),
       BigDecimal.valueOf(80), 3, 10, List.of(), Map.of()
@@ -46,10 +44,8 @@ public class ProductControllerTest {
     product.setId(1L);
     when(productService.createProduct(any(CreateProductDto.class))).thenReturn(product);
 
-    // Act
     ResponseEntity<Product> response = productController.createProduct(dto);
 
-    // Assert
     assertEquals(HttpStatus.CREATED, response.getStatusCode());
     assertNotNull(response.getBody());
     assertEquals(1L, response.getBody().getId());
@@ -58,17 +54,22 @@ public class ProductControllerTest {
 
   @Test
   void getProducts_ReturnsOkWithPage() {
-    // Arrange
-    Page<Product> page = new PageImpl<>(List.of(new Product()));
-    when(productService.filterProducts(any(), any(), any(), any(), any(), any(), any(), anyInt(), anyInt(), anyString(), anyString()))
+    Page<ProductResponseDto> page = new PageImpl<>(List.of(
+      new ProductResponseDto(1L, "Title", "Desc", BigDecimal.TEN, BigDecimal.ONE,
+        5, 10, 1L, null, 1L, null, Map.of(), List.of(), "ACTIVE", false)
+    ));
+    when(productService.filterProducts(
+      any(), any(), any(), any(), any(), any(), any(),
+      anyBoolean(), // Додано параметр onlyFavorites
+      anyInt(), anyInt(), anyString(), anyString()))
       .thenReturn(page);
 
-    // Act
-    ResponseEntity<Page<Product>> response = productController.getProducts(
-      "key", BigDecimal.ZERO, BigDecimal.TEN, 1L, "ACTIVE", 1L, "ALL", 0, 10, "id", "asc"
+    ResponseEntity<Page<ProductResponseDto>> response = productController.getProducts(
+      "key", BigDecimal.ZERO, BigDecimal.TEN, 1L, "ACTIVE", 1L, "ALL",
+      false, // Додано аргумент onlyFavorites
+      0, 10, "id", "asc"
     );
 
-    // Assert
     assertEquals(HttpStatus.OK, response.getStatusCode());
     assertNotNull(response.getBody());
     assertEquals(1, response.getBody().getTotalElements());
@@ -76,16 +77,15 @@ public class ProductControllerTest {
 
   @Test
   void getProductById_ReturnsOkWithDto() {
-    // Arrange
     ProductResponseDto dto = new ProductResponseDto(
-      1L, "Title", "Desc", BigDecimal.TEN, BigDecimal.ONE, 5, 10, 1L, "Category", 1L, "Store", Map.of(), List.of(), "ACTIVE"
+      1L, "Title", "Desc", BigDecimal.TEN, BigDecimal.ONE, 5, 10,
+      1L, "Category", 1L, "Store", Map.of(), List.of(), "ACTIVE",
+      false // Додано параметр isFavorite
     );
     when(productService.getProductById(eq(1L), anyBoolean())).thenReturn(dto);
 
-    // Act
     ResponseEntity<ProductResponseDto> response = productController.getProductById(1L, true);
 
-    // Assert
     assertEquals(HttpStatus.OK, response.getStatusCode());
     assertNotNull(response.getBody());
     assertEquals(1L, response.getBody().id());
@@ -93,7 +93,6 @@ public class ProductControllerTest {
 
   @Test
   void updateProduct_ReturnsOk() {
-    // Arrange
     UpdateProductDto dto = new UpdateProductDto(
       "New Title", "New Desc", 1L, BigDecimal.valueOf(200), null, null, 20, List.of(), Map.of()
     );
@@ -101,39 +100,31 @@ public class ProductControllerTest {
     updatedProduct.setId(1L);
     when(productService.updateProduct(eq(1L), any(UpdateProductDto.class))).thenReturn(updatedProduct);
 
-    // Act
     ResponseEntity<Product> response = productController.updateProduct(1L, dto);
 
-    // Assert
     assertEquals(HttpStatus.OK, response.getStatusCode());
     assertNotNull(response.getBody());
   }
 
   @Test
   void deleteProduct_ReturnsNoContent() {
-    // Arrange
     doNothing().when(productService).deleteProduct(1L);
 
-    // Act
     ResponseEntity<Void> response = productController.deleteProduct(1L);
 
-    // Assert
     assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
     verify(productService, times(1)).deleteProduct(1L);
   }
 
   @Test
   void updateProductStatus_ReturnsOk() {
-    // Arrange
     UpdateProductStatusDto dto = new UpdateProductStatusDto("ARCHIVED");
     Product product = new Product();
     product.setStatus("ARCHIVED");
     when(productService.updateProductStatus(eq(1L), eq("ARCHIVED"))).thenReturn(product);
 
-    // Act
     ResponseEntity<Product> response = productController.updateProductStatus(1L, dto);
 
-    // Assert
     assertEquals(HttpStatus.OK, response.getStatusCode());
     assertNotNull(response.getBody());
     assertEquals("ARCHIVED", response.getBody().getStatus());
