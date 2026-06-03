@@ -28,6 +28,7 @@ const activeTab = computed({
 const isAddingProduct = ref(false)
 const isCreatingStoreForm = ref(false)
 const editingProductId = ref<number | null>(null)
+const processingActionId = ref<number | string | null>(null)
 
 // Магазин вважається існуючим, якщо він є в сторі
 const hasStore = computed(() => !!userStore.sellerStore)
@@ -91,16 +92,26 @@ function editStore() {
 
 async function handleDeleteProduct(id: number) {
   if (!confirm('Ви дійсно хочете видалити цей товар?')) return
-  const success = await productStore.deleteProduct(id)
-  if (success && userStore.sellerStore?.id) {
-    await productStore.fetchMerchantProducts(userStore.sellerStore.id)
+  processingActionId.value = id
+  try {
+    const success = await productStore.deleteProduct(id)
+    if (success && userStore.sellerStore?.id) {
+      await productStore.fetchMerchantProducts(userStore.sellerStore.id)
+    }
+  } finally {
+    processingActionId.value = null
   }
 }
 
 async function handleChangeProductStatus(payload: { id: number; status: string }) {
-  const success = await productStore.changeProductStatus(payload.id, payload.status)
-  if (success && userStore.sellerStore?.id) {
-    await productStore.fetchMerchantProducts(userStore.sellerStore.id)
+  processingActionId.value = payload.id
+  try {
+    const success = await productStore.changeProductStatus(payload.id, payload.status)
+    if (success && userStore.sellerStore?.id) {
+      await productStore.fetchMerchantProducts(userStore.sellerStore.id)
+    }
+  } finally {
+    processingActionId.value = null
   }
 }
 
@@ -112,18 +123,26 @@ function openEditForm(id: number) {
 async function handleDeleteStore() {
   if (!userStore.sellerStore?.id) return
   if (!confirm('Ви дійсно хочете видалити свій магазин? Цю дію неможливо скасувати.')) return
-
-  await userStore.deleteStore(userStore.sellerStore.id)
+  processingActionId.value = 'store'
+  try {
+    await userStore.deleteStore(userStore.sellerStore.id)
+  } finally {
+    processingActionId.value = null
+  }
 }
 
 async function handleStoreStatus(newStatus: string) {
   if (!userStore.sellerStore?.id) return
   const actionText = newStatus === 'CLOSED' ? 'закрити' : 'активувати'
   if (!confirm(`Ви дійсно хочете ${actionText} свій магазин?`)) return
-
-  const success = await userStore.changeStoreStatus(userStore.sellerStore.id, newStatus)
-  if (success) {
-    await userStore.fetchUserStore(userStore.user!.id) // Оновлюємо дані магазину
+  processingActionId.value = 'store'
+  try {
+    const success = await userStore.changeStoreStatus(userStore.sellerStore.id, newStatus)
+    if (success) {
+      await userStore.fetchUserStore(userStore.user!.id) // Оновлюємо дані магазину
+    }
+  } finally {
+    processingActionId.value = null
   }
 }
 </script>
@@ -195,7 +214,8 @@ async function handleStoreStatus(newStatus: string) {
 
                     <button 
                       v-if="userStore.sellerStore?.status === 'ACTIVE'" 
-                      class="px-4 py-2 bg-gray-500/15 text-gray-300 rounded-xl text-xs font-semibold hover:bg-gray-500/25 transition-all" 
+                      class="px-4 py-2 bg-gray-500/15 text-gray-300 rounded-xl text-xs font-semibold hover:bg-gray-500/25 transition-all disabled:opacity-50 disabled:cursor-not-allowed" 
+                      :disabled="processingActionId === 'store'"
                       @click="handleStoreStatus('CLOSED')"
                     >
                       Закрити магазин
@@ -203,14 +223,16 @@ async function handleStoreStatus(newStatus: string) {
 
                     <button 
                       v-if="userStore.sellerStore?.status === 'CLOSED'" 
-                      class="px-4 py-2 bg-emerald-500/15 text-emerald-400 rounded-xl text-xs font-semibold hover:bg-emerald-500/25 transition-all" 
+                      class="px-4 py-2 bg-emerald-500/15 text-emerald-400 rounded-xl text-xs font-semibold hover:bg-emerald-500/25 transition-all disabled:opacity-50 disabled:cursor-not-allowed" 
+                      :disabled="processingActionId === 'store'"
                       @click="handleStoreStatus('ACTIVE')"
                     >
                       Активувати магазин
                     </button>
 
                     <button 
-                      class="px-4 py-2 bg-red-500/15 text-red-400 rounded-xl text-xs font-semibold hover:bg-red-500/25 transition-all" 
+                      class="px-4 py-2 bg-red-500/15 text-red-400 rounded-xl text-xs font-semibold hover:bg-red-500/25 transition-all disabled:opacity-50 disabled:cursor-not-allowed" 
+                      :disabled="processingActionId === 'store'"
                       @click="handleDeleteStore"
                     >
                       Видалити
@@ -225,7 +247,7 @@ async function handleStoreStatus(newStatus: string) {
               </div>
 
               <div v-if="productStore.myProducts.length > 0" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
-                <ProductCard v-for="product in productStore.myProducts" :key="product.id" :product="product" :simple="true" :isCabinet="true" :isStoreActive="userStore.sellerStore?.status === 'ACTIVE'" @delete="handleDeleteProduct" @change-status="handleChangeProductStatus" @edit="openEditForm" />
+                <ProductCard v-for="product in productStore.myProducts" :key="product.id" :product="product" :simple="true" :isCabinet="true" :isStoreActive="userStore.sellerStore?.status === 'ACTIVE'" :isProcessing="processingActionId === product.id" @delete="handleDeleteProduct" @change-status="handleChangeProductStatus" @edit="openEditForm" />
               </div>
               <div v-else class="text-center py-16 text-gray-500">Ви ще не додали жодного товару.</div>
             </template>

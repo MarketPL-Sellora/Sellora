@@ -8,6 +8,7 @@ import { useGroupBuyStore }     from '../../state/groupBuyStore'
 import type { ProductApiItem }  from '../../state/productStore'
 import { useCartStore }         from '../../state/cartStore'
 import { useUserStore }         from '../../state/userStore'
+import { DICT }                 from '../../constants/dictionary'
 
 const props = defineProps<{
   apiProduct?: ProductApiItem | null
@@ -168,7 +169,7 @@ function updateCountdown() {
   const end = dayjs.utc(props.sessionData.expiresAt)
   const diff = end.diff(now, 'second')
   if (diff <= 0) {
-    countdownText.value = 'Час вичерпано'
+    countdownText.value = DICT.product.timeExpired
     return
   }
   const h = Math.floor(diff / 3600)
@@ -210,7 +211,7 @@ const emit = defineEmits<{
         class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-orange-500/10 hover:bg-orange-500/20 text-orange-400 text-xs font-semibold font-['Onest'] uppercase leading-4 tracking-wider rounded-lg transition-colors duration-150"
       >
         <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
-        Товари продавця
+        {{ DICT.product.sellerProducts }}
       </router-link>
       <span v-else class="text-orange-400 text-xs font-normal font-['Onest'] uppercase leading-4 tracking-wider">
         {{ product.brand }}
@@ -239,14 +240,14 @@ const emit = defineEmits<{
         </div>
         <span class="text-[#787d99] text-sm font-normal font-['Onest'] leading-5">{{ product.rating }}</span>
         <span class="text-orange-400 text-xs font-normal font-['Onest'] leading-4 hover:text-orange-300 transition-colors duration-150">
-          ({{ product.reviewCount }} відгуки)
+          ({{ product.reviewCount }} {{ DICT.product.reviews }})
         </span>
       </button>
 
       <div class="flex items-center gap-1.5">
         <span class="w-2 h-2 rounded-full" :class="product.inStock ? 'bg-green-400' : 'bg-red-400'" />
         <span class="text-xs font-normal font-['Onest'] leading-4" :class="product.inStock ? 'text-green-400' : 'text-red-400'">
-          {{ product.inStock ? 'В наявності' : 'Немає в наявності' }}
+          {{ product.inStock ? DICT.product.inStock : DICT.product.outOfStock }}
         </span>
       </div>
     </div>
@@ -294,11 +295,11 @@ const emit = defineEmits<{
               </svg>
             </div>
             <span class="text-orange-300 text-base font-normal font-['Onest'] leading-6">
-              {{ sessionData ? 'Збір за запрошенням' : 'Групова покупка' }}
+              {{ sessionData ? DICT.product.groupBuyInvitation : DICT.product.groupBuy }}
             </span>
           </div>
         <div class="px-3 py-1.5 bg-gradient-to-r from-orange-500/20 to-amber-500/10 rounded-lg outline outline-1 outline-offset-[-1px] outline-orange-500/40">
-            <span class="text-orange-300 text-sm font-semibold font-['Onest'] leading-5">Економія {{ fmt(product.savings) }}</span>
+            <span class="text-orange-300 text-sm font-semibold font-['Onest'] leading-5">{{ DICT.product.savings }} {{ fmt(product.savings) }}</span>
           </div>
         </div>
 
@@ -323,7 +324,7 @@ const emit = defineEmits<{
           <span class="text-[#787d99] text-xs font-normal font-['Onest'] leading-4">До кінця збору:</span>
           <span
             class="text-sm font-normal font-['Unbounded'] leading-5 tabular-nums"
-            :class="countdownFormatted === 'Час вичерпано' ? 'text-red-400' : 'text-white'"
+            :class="countdownFormatted === DICT.product.timeExpired ? 'text-red-400' : 'text-white'"
           >{{ countdownFormatted }}</span>
         </div>
 
@@ -367,7 +368,7 @@ const emit = defineEmits<{
             :disabled="groupBuyStore.isLoading"
             @click="handleJoin"
           >
-            {{ groupBuyStore.isLoading ? 'ПРИЄДНУЄМОСЯ...' : 'ПРИЄДНАТИСЯ ДО ЗБОРУ' }}
+            {{ groupBuyStore.isLoading ? 'ПРИЄДНУЄМОСЯ...' : DICT.actions.join }}
           </button>
         </template>
 
@@ -389,7 +390,7 @@ const emit = defineEmits<{
       :disabled="cartStore.isLoading"
       @click="handleAddToCart"
     >
-      {{ cartStore.isLoading ? 'Додаємо...' : `Купити за стандартною ціною (${fmt(product.standardPrice)})` }}
+      {{ cartStore.isLoading ? 'Додаємо...' : `${DICT.product.buyStandard} (${fmt(product.standardPrice)})` }}
     </button>
 
     <!-- Блок ціни для звичайного товару (без групової покупки) -->
@@ -400,13 +401,13 @@ const emit = defineEmits<{
         :disabled="cartStore.isLoading"
         @click="handleAddToCart"
       >
-        {{ cartStore.isLoading ? 'Додаємо...' : 'Купити' }}
+        {{ cartStore.isLoading ? 'Додаємо...' : DICT.actions.buy }}
       </button>
     </div>
 
     <div class="self-stretch pt-5 rounded-xl outline outline-1 outline-offset-[-1px] outline-[#1c1f2a] flex flex-col overflow-hidden">
       <div class="self-stretch px-4 py-3 bg-[#161820] border-b border-[#1c1f2a]">
-        <span class="text-[#787d99] text-xs font-normal font-['Onest'] uppercase leading-4 tracking-wide">Доставка та гарантія</span>
+        <span class="text-[#787d99] text-xs font-normal font-['Onest'] uppercase leading-4 tracking-wide">{{ DICT.product.deliveryAndWarranty }}</span>
       </div>
 
       <div class="self-stretch flex flex-col">

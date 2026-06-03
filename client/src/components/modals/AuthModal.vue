@@ -203,10 +203,23 @@ async function handleAuth() {
         <!-- Submit -->
         <div class="pt-1">
           <button
-            class="w-full py-3.5 relative bg-orange-500 rounded-xl ..."
+            class="w-full py-3.5 relative bg-orange-500 rounded-xl flex justify-center items-center shadow-[0px_4px_6px_-4px_rgba(249,115,22,0.20),0px_10px_15px_-3px_rgba(249,115,22,0.20)] transition-all duration-150 hover:bg-orange-400 hover:shadow-[0px_4px_20px_0px_rgba(249,115,22,0.45)] active:scale-[0.98] active:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-500/50 disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:bg-orange-500 disabled:active:scale-100"
+            :disabled="isLoading"
             @click="handleAuth"
           >
-            <span class="text-white text-sm font-semibold font-['Onest'] leading-5 tracking-tight">Увійти</span>
+            <svg
+              v-if="isLoading"
+              class="w-4 h-4 animate-spin text-white mr-2"
+              viewBox="0 0 24 24"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+            </svg>
+            <span class="text-white text-sm font-semibold font-['Onest'] leading-5 tracking-tight">
+              {{ isLoading ? 'Завантаження...' : 'Увійти' }}
+            </span>
           </button>
         </div>
 

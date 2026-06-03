@@ -8,6 +8,7 @@ import { useUserStore } from '../../state/userStore'
 import { useProductStore } from '../../state/productStore'
 import { useCategoryStore } from '../../state/categoryStore'
 import { useCartStore } from '../../state/cartStore'
+import { DICT } from '../../constants/dictionary'
 
 const categoryStore = useCategoryStore()
 const topCategories = computed(() => categoryStore.categories.slice(0, 12))
@@ -198,7 +199,7 @@ defineExpose({
             <input
               v-model="searchQuery"
               type="text"
-              placeholder="Знайди будь-що... iPhone 15, Xiaomi, Nike"
+              :placeholder="DICT.nav.searchPlaceholder"
               class="flex-1 w-full min-w-0 bg-transparent text-gray-400 text-sm font-normal font-['Onest'] placeholder-gray-500 outline-none truncate"
               @keyup.enter="handleSearch"
             />
@@ -207,7 +208,7 @@ defineExpose({
             class="px-4 py-1.5 absolute right-1.5 bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg shadow-[0px_4px_16px_0px_rgba(249,115,22,0.35)] transition-all hover:from-orange-400 hover:to-orange-500 active:scale-95"
             @click="handleSearch"
           >
-            <span class="text-white text-xs font-semibold font-['Onest']">Знайти</span>
+            <span class="text-white text-xs font-semibold font-['Onest']">{{ DICT.nav.search }}</span>
           </button>
         </div>
       </div>
@@ -223,7 +224,7 @@ defineExpose({
             <path d="M3.33 14v-1.33A2.67 2.67 0 016 10h4a2.67 2.67 0 012.67 2.67V14" stroke="currentColor" stroke-width="1.33" stroke-linecap="round" />
             <circle cx="8" cy="5.33" r="2.67" stroke="currentColor" stroke-width="1.33" />
           </svg>
-          <span class="text-gray-400 group-hover:text-gray-200 text-xs font-normal font-['Onest'] transition-colors">Кабінет</span>
+          <span class="text-gray-400 group-hover:text-gray-200 text-xs font-normal font-['Onest'] transition-colors">{{ DICT.nav.cabinet }}</span>
         </router-link>
 
 
@@ -236,7 +237,7 @@ defineExpose({
             <path d="M3.33 14v-1.33A2.67 2.67 0 016 10h4a2.67 2.67 0 012.67 2.67V14" stroke="currentColor" stroke-width="1.33" stroke-linecap="round" />
             <circle cx="8" cy="5.33" r="2.67" stroke="currentColor" stroke-width="1.33" />
           </svg>
-          <span class="text-gray-400 group-hover:text-gray-200 text-xs font-normal font-['Onest'] transition-colors">Увійти</span>
+          <span class="text-gray-400 group-hover:text-gray-200 text-xs font-normal font-['Onest'] transition-colors">{{ DICT.nav.login }}</span>
         </button>
 
         <button
@@ -246,7 +247,7 @@ defineExpose({
           <svg class="w-4 h-4 text-gray-400 group-hover:text-gray-200 transition-colors" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M7 12S1.5 8.5 1.5 4.5A2.5 2.5 0 016 3a2.5 2.5 0 015.5 1.5C11.5 8.5 7 12 7 12Z" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" />
           </svg>
-          <span class="text-gray-400 group-hover:text-gray-200 text-xs font-normal font-['Onest'] transition-colors">Улюблені</span>
+          <span class="text-gray-400 group-hover:text-gray-200 text-xs font-normal font-['Onest'] transition-colors">{{ DICT.nav.favorites }}</span>
         </button>
 
         <button
@@ -258,7 +259,7 @@ defineExpose({
             <circle cx="7" cy="13" r="1" fill="currentColor" />
             <circle cx="11" cy="13" r="1" fill="currentColor" />
           </svg>
-          <span class="text-gray-400 group-hover:text-gray-200 text-xs font-normal font-['Onest'] transition-colors">Кошик</span>
+          <span class="text-gray-400 group-hover:text-gray-200 text-xs font-normal font-['Onest'] transition-colors">{{ DICT.nav.cart }}</span>
           <span
             v-if="cartCount > 0"
             class="absolute -top-1.5 -right-1.5 bg-orange-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow-[0px_2px_8px_0px_rgba(249,115,22,0.60)] transition-transform group-hover:scale-110"
@@ -284,7 +285,7 @@ defineExpose({
             <rect x="1.8" y="6.6" width="3.6" height="3.6" rx="0.6" />
             <rect x="6.6" y="6.6" width="3.6" height="3.6" rx="0.6" />
           </svg>
-          <span class="text-orange-500 text-xs font-medium font-['Onest'] whitespace-nowrap">Усі категорії</span>
+          <span class="text-orange-500 text-xs font-medium font-['Onest'] whitespace-nowrap">{{ DICT.nav.allCategories }}</span>
         </button>
 
         <span class="text-white/10 text-base mx-1">|</span>
@@ -315,7 +316,7 @@ defineExpose({
             class="text-xs font-medium font-['Onest'] whitespace-nowrap transition-colors"
             :class="route.query.groupMode === 'ONLY_GROUP' ? 'text-orange-400' : 'text-gray-400 hover:text-gray-200'"
           >
-            Групові покупки
+            {{ DICT.nav.groupBuys }}
           </span>
         </button>
 

@@ -9,6 +9,7 @@ const userStore = useUserStore()
 const email = ref('')
 const avatarUrl = ref('')
 const emailError = ref('')
+const isProfileSaving = ref(false)
 
 // ─── Стан пароля ───────────────────────────────────────────────────────────────
 const isPasswordModalOpen = ref(false)
@@ -16,6 +17,7 @@ const oldPassword = ref('')
 const newPassword = ref('')
 const repeatPassword = ref('')
 const passwordError = ref('')
+const isPasswordSaving = ref(false)
 
 // ─── Стан налаштувань ──────────────────────────────────────────────────────────
 const notifyEmailOnOrderStatus = ref(false)
@@ -56,6 +58,7 @@ async function handleAvatarUpload(e: Event) {
 // ─── Збереження профілю ────────────────────────────────────────────────────────
 async function handleSaveProfile() {
   emailError.value = ''
+  isProfileSaving.value = true
   try {
     await userStore.updateProfile({
       email: email.value,
@@ -66,6 +69,8 @@ async function handleSaveProfile() {
     if (err.response?.status === 409) {
       emailError.value = 'Цей Email вже зайнятий'
     }
+  } finally {
+    isProfileSaving.value = false
   }
 }
 
@@ -76,6 +81,7 @@ async function handleChangePassword() {
     passwordError.value = 'Паролі не співпадають'
     return
   }
+  isPasswordSaving.value = true
   try {
     await userStore.changePassword({
       oldPassword: oldPassword.value,
@@ -89,6 +95,8 @@ async function handleChangePassword() {
     alert('Пароль успішно змінено')
   } catch {
     passwordError.value = 'Невірний старий пароль або помилка сервера'
+  } finally {
+    isPasswordSaving.value = false
   }
 }
 
@@ -168,7 +176,7 @@ function showNotification(msg: string) {
 
         <!-- Кнопки -->
         <div class="profile-actions">
-          <button class="btn-primary" @click="handleSaveProfile">
+          <button class="btn-primary" :disabled="isProfileSaving" @click="handleSaveProfile">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
             Зберегти зміни
           </button>
@@ -246,7 +254,7 @@ function showNotification(msg: string) {
 
             <div class="modal-footer">
               <button class="btn-secondary" @click="isPasswordModalOpen = false; passwordError = ''">Скасувати</button>
-              <button class="btn-primary" @click="handleChangePassword">
+              <button class="btn-primary" :disabled="isPasswordSaving" @click="handleChangePassword">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
                 Зберегти пароль
               </button>
