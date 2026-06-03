@@ -9,6 +9,10 @@ import com.sellora.core.infrastructure.persistence.CartItemRepository;
 import com.sellora.core.infrastructure.persistence.CartRepository;
 import com.sellora.core.infrastructure.persistence.OrderItemRepository;
 import com.sellora.core.infrastructure.persistence.OrderRepository;
+import com.sellora.core.infrastructure.persistence.ProductRepository;
+import com.sellora.core.presentation.dtos.OrderItemDto;
+import com.sellora.core.presentation.dtos.OrderResponseDto;
+import com.sellora.core.presentation.exceptions.ConflictException;
 import com.sellora.core.presentation.exceptions.EmptyCartException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -23,10 +27,11 @@ public class OrderService {
   private final OrderRepository orderRepository;
   private final CartRepository cartRepository;
   private final CartItemRepository cartItemRepository;
-  private final OrderItemRepository orderItemRepository; // ДОДАЛИ НОВИЙ РЕПОЗИТОРІЙ
+  private final OrderItemRepository orderItemRepository;
+  private final ProductRepository productRepository;
 
   @Transactional
-  public Order checkout(Long userId) {
+  public OrderResponseDto checkout(Long userId) { // <--- Змінили тип повернення
     Cart cart = cartRepository.findByUserId(userId)
       .orElseThrow(() -> new RuntimeException("Кошик не знайдено для користувача: " + userId));
 
@@ -35,48 +40,76 @@ public class OrderService {
       throw new EmptyCartException("Кошик порожній. Немає чого замовляти.");
     }
 
+    // --- Валідація та списання залишків ---
+    for (CartItem cartItem : items) {
+      Product product = cartItem.getProduct();
+      if (cartItem.getQuantity() > product.getStockQuantity()) {
+        throw new ConflictException(
+          String.format("Товар '%s' недоступний у кількості %d шт. Залишок на складі: %d шт.",
+            product.getTitle(), cartItem.getQuantity(), product.getStockQuantity())
+        );
+      }
+      int newStock = product.getStockQuantity() - cartItem.getQuantity();
+      product.setStockQuantity(newStock);
+      if (newStock == 0) {
+        product.setStatus("OUT_OF_STOCK");
+      }
+      productRepository.save(product);
+    }
+
     BigDecimal totalAmount = items.stream()
       .map(item -> item.getProduct().getStandardPrice().multiply(BigDecimal.valueOf(item.getQuantity())))
       .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-    // 1. СТВОРЮЄМО ГОЛОВНЕ ЗАМОВЛЕННЯ (Order)
+    // 1. Зберігаємо Order
     Order order = new Order();
     order.setUserId(userId);
     order.setFinalPrice(totalAmount);
     order.setPaymentStatus("PENDING");
     order.setShippingStatus("PENDING");
     order.setPurchaseType("REGULAR");
-
-    // Беремо merchantId з першого товару (якщо кошик підтримує товари тільки з одного магазину)
     order.setMerchantId(items.get(0).getProduct().getMerchantId());
 
-    // Зберігаємо в базу, щоб Postgres згенерував ID
     Order savedOrder = orderRepository.save(order);
 
-    // 2. СТВОРЮЄМО ДЕТАЛІ ЗАМОВЛЕННЯ (OrderItems)
+    // 2. Зберігаємо OrderItems
     List<OrderItem> orderItems = items.stream().map(cartItem -> {
       Product product = cartItem.getProduct();
-
       OrderItem orderItem = new OrderItem();
-      orderItem.setOrderId(savedOrder.getId()); // Прив'язуємо до головного замовлення!
+      orderItem.setOrderId(savedOrder.getId());
       orderItem.setProductId(product.getId());
       orderItem.setQuantity(cartItem.getQuantity());
-      orderItem.setPriceSnapshot(product.getStandardPrice()); // Зберігаємо ціну на момент покупки
+      orderItem.setPriceSnapshot(product.getStandardPrice());
       orderItem.setTitleSnapshot(product.getTitle());
-      // Перевіряємо, чи є в товару картинки, і беремо першу для прев'ю в замовленні
-      String mainImage = (product.getImages() != null && !product.getImages().isEmpty())
-        ? product.getImages().get(0)
-        : null;
+      String mainImage = (product.getImages() != null && !product.getImages().isEmpty()) ? product.getImages().get(0) : null;
       orderItem.setImageSnapshot(mainImage);
       return orderItem;
     }).toList();
 
-    // Зберігаємо всі товари замовлення в базу одним махом
     orderItemRepository.saveAll(orderItems);
 
     // 3. Очищаємо кошик
     cartItemRepository.deleteAll(items);
 
-    return savedOrder;
+    // 4. --- ЗБИРАЄМО ПОВНУ DTO ДЛЯ ФРОНТЕНДУ ---
+    List<OrderItemDto> itemDtos = orderItems.stream().map(oi -> new OrderItemDto(
+      oi.getProductId(),
+      oi.getTitleSnapshot(),
+      oi.getImageSnapshot(),
+      oi.getPriceSnapshot(),
+      oi.getQuantity(),
+      oi.getPriceSnapshot().multiply(BigDecimal.valueOf(oi.getQuantity())) // subTotal
+    )).toList();
+
+    return new OrderResponseDto(
+      savedOrder.getId(),
+      savedOrder.getUserId(),
+      savedOrder.getMerchantId(),
+      savedOrder.getFinalPrice(),
+      savedOrder.getPaymentStatus(),
+      savedOrder.getShippingStatus(),
+      savedOrder.getPurchaseType(),
+      itemDtos
+    );
   }
 }
