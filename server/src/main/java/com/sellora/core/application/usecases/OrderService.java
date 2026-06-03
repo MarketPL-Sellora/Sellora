@@ -43,6 +43,14 @@ public class OrderService {
     // --- Валідація та списання залишків ---
     for (CartItem cartItem : items) {
       Product product = cartItem.getProduct();
+
+      if (!"ACTIVE".equalsIgnoreCase(product.getStatus())) {
+        throw new ConflictException(
+          String.format("Товар '%s' наразі недоступний для покупки (Статус: %s)",
+            product.getTitle(), product.getStatus())
+        );
+      }
+
       if (cartItem.getQuantity() > product.getStockQuantity()) {
         throw new ConflictException(
           String.format("Товар '%s' недоступний у кількості %d шт. Залишок на складі: %d шт.",

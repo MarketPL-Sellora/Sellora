@@ -9,5 +9,6 @@ public record CartItemResponseDto(
   BigDecimal price,
   Integer quantity,
   BigDecimal subTotal,
-  Integer stockQuantity
+  Integer stockQuantity,
+  String status
 ) {}

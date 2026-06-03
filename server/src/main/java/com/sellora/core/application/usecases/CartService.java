@@ -165,7 +165,8 @@ public class CartService {
         price,
         item.getQuantity(),
         subTotal,
-        product.getStockQuantity() // <--- ПЕРЕДАЄМО ФАКТИЧНИЙ ЗАЛИШОК
+        product.getStockQuantity(),
+        product.getStatus()
       );
     }).toList();
 
