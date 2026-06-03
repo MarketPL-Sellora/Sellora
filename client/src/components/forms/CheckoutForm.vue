@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, reactive } from 'vue'
+import { DICT } from '../../constants/dictionary'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -86,7 +87,7 @@ function handleSubmit() {
           КРОК 1
         </span>
         <span class="text-white text-base font-bold font-['Unbounded'] leading-6 tracking-wide">
-          КОНТАКТНІ ДАНІ
+          {{ DICT.checkout.step1 }}
         </span>
       </div>
 
@@ -96,12 +97,12 @@ function handleSubmit() {
         <!-- First name -->
         <div class="flex flex-col gap-1.5">
           <label class="text-gray-400 text-xs font-medium font-['Onest'] leading-4 tracking-tight">
-            Ім'я <span class="text-orange-500">*</span>
+            {{ DICT.forms.labels.firstName }} <span class="text-orange-500">*</span>
           </label>
           <input
             v-model="form.firstName"
             type="text"
-            placeholder="Наприклад: Олексій"
+            :placeholder="DICT.forms.placeholders.firstName"
             class="w-full px-3.5 py-2.5 bg-gray-900 rounded-lg outline outline-1 outline-offset-[-1px] outline-gray-700 text-gray-200 text-sm font-normal font-['Onest'] placeholder-gray-600 transition-all duration-150 focus:outline-orange-500 focus:ring-1 focus:ring-orange-500/40 focus:outline-none focus:bg-gray-900/80"
           />
         </div>
@@ -109,12 +110,12 @@ function handleSubmit() {
         <!-- Last name -->
         <div class="flex flex-col gap-1.5">
           <label class="text-gray-400 text-xs font-medium font-['Onest'] leading-4 tracking-tight">
-            Прізвище <span class="text-orange-500">*</span>
+            {{ DICT.forms.labels.lastName }} <span class="text-orange-500">*</span>
           </label>
           <input
             v-model="form.lastName"
             type="text"
-            placeholder="Наприклад: Коваленко"
+            :placeholder="DICT.forms.placeholders.lastName"
             class="w-full px-3.5 py-2.5 bg-gray-900 rounded-lg outline outline-1 outline-offset-[-1px] outline-gray-700 text-gray-200 text-sm font-normal font-['Onest'] placeholder-gray-600 transition-all duration-150 focus:outline-orange-500 focus:ring-1 focus:ring-orange-500/40 focus:outline-none focus:bg-gray-900/80"
           />
         </div>
@@ -122,12 +123,12 @@ function handleSubmit() {
         <!-- Phone -->
         <div class="flex flex-col gap-1.5">
           <label class="text-gray-400 text-xs font-medium font-['Onest'] leading-4 tracking-tight">
-            Номер телефону <span class="text-orange-500">*</span>
+            {{ DICT.forms.labels.phone }} <span class="text-orange-500">*</span>
           </label>
           <input
             v-model="form.phone"
             type="tel"
-            placeholder="+38 (0__) ___ __ __"
+            :placeholder="DICT.forms.placeholders.phone"
             class="w-full px-3.5 py-2.5 bg-gray-900 rounded-lg outline outline-1 outline-offset-[-1px] outline-gray-700 text-gray-200 text-sm font-normal font-['Onest'] placeholder-gray-600 transition-all duration-150 focus:outline-orange-500 focus:ring-1 focus:ring-orange-500/40 focus:outline-none focus:bg-gray-900/80"
           />
         </div>
@@ -135,12 +136,12 @@ function handleSubmit() {
         <!-- Email -->
         <div class="flex flex-col gap-1.5">
           <label class="text-gray-400 text-xs font-medium font-['Onest'] leading-4 tracking-tight">
-            Email <span class="text-orange-500">*</span>
+            {{ DICT.forms.labels.email }} <span class="text-orange-500">*</span>
           </label>
           <input
             v-model="form.email"
             type="email"
-            placeholder="you@example.com"
+            :placeholder="DICT.forms.placeholders.email"
             class="w-full px-3.5 py-2.5 bg-gray-900 rounded-lg outline outline-1 outline-offset-[-1px] outline-gray-700 text-gray-200 text-sm font-normal font-['Onest'] placeholder-gray-600 transition-all duration-150 focus:outline-orange-500 focus:ring-1 focus:ring-orange-500/40 focus:outline-none focus:bg-gray-900/80"
           />
         </div>
@@ -157,7 +158,7 @@ function handleSubmit() {
           КРОК 2
         </span>
         <span class="text-white text-base font-bold font-['Unbounded'] leading-6 tracking-wide">
-          ДОСТАВКА
+          {{ DICT.checkout.step2 }}
         </span>
       </div>
 
@@ -210,14 +211,14 @@ function handleSubmit() {
         <!-- City -->
         <div class="flex flex-col gap-1.5">
           <label class="text-gray-400 text-xs font-medium font-['Onest'] leading-4 tracking-tight">
-            Місто <span class="text-orange-500">*</span>
+            {{ DICT.forms.labels.city }} <span class="text-orange-500">*</span>
           </label>
           <div class="relative">
             <select
               v-model="form.city"
               class="w-full appearance-none h-11 pl-3.5 pr-10 bg-gray-900 rounded-lg outline outline-1 outline-offset-[-1px] outline-gray-700 text-gray-200 text-sm font-normal font-['Onest'] transition-all duration-150 focus:outline-orange-500 focus:ring-1 focus:ring-orange-500/40 focus:outline-none cursor-pointer"
             >
-              <option value="" disabled>Оберіть місто</option>
+              <option value="" disabled>{{ DICT.forms.placeholders.selectCity }}</option>
               <option>Київ</option>
               <option>Харків</option>
               <option>Одеса</option>
@@ -234,14 +235,14 @@ function handleSubmit() {
         <!-- Branch -->
         <div class="flex flex-col gap-1.5">
           <label class="text-gray-400 text-xs font-medium font-['Onest'] leading-4 tracking-tight">
-            Відділення / Поштомат <span class="text-orange-500">*</span>
+            {{ DICT.forms.labels.branch }} <span class="text-orange-500">*</span>
           </label>
           <div class="relative">
             <select
               v-model="form.branch"
               class="w-full appearance-none h-11 pl-3.5 pr-10 bg-gray-900 rounded-lg outline outline-1 outline-offset-[-1px] outline-gray-700 text-gray-200 text-sm font-normal font-['Onest'] transition-all duration-150 focus:outline-orange-500 focus:ring-1 focus:ring-orange-500/40 focus:outline-none cursor-pointer"
             >
-              <option value="" disabled>Відділення / Поштомат</option>
+              <option value="" disabled>{{ DICT.forms.placeholders.selectBranch }}</option>
               <option>Відділення №1</option>
               <option>Відділення №2</option>
               <option>Поштомат №100</option>
@@ -256,12 +257,12 @@ function handleSubmit() {
       <!-- Comment -->
       <div class="self-stretch flex flex-col gap-1.5">
         <label class="text-gray-400 text-xs font-medium font-['Onest'] leading-4 tracking-tight">
-          Коментар до замовлення
+          {{ DICT.forms.labels.comment }}
         </label>
         <textarea
           v-model="form.comment"
           rows="3"
-          placeholder="Додаткові побажання до доставки або замовлення..."
+          :placeholder="DICT.forms.placeholders.comment"
           class="w-full min-h-20 px-3.5 pt-2 pb-3 bg-gray-900 rounded-lg outline outline-1 outline-offset-[-1px] outline-gray-700 text-gray-200 text-sm font-normal font-['Onest'] placeholder-gray-600 resize-y transition-all duration-150 focus:outline-orange-500 focus:ring-1 focus:ring-orange-500/40 focus:outline-none focus:bg-gray-900/80"
         />
       </div>
@@ -276,7 +277,7 @@ function handleSubmit() {
           КРОК 3
         </span>
         <span class="text-white text-base font-bold font-['Unbounded'] leading-6 tracking-wide">
-          ОПЛАТА
+          {{ DICT.checkout.step3 }}
         </span>
       </div>
 

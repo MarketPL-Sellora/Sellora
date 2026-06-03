@@ -6,6 +6,7 @@ import HomePage     from './views/HomePage.vue'
 import ProductPage  from './views/ProductPage.vue'
 import CheckoutPage from './views/CheckoutPage.vue'
 import CabinetPage  from './views/CabinetPage.vue'
+import NotFound from './views/NotFound.vue'
 
 
 // Налаштовуємо шляхи (посилання)
@@ -16,6 +17,8 @@ const routes = [
     component: ProductPage  },
   { path: '/checkout',     component: CheckoutPage },
   { path: '/cabinet',      component: CabinetPage, meta: { requiresAuth: true } },
+  // Catch-all route для 404 помилки
+  { path: '/:pathMatch(.*)*', name: 'NotFound', component: NotFound },
 ]
 
 // Створюємо сам роутер

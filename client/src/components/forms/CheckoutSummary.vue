@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 
+const props = defineProps<{ isProcessing?: boolean }>()
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface OrderItem {
@@ -225,11 +227,12 @@ const emit = defineEmits<{
 
       <!-- ── Pay button ─────────────────────────────────────────────────── -->
       <button
-        class="self-stretch px-6 py-4 bg-gradient-to-b from-orange-500 to-[#ea6c0a] rounded-xl shadow-[0px_4px_20px_0px_rgba(249,115,22,0.35)] inline-flex justify-center items-center transition-all duration-150 hover:from-orange-400 hover:to-orange-500 hover:shadow-[0px_6px_28px_0px_rgba(249,115,22,0.55)] active:scale-[0.98] active:shadow-none focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:ring-offset-2 focus:ring-offset-gray-800"
+        class="self-stretch px-6 py-4 bg-gradient-to-b from-orange-500 to-[#ea6c0a] rounded-xl shadow-[0px_4px_20px_0px_rgba(249,115,22,0.35)] inline-flex justify-center items-center transition-all duration-150 hover:from-orange-400 hover:to-orange-500 hover:shadow-[0px_6px_28px_0px_rgba(249,115,22,0.55)] active:scale-[0.98] active:shadow-none focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:ring-offset-2 focus:ring-offset-gray-800 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:from-orange-500 disabled:hover:to-[#ea6c0a] disabled:active:scale-100"
+        :disabled="props.isProcessing"
         @click="emit('pay')"
       >
         <span class="text-white text-base font-bold font-['Unbounded'] leading-6 tracking-wide">
-          Оплатити та відкрити збір &nbsp;➔
+          {{ props.isProcessing ? 'Обробка...' : 'Оплатити та відкрити збір ➔' }}
         </span>
       </button>
 
