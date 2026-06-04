@@ -1,5 +1,6 @@
 package com.sellora.core.presentation.dtos;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import lombok.Data;
@@ -18,6 +19,11 @@ public class CreateStoreRequest {
 
   private String description;
 
-  // Фронтенд передасть сюди URL, який отримав з UploadController
+  @JsonProperty("shipping_methods")
+  private java.util.List<StoreShippingMethodDto> shippingMethods; // Тут все правильно
+
   private String logoUrl;
+
+  @JsonProperty("merchant_requisites")
+  private java.util.List<MerchantRequisiteDto> merchantRequisites;
 }

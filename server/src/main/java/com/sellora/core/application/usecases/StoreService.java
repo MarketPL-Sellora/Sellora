@@ -1,22 +1,14 @@
 package com.sellora.core.application.usecases;
 
-import com.sellora.core.domain.entities.Store;
-import com.sellora.core.domain.entities.User;
-import com.sellora.core.infrastructure.persistence.GroupBuySessionRepository;
-import com.sellora.core.infrastructure.persistence.ProductRepository;
-import com.sellora.core.infrastructure.persistence.StoreRepository;
-import com.sellora.core.infrastructure.persistence.UserRepository;
-import com.sellora.core.presentation.dtos.CreateStoreRequest;
-import com.sellora.core.presentation.dtos.StoreResponseDto;
-import com.sellora.core.presentation.dtos.UpdateStoreRequest;
-import com.sellora.core.presentation.exceptions.BadRequestException;
-import com.sellora.core.presentation.exceptions.ConflictException;
-import com.sellora.core.presentation.exceptions.ForbiddenException;
-import com.sellora.core.presentation.exceptions.ResourceNotFoundException;
+import com.sellora.core.domain.entities.*;
+import com.sellora.core.infrastructure.persistence.*;
+import com.sellora.core.presentation.dtos.*;
+import com.sellora.core.presentation.exceptions.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.multipart.MultipartFile;
+import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -25,15 +17,18 @@ public class StoreService {
   private final StoreRepository storeRepository;
   private final UserRepository userRepository;
   private final ProductRepository productRepository;
-  private final GroupBuySessionRepository groupBuySessionRepository; // <--- ДОДАНО
-  private final ImageUploadService imageUploadService;
+  private final GroupBuySessionRepository groupBuySessionRepository;
+  private final ShippingCarrierRepository shippingCarrierRepository;
+
+  // --- ДОДАНО НОВІ ІН'ЄКЦІЇ ---
+  private final MerchantRequisiteService merchantRequisiteService;
+  private final MerchantRequisiteRepository merchantRequisiteRepository;
 
   @Transactional
   public void createStore(CreateStoreRequest request, Long userId) {
     User currentUser = userRepository.findById(userId)
-      .orElseThrow(() -> new ResourceNotFoundException("Користувача не знайдено в базі даних"));
+      .orElseThrow(() -> new ResourceNotFoundException("Користувача не знайдено"));
 
-    // BUG-005 FIX: Викидаємо ConflictException замість RuntimeException
     if (storeRepository.existsByOwnerId(currentUser.getId())) {
       throw new ConflictException("У вас вже є створений магазин!");
     }
@@ -45,25 +40,42 @@ public class StoreService {
     store.setAddress(request.getAddress());
     store.setContactPhone(request.getContactPhone());
     store.setDescription(request.getDescription());
-
-    // BUG-001 FIX: Просто зберігаємо URL, який прислав фронтенд
     store.setLogoUrl(request.getLogoUrl());
-
     store.setStatus("PENDING");
+
+    // --- ЛОГІКА ДОДАВАННЯ МЕТОДІВ ДОСТАВКИ (Атомарно) ---
+    if (request.getShippingMethods() != null) {
+      for (StoreShippingMethodDto methodDto : request.getShippingMethods()) {
+        ShippingCarrier carrier = shippingCarrierRepository.findById(methodDto.carrierId())
+          .orElseThrow(() -> new ResourceNotFoundException("Службу доставки з ID " + methodDto.carrierId() + " не знайдено"));
+
+        StoreShippingMethod storeMethod = new StoreShippingMethod();
+        storeMethod.setStore(store);
+        storeMethod.setCarrier(carrier);
+        storeMethod.setIsEnabled(methodDto.isEnabled());
+        store.getShippingMethods().add(storeMethod);
+      }
+    }
 
     storeRepository.save(store);
 
-    // BUG-003 FIX: Змінюємо роль на MERCHANT, ТІЛЬКИ якщо юзер НЕ є Адміном
+    // --- ЛОГІКА ДОДАВАННЯ РЕКВІЗИТІВ (Атомарно) ---
+    if (request.getMerchantRequisites() != null && !request.getMerchantRequisites().isEmpty()) {
+      for (MerchantRequisiteDto reqDto : request.getMerchantRequisites()) {
+        merchantRequisiteService.create(reqDto, currentUser.getId());
+      }
+    }
+
     if (!"ADMIN".equalsIgnoreCase(currentUser.getRole())) {
       currentUser.setRole("MERCHANT");
       userRepository.save(currentUser);
     }
   }
 
+  @Transactional(readOnly = true)
   public StoreResponseDto getStoreByUserId(Long userId) {
     Store store = storeRepository.findByOwnerId(userId)
-      .orElseThrow(() -> new ResourceNotFoundException("Магазин для цього користувача не знайдено"));
-
+      .orElseThrow(() -> new ResourceNotFoundException("Магазин не знайдено"));
     return mapToDto(store);
   }
 
@@ -77,13 +89,9 @@ public class StoreService {
     }
 
     if (!store.getName().equalsIgnoreCase(request.name())) {
-      if (storeRepository.existsByNameAndIdNot(request.name(), storeId)) {
-        throw new ConflictException("Магазин з такою назвою вже існує");
-      }
+      if (storeRepository.existsByNameAndIdNot(request.name(), storeId)) throw new ConflictException("Магазин з такою назвою вже існує");
       String newSlug = generateSlug(request.name());
-      if (storeRepository.existsBySlugAndIdNot(newSlug, storeId)) {
-        throw new ConflictException("Згенерований slug вже зайнятий іншим магазином");
-      }
+      if (storeRepository.existsBySlugAndIdNot(newSlug, storeId)) throw new ConflictException("Slug вже зайнятий");
       store.setName(request.name());
       store.setSlug(newSlug);
     }
@@ -93,18 +101,104 @@ public class StoreService {
     store.setDescription(request.description());
     store.setLogoUrl(request.logoUrl());
 
-    Store updatedStore = storeRepository.save(store);
+    // --- ОНОВЛЕННЯ МЕТОДІВ ДОСТАВКИ ---
+    if (request.shippingMethods() != null) {
+      store.getShippingMethods().clear();
+      for (StoreShippingMethodDto methodDto : request.shippingMethods()) {
+        ShippingCarrier carrier = shippingCarrierRepository.findById(methodDto.carrierId())
+          .orElseThrow(() -> new ResourceNotFoundException("Служба доставки не знайдена"));
+        StoreShippingMethod storeMethod = new StoreShippingMethod();
+        storeMethod.setStore(store);
+        storeMethod.setCarrier(carrier);
+        storeMethod.setIsEnabled(methodDto.isEnabled());
+        store.getShippingMethods().add(storeMethod);
+      }
+    }
 
+    Store updatedStore = storeRepository.save(store);
     return mapToDto(updatedStore);
   }
 
-  // Допоміжний метод для генерації slug
+  @Transactional(readOnly = true)
+  public Map<String, Object> getStoreShippingMethods(Long storeId) {
+    Store store = storeRepository.findById(storeId)
+      .orElseThrow(() -> new ResourceNotFoundException("Магазин не знайдено"));
+
+    List<StoreShippingMethodDto> methods = store.getShippingMethods().stream()
+      .map(m -> new StoreShippingMethodDto(m.getCarrier().getId(), m.getIsEnabled()))
+      .toList();
+
+    return Map.of("store_id", storeId, "shipping_methods", methods);
+  }
+
+  @Transactional
+  public StoreResponseDto updateStoreStatus(Long storeId, String newStatus, Long userId) {
+    Store store = storeRepository.findById(storeId).orElseThrow(() -> new ResourceNotFoundException("Магазин не знайдено"));
+    User currentUser = userRepository.findById(userId).orElseThrow(() -> new ResourceNotFoundException("Користувача не знайдено"));
+
+    boolean isAdmin = "ADMIN".equalsIgnoreCase(currentUser.getRole());
+    boolean isOwner = store.getOwnerId().equals(userId);
+
+    if (!isAdmin && !isOwner) throw new ForbiddenException("Ви не маєте прав змінювати статус");
+
+    if ("BLOCKED".equalsIgnoreCase(newStatus)) {
+      if (!isAdmin) throw new ForbiddenException("Тільки адміністратор може заблокувати");
+      productRepository.archiveAllProductsByMerchantId(storeId);
+      groupBuySessionRepository.cancelAllActiveSessionsForMerchant(storeId);
+    } else if ("CLOSED".equalsIgnoreCase(newStatus)) {
+      if (!isOwner) throw new ForbiddenException("Тільки власник може закрити");
+      if (groupBuySessionRepository.countActiveSessionsForMerchant(storeId) > 0) throw new ConflictException("Є активні покупки");
+      productRepository.archiveAllProductsByMerchantId(storeId);
+    }
+
+    store.setStatus(newStatus.toUpperCase());
+    return mapToDto(storeRepository.save(store));
+  }
+
+  public org.springframework.data.domain.Page<StoreResponseDto> getAllStores(String keyword, int page, int size, String sortBy, String sortDir) {
+    org.springframework.data.domain.Sort sort = sortDir.equalsIgnoreCase("asc")
+      ? org.springframework.data.domain.Sort.by(sortBy).ascending() : org.springframework.data.domain.Sort.by(sortBy).descending();
+    org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size, sort);
+
+    org.springframework.data.domain.Page<Store> stores = (keyword != null && !keyword.trim().isEmpty())
+      ? storeRepository.findByNameContainingIgnoreCase(keyword.trim(), pageable) : storeRepository.findAll(pageable);
+
+    return stores.map(this::mapToDto);
+  }
+
+  @Transactional
+  public void deleteStore(Long storeId, Long requesterId) {
+    Store store = storeRepository.findById(storeId).orElseThrow(() -> new ResourceNotFoundException("Магазин не знайдено"));
+    User requester = userRepository.findById(requesterId).orElseThrow(() -> new ResourceNotFoundException("Користувача не знайдено"));
+
+    if (!"ADMIN".equalsIgnoreCase(requester.getRole()) && !store.getOwnerId().equals(requesterId)) {
+      throw new ForbiddenException("Ви не маєте прав видаляти цей магазин");
+    }
+    if (productRepository.existsByMerchantId(storeId)) {
+      throw new ConflictException("Неможливо видалити магазин: є товари.");
+    }
+
+    User owner = userRepository.findById(store.getOwnerId()).orElseThrow(() -> new ResourceNotFoundException("Власника не знайдено"));
+    if ("MERCHANT".equalsIgnoreCase(owner.getRole())) {
+      owner.setRole("BUYER");
+      userRepository.save(owner);
+    }
+
+    // --- ДОДАНО ОЧИЩЕННЯ РЕКВІЗИТІВ ПРИ ВИДАЛЕННІ МАГАЗИНУ ---
+    merchantRequisiteRepository.deleteAllByOwnerId(store.getOwnerId());
+
+    storeRepository.delete(store);
+  }
+
   private String generateSlug(String name) {
     return name.toLowerCase().trim().replaceAll("[^a-z0-9 ]", "").replace(" ", "-");
   }
 
-  // Допоміжний метод для перетворення Entity в DTO
   private StoreResponseDto mapToDto(Store store) {
+    List<StoreShippingMethodDto> shippingDtos = store.getShippingMethods().stream()
+      .map(m -> new StoreShippingMethodDto(m.getCarrier().getId(), m.getIsEnabled()))
+      .toList();
+
     return new StoreResponseDto(
       store.getId(),
       store.getOwnerId(),
@@ -117,117 +211,8 @@ public class StoreService {
       store.getRating(),
       store.getStatus(),
       store.getCreatedAt(),
-      store.getUpdatedAt()
+      store.getUpdatedAt(),
+      shippingDtos
     );
-  }
-
-  @Transactional
-  public StoreResponseDto updateStoreStatus(Long storeId, String newStatus, Long userId) {
-    Store store = storeRepository.findById(storeId)
-      .orElseThrow(() -> new ResourceNotFoundException("Магазин не знайдено"));
-
-    User currentUser = userRepository.findById(userId)
-      .orElseThrow(() -> new ResourceNotFoundException("Користувача не знайдено"));
-
-    boolean isAdmin = "ADMIN".equalsIgnoreCase(currentUser.getRole());
-    boolean isOwner = store.getOwnerId().equals(userId);
-    String oldStatus = store.getStatus();
-
-    if (!isAdmin && !isOwner) {
-      throw new ForbiddenException("Ви не маєте прав змінювати статус цього магазину");
-    }
-
-    if (("PENDING".equalsIgnoreCase(oldStatus) || "BLOCKED".equalsIgnoreCase(oldStatus)) && !isAdmin) {
-      throw new ForbiddenException("Тільки адміністратор може змінювати статус з " + oldStatus);
-    }
-
-    // --- ЛОГІКА БЛОКУВАННЯ АДМІНОМ ---
-    if ("BLOCKED".equalsIgnoreCase(newStatus)) {
-      if (!isAdmin) throw new ForbiddenException("Тільки адміністратор може заблокувати магазин");
-
-      productRepository.archiveAllProductsByMerchantId(storeId); // 1. Ховаємо товари
-      groupBuySessionRepository.cancelAllActiveSessionsForMerchant(storeId); // 2. Скасовуємо сесії (Гроші не збираємо)
-    }
-    else if ("BLOCKED".equalsIgnoreCase(oldStatus) && "ACTIVE".equalsIgnoreCase(newStatus)) {
-      if (!isAdmin) throw new ForbiddenException("Тільки адміністратор може розблокувати магазин");
-    }
-
-    // --- ЛОГІКА ЗАКРИТТЯ ВЛАСНИКОМ ---
-    if ("CLOSED".equalsIgnoreCase(newStatus)) {
-      if (!isOwner) throw new ForbiddenException("Тільки власник може закрити свій магазин");
-
-      // Захист: Власник не може закритися, якщо має активні сесії
-      if (groupBuySessionRepository.countActiveSessionsForMerchant(storeId) > 0) {
-        throw new ConflictException("Неможливо закрити магазин: у вас є активні групові покупки. Дочекайтеся їх завершення або скасуйте їх.");
-      }
-
-      productRepository.archiveAllProductsByMerchantId(storeId); // Ховаємо товари
-    }
-    else if ("CLOSED".equalsIgnoreCase(oldStatus) && "ACTIVE".equalsIgnoreCase(newStatus)) {
-      if (!isOwner) throw new ForbiddenException("Тільки власник може відкрити свій магазин");
-    }
-
-    store.setStatus(newStatus.toUpperCase());
-    Store updatedStore = storeRepository.save(store);
-
-    return mapToDto(updatedStore);
-  }
-
-  public org.springframework.data.domain.Page<StoreResponseDto> getAllStores(
-    String keyword, int page, int size, String sortBy, String sortDir) {
-
-    org.springframework.data.domain.Sort sort = sortDir.equalsIgnoreCase(org.springframework.data.domain.Sort.Direction.ASC.name())
-      ? org.springframework.data.domain.Sort.by(sortBy).ascending()
-      : org.springframework.data.domain.Sort.by(sortBy).descending();
-
-    org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size, sort);
-
-    org.springframework.data.domain.Page<Store> stores;
-    if (keyword != null && !keyword.trim().isEmpty()) {
-      stores = storeRepository.findByNameContainingIgnoreCase(keyword.trim(), pageable);
-    } else {
-      stores = storeRepository.findAll(pageable);
-    }
-
-    // Spring Data Page автоматично підтримує map() для перетворення Entity в DTO
-    return stores.map(this::mapToDto);
-  }
-
-  // --- МЕТОД ДЛЯ DELETE /api/v1/stores/{storeId} ---
-  @Transactional
-  public void deleteStore(Long storeId, Long requesterId) {
-    // 1. Обов'язкова перевірка чи store_id існує
-    Store store = storeRepository.findById(storeId)
-      .orElseThrow(() -> new ResourceNotFoundException("Магазин не знайдено"));
-
-    // 2. Перевірка хто відправив запит
-    User requester = userRepository.findById(requesterId)
-      .orElseThrow(() -> new ResourceNotFoundException("Користувача (який робить запит) не знайдено"));
-
-    boolean isAdmin = "ADMIN".equalsIgnoreCase(requester.getRole());
-    boolean isOwner = store.getOwnerId().equals(requesterId);
-
-    if (!isAdmin && !isOwner) {
-      throw new ForbiddenException("Ви не маєте прав видаляти цей магазин");
-    }
-
-    // 3. Перевірка на відсутність БУДЬ-ЯКИХ products
-    if (productRepository.existsByMerchantId(storeId)) {
-      throw new ConflictException("Неможливо видалити магазин: до нього прив'язані товари. Спочатку видаліть всі товари.");
-    }
-
-    // 4. (ВАЖЛИВО) Робота з ролями
-    // Знаходимо ВЛАСНИКА магазину (це може бути той самий requester, а може бути інший юзер, якщо видаляє ADMIN)
-    User owner = userRepository.findById(store.getOwnerId())
-      .orElseThrow(() -> new ResourceNotFoundException("Власника магазину не знайдено"));
-
-    // Якщо власник був MERCHANT, переводимо в BUYER. Якщо він ADMIN - залишаємо ADMIN.
-    if ("MERCHANT".equalsIgnoreCase(owner.getRole())) {
-      owner.setRole("BUYER");
-      userRepository.save(owner);
-    }
-
-    // 5. Видалення
-    storeRepository.delete(store);
   }
 }

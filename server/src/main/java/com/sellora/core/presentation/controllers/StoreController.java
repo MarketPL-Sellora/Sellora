@@ -125,4 +125,10 @@ public class StoreController {
     storeService.deleteStore(storeId, requesterId);
     return ResponseEntity.noContent().build(); // Повертає статус 204
   }
+
+  @Operation(summary = "Отримання методів доставки конкретного магазину")
+  @GetMapping("/{storeId}/shipping_methods")
+  public ResponseEntity<Map<String, Object>> getStoreShippingMethods(@PathVariable Long storeId) {
+    return ResponseEntity.ok(storeService.getStoreShippingMethods(storeId));
+  }
 }
