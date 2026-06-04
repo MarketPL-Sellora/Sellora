@@ -43,4 +43,8 @@ public class Store {
 
   @Column(name = "updated_at", insertable = false, updatable = false)
   private LocalDateTime updatedAt;
+
+  // Додано зв'язок для методів доставки
+  @OneToMany(mappedBy = "store", cascade = CascadeType.ALL, orphanRemoval = true)
+  private java.util.List<StoreShippingMethod> shippingMethods = new java.util.ArrayList<>();
 }

@@ -1,7 +1,9 @@
 package com.sellora.core.presentation.dtos;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 public record StoreResponseDto(
   Long id,
@@ -15,5 +17,6 @@ public record StoreResponseDto(
   BigDecimal rating,
   String status,
   LocalDateTime createdAt,
-  LocalDateTime updatedAt
+  LocalDateTime updatedAt,
+  @JsonProperty("shipping_methods") List<StoreShippingMethodDto> shippingMethods
 ) {}

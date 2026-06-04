@@ -1,9 +1,11 @@
 package com.sellora.core.presentation.controllers;
 
 import com.sellora.core.application.usecases.OrderService;
+import com.sellora.core.presentation.dtos.CheckoutRequestDto;
 import com.sellora.core.presentation.dtos.OrderResponseDto; // <--- ІМПОРТ
 import com.sellora.core.presentation.exceptions.UnauthorizedException;
 import io.swagger.v3.oas.annotations.Operation;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -29,10 +31,12 @@ public class OrderController {
   @Operation(summary = "Оформлення замовлення (Checkout)")
   @PostMapping("/checkout")
   @PreAuthorize("isAuthenticated()")
-  public ResponseEntity<OrderResponseDto> checkout() { // <--- Змінили тип повернення
+  public ResponseEntity<OrderResponseDto> checkout(
+    @Valid @RequestBody CheckoutRequestDto requestDto // <-- Додали тіло запиту
+  ) {
     Long userId = getCurrentUserId();
 
-    OrderResponseDto response = orderService.checkout(userId); // <--- Отримуємо DTO
+    OrderResponseDto response = orderService.checkout(userId, requestDto); // <-- Передаємо DTO в сервіс
 
     return new ResponseEntity<>(response, HttpStatus.CREATED);
   }

@@ -1,5 +1,6 @@
 package com.sellora.core.presentation.dtos;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 
@@ -15,5 +16,8 @@ public record UpdateStoreRequest(
 
   String description,
 
-  String logoUrl
+  String logoUrl,
+
+  @JsonProperty("shipping_methods")
+  java.util.List<StoreShippingMethodDto> shippingMethods // <-- Ніякого private, ніякої крапки з комою
 ) {}
