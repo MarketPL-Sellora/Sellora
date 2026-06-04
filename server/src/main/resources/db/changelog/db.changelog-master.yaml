@@ -3,19 +3,24 @@ databaseChangeLog:
       file: changes/init-schema-2026-05-10.sql
       relativeToChangelogFile: true
   - include:
-      file: changes/seed-data-2026-05-10.sql
-      relativeToChangelogFile: true
-      context: dev
-  - include:
       file: changes/user-settings-schema-2026-05-14.sql
       relativeToChangelogFile: true
+  - include:
+      file: changes/user-favorites-schema-2026-05-14.sql
+      relativeToChangelogFile: true
+  - include:
+      file: changes/logistics-promo-schema-2026-06-04.sql
+      relativeToChangelogFile: true
+
+
+  - include:
+      file: changes/ecommerce-seed-data-2026-06-04.sql
+      relativeToChangelogFile: true
+      context: dev
   - include:
       file: changes/user-settings-seed-2026-05-14.sql
       relativeToChangelogFile: true
       context: dev
-  - include:
-      file: changes/user-favorites-schema-2026-05-14.sql
-      relativeToChangelogFile: true
   - include:
       file: changes/user-favorites-seed-2026-05-14.sql
       relativeToChangelogFile: true
