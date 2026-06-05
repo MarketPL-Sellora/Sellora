@@ -44,7 +44,7 @@ public class SecurityConfig {
       .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
       .authorizeHttpRequests(auth -> auth
         // 1. Відкриті двері (реєстрація, логін, свагер) - сюди можна без токена
-        .requestMatchers("/api/v1/auth/**",  "/swagger-ui/**","/api/v1/upload/**","/v3/api-docs/**", "/health").permitAll()
+        .requestMatchers("/api/v1/auth/**", "/api/v1/payments/webhook", "/swagger-ui/**","/api/v1/upload/**","/v3/api-docs/**", "/health").permitAll()
         // 2. Читати каталог товарів і категорій можуть всі (навіть неавторизовані гості сайту)
         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/v1/categories/**","/api/v1/stores/user/**","/share/**", "/api/v1/products/**", "/api/v1/group-buy/sessions/**").permitAll()
 

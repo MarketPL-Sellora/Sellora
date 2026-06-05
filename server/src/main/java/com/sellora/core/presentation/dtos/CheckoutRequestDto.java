@@ -1,22 +1,30 @@
 package com.sellora.core.presentation.dtos;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
 import lombok.Data;
+import java.util.List;
+import java.util.Map;
 
 @Data
 public class CheckoutRequestDto {
-  @NotBlank(message = "Ім'я покупця обов'язкове")
-  private String buyerName;
+  @NotNull @JsonProperty("store_id") private Long storeId;
 
-  private String buyerSurname;
+  @NotBlank @JsonProperty("buyer_name") private String buyerName;
+  @NotBlank @JsonProperty("buyer_surname") private String buyerSurname;
+  @NotBlank @JsonProperty("buyer_phone") private String buyerPhone;
+  @NotBlank @JsonProperty("buyer_email") private String buyerEmail;
 
-  @NotBlank(message = "Телефон обов'язковий")
-  private String buyerPhone;
+  @NotBlank @JsonProperty("delivery_type") private String deliveryType; // BRANCH, COURIER, PICKUP
+  @JsonProperty("carrier_id") private Long carrierId;
+  @JsonProperty("delivery_address") private Map<String, Object> deliveryAddress;
 
-  // --- НОВІ ПОЛЯ ---
-  @NotBlank(message = "Тип доставки обов'язковий")
-  private String deliveryType;
+  @NotBlank @JsonProperty("payment_method") private String paymentMethod; // ONLINE_CARD, CASH_ON_DELIVERY
+  @JsonProperty("order_comment") private String orderComment;
 
-  @NotBlank(message = "Метод оплати обов'язковий")
-  private String paymentMethod;
+  @JsonProperty("promo_code") private String promoCode;
+
+  @NotEmpty @JsonProperty("items") private List<CheckoutItemDto> items;
 }
