@@ -38,7 +38,7 @@ services:
     networks:
       - sellora-network
 
-    #3.  Backend (Spring Boot)
+#    3.  Backend (Spring Boot)
   backend:
     build:
       context: ./server

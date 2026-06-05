@@ -29,15 +29,13 @@ public class OrderController {
   }
 
   @Operation(summary = "Оформлення замовлення (Checkout)")
-  @PostMapping("/checkout")
+  @PostMapping("/cart/checkout") // ВІДПОВІДАЄ ТЗ
   @PreAuthorize("isAuthenticated()")
-  public ResponseEntity<OrderResponseDto> checkout(
-    @Valid @RequestBody CheckoutRequestDto requestDto // <-- Додали тіло запиту
-  ) {
+  public ResponseEntity<OrderResponseDto> checkout(@Valid @RequestBody CheckoutRequestDto requestDto) {
     Long userId = getCurrentUserId();
-
-    OrderResponseDto response = orderService.checkout(userId, requestDto); // <-- Передаємо DTO в сервіс
-
+    OrderResponseDto response = orderService.checkout(userId, requestDto);
     return new ResponseEntity<>(response, HttpStatus.CREATED);
   }
+
+
 }

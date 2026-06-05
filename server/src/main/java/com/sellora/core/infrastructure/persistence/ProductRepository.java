@@ -8,7 +8,11 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.data.jpa.repository.Lock;
+import jakarta.persistence.LockModeType;
 import org.springframework.stereotype.Repository;
+
+import java.util.List;
 
 @Repository
 public interface ProductRepository extends JpaRepository<Product, Long>, JpaSpecificationExecutor<Product> {
@@ -27,4 +31,9 @@ public interface ProductRepository extends JpaRepository<Product, Long>, JpaSpec
   @Modifying
   @Query("UPDATE Product p SET p.status = 'ARCHIVED' WHERE p.merchantId = :merchantId")
   void archiveAllProductsByMerchantId(@Param("merchantId") Long merchantId);
+
+
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @Query("SELECT p FROM Product p WHERE p.id IN :ids")
+  List<Product> findByIdsForUpdate(@Param("ids") List<Long> ids);
 }
