@@ -22,6 +22,7 @@ import com.sellora.core.presentation.exceptions.ConflictException;
 import com.sellora.core.presentation.exceptions.ForbiddenException;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -49,7 +50,8 @@ public class ProductServiceTest {
   @BeforeEach
   void setUpSecurityContext() {
     SecurityContext securityContext = mock(SecurityContext.class);
-    UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(1L, null);
+    // Конструктор з 3 параметрами автоматично встановлює isAuthenticated = true
+    UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(1L, null, List.of());
     when(securityContext.getAuthentication()).thenReturn(authentication);
     SecurityContextHolder.setContext(securityContext);
   }
@@ -62,7 +64,6 @@ public class ProductServiceTest {
 
   @Test
   void createProduct_ValidData_SavesAndReturnsProduct() {
-    // Arrange
     mockStoreExists();
 
     CreateProductDto dto = new CreateProductDto(
@@ -77,10 +78,8 @@ public class ProductServiceTest {
       return savedProduct;
     });
 
-    // Act
     Product result = productService.createProduct(dto);
 
-    // Assert
     assertNotNull(result.getId());
     assertEquals("Samsung Galaxy S24", result.getTitle());
     assertEquals(BigDecimal.valueOf(45000), result.getGroupPrice());
@@ -91,14 +90,12 @@ public class ProductServiceTest {
 
   @Test
   void createProduct_StoreNotFound_ThrowsRuntimeException() {
-    // Arrange
     when(storeRepository.findByOwnerId(1L)).thenReturn(Optional.empty());
 
     CreateProductDto dto = new CreateProductDto(
       "Item", "Desc", 1L, BigDecimal.valueOf(100), null, null, 10, null, null
     );
 
-    // Act & Assert
     RuntimeException exception = assertThrows(RuntimeException.class, () -> {
       productService.createProduct(dto);
     });
@@ -107,11 +104,9 @@ public class ProductServiceTest {
     verify(productRepository, never()).save(any());
   }
 
-  // --- ТЕСТИ DELETE PRODUCT ---
-
   @Test
   void deleteProduct_Success_DeletesProduct() {
-    mockStoreExists(); // Імітує store.getId() == 10L
+    mockStoreExists();
     Product product = new Product();
     product.setId(100L);
     product.setMerchantId(10L);
@@ -129,12 +124,11 @@ public class ProductServiceTest {
     mockStoreExists();
     Product product = new Product();
     product.setId(100L);
-    product.setMerchantId(99L); // Відрізняється від поточного магазину
+    product.setMerchantId(99L);
 
     when(productRepository.findById(100L)).thenReturn(Optional.of(product));
 
     assertThrows(ForbiddenException.class, () -> productService.deleteProduct(100L));
-    // Явне вказування типу уникне помилки компіляції
     verify(productRepository, never()).delete(any(Product.class));
   }
 
@@ -149,11 +143,8 @@ public class ProductServiceTest {
     when(groupBuySessionRepository.existsByProductIdAndStatus(100L, "ACTIVE")).thenReturn(true);
 
     assertThrows(ConflictException.class, () -> productService.deleteProduct(100L));
-    // Явне вказування типу уникне помилки компіляції
     verify(productRepository, never()).delete(any(Product.class));
   }
-
-  // --- ТЕСТИ UPDATE PRODUCT STATUS ---
 
   @Test
   void updateProductStatus_ToArchived_Success() {
@@ -186,8 +177,6 @@ public class ProductServiceTest {
     verify(productRepository, never()).save(any());
   }
 
-  // --- ТЕСТИ UPDATE PRODUCT ---
-
   @Test
   void updateProduct_StockReachesZero_StatusChangesToOutOfStock() {
     mockStoreExists();
@@ -198,9 +187,10 @@ public class ProductServiceTest {
     product.setStatus("ACTIVE");
     product.setStockQuantity(5);
 
+    // ВИПРАВЛЕНО: Передано BigDecimal.valueOf(90) та 5 замість null
     UpdateProductDto dto = new UpdateProductDto(
-      "Title", "Desc", 1L, BigDecimal.valueOf(100), null, null,
-      0, null, null // Встановлюємо 0 на складі
+      "Title", "Desc", 1L, BigDecimal.valueOf(100), BigDecimal.valueOf(90), 5,
+      0, null, null
     );
 
     when(productRepository.findById(100L)).thenReturn(Optional.of(product));
@@ -222,9 +212,10 @@ public class ProductServiceTest {
     product.setStatus("OUT_OF_STOCK");
     product.setStockQuantity(0);
 
+    // ВИПРАВЛЕНО: Передано BigDecimal.valueOf(90) та 5 замість null
     UpdateProductDto dto = new UpdateProductDto(
-      "Title", "Desc", 1L, BigDecimal.valueOf(100), null, null,
-      10, null, null // Поповнюємо склад
+      "Title", "Desc", 1L, BigDecimal.valueOf(100), BigDecimal.valueOf(90), 5,
+      10, null, null
     );
 
     when(productRepository.findById(100L)).thenReturn(Optional.of(product));
@@ -244,8 +235,9 @@ public class ProductServiceTest {
     product.setMerchantId(10L);
     product.setCategoryId(1L);
 
+    // ВИПРАВЛЕНО: Передано BigDecimal.valueOf(90) та 5 замість null
     UpdateProductDto dto = new UpdateProductDto(
-      "Title", "Desc", 99L, BigDecimal.valueOf(100), null, null,
+      "Title", "Desc", 99L, BigDecimal.valueOf(100), BigDecimal.valueOf(90), 5,
       10, null, null
     );
 
