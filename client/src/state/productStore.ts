@@ -78,8 +78,15 @@ export const useProductStore = defineStore('products', () => {
 
       const response = await apiClient.get('/products', { params: query })
 
-      products.value = response.data.content ?? []
-      totalElements.value = response.data.totalElements ?? 0
+      const newProducts = response.data.content ?? [];
+      if (filters.page === 0) {
+        // Якщо це перша сторінка (або зміна фільтрів), замінюємо масив
+        products.value = newProducts;
+      } else {
+        // Якщо це наступна сторінка, додаємо в кінець
+        products.value = [...products.value, ...newProducts];
+      }
+      totalElements.value = response.data.totalElements ?? 0;
 
     } catch (err: unknown) {
       error.value = err instanceof Error ? err.message : 'Невідома помилка при завантаженні товарів'

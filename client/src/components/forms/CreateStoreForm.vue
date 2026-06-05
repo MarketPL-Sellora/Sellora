@@ -50,8 +50,19 @@ const submitted   = ref(false)
 const isLoading   = ref(false)
 const apiError    = ref<string | null>(null)
 
+// ─── Поштові служби ───────────────────────────────────────────────────────────
+const availableCarriers = ref<any[]>([])
+const selectedCarriers = ref<Record<number, boolean>>({})
+
+// ─── Платіжні реквізити (тільки при створенні) ────────────────────────────────
+const requisiteForm = reactive({
+  edrpou: '',
+  iban: '',
+  bank_name: '',
+})
+
 // ─── Ініціалізація даних при редагуванні ──────────────────────────────────────
-onMounted(() => {
+onMounted(async () => {
   if (props.initialData) {
     storeForm.name = props.initialData.name || ''
     storeForm.description = props.initialData.description || ''
@@ -72,6 +83,25 @@ onMounted(() => {
       logoPreview.value = props.initialData.logoUrl
     }
   }
+
+  // ─── Завантаження поштових служб ──────────────────────────────────────────
+  try {
+    const carriersRes = await apiClient.get('/shipping_carriers')
+    const allCarriers = Array.isArray(carriersRes.data) ? carriersRes.data : carriersRes.data.content || []
+    availableCarriers.value = allCarriers.filter((c: any) => c.is_active)
+
+    // Якщо редагування — отримуємо вже обрані служби
+    if (isEditing.value && props.initialData) {
+      const storeMethodsRes = await apiClient.get(`/stores/${props.initialData.id}/shipping_methods`)
+      if (storeMethodsRes.data && storeMethodsRes.data.shipping_methods) {
+        storeMethodsRes.data.shipping_methods.forEach((method: any) => {
+          selectedCarriers.value[method.carrier_id] = method.is_enabled
+        })
+      }
+    }
+  } catch (e) {
+    console.error('Failed to load shipping carriers', e)
+  }
 })
 
 // ─── Валідація ────────────────────────────────────────────────────────────────
@@ -81,13 +111,28 @@ const errors = reactive({
   name:        false,
   city:        false,
   phoneNumber: false,
+  edrpou:      false,
+  iban:        false,
+  bank_name:   false,
 })
 
 function validate(): boolean {
   errors.name        = !storeForm.name.trim()
   errors.city        = !storeForm.city.trim()
   errors.phoneNumber = !PHONE_REGEX.test(phoneNumber.value.replace(/[\s\-()]/g, ''))
-  return !errors.name && !errors.city && !errors.phoneNumber
+
+  // Реквізити обов'язкові тільки при створенні
+  if (!isEditing.value) {
+    errors.edrpou    = !requisiteForm.edrpou.trim()
+    errors.iban      = !requisiteForm.iban.trim()
+    errors.bank_name = !requisiteForm.bank_name.trim()
+  } else {
+    errors.edrpou    = false
+    errors.iban      = false
+    errors.bank_name = false
+  }
+
+  return !errors.name && !errors.city && !errors.phoneNumber && !errors.edrpou && !errors.iban && !errors.bank_name
 }
 
 async function handleCreate() {
@@ -111,12 +156,29 @@ async function handleCreate() {
 
     const contactPhone = phoneCode.value + phoneNumber.value.replace(/[\s\-()]/g, '')
 
-    const payload = {
+    // Збираємо масив обраних поштових служб
+    const shipping_methods = Object.entries(selectedCarriers.value).map(([id, isEnabled]) => ({
+      carrier_id: Number(id),
+      is_enabled: isEnabled,
+    }))
+
+    const payload: any = {
       name:         storeForm.name.trim(),
       address:      storeForm.city.trim(),
       contactPhone,
       description:  storeForm.description.trim(),
       logoUrl:      uploadedLogoUrl,
+      shipping_methods,
+    }
+
+    // Додаємо реквізити тільки при створенні
+    if (!isEditing.value) {
+      payload.merchant_requisites = [{
+        edrpou: requisiteForm.edrpou.trim(),
+        iban: requisiteForm.iban.trim(),
+        bank_name: requisiteForm.bank_name.trim(),
+        is_primary: true,
+      }]
     }
 
     let responseData
@@ -264,6 +326,86 @@ async function handleCreate() {
         <div class="flex justify-between text-[10px] font-normal text-[#3d4f6b]">
           <span>Рекомендовано 80–300 символів</span>
           <span><span class="text-orange-500 font-bold">{{ descriptionLength }}</span> / 500</span>
+        </div>
+      </div>
+
+      <!-- ── Поштові служби ────────────────────────────────────────────── -->
+      <div class="self-stretch flex flex-col gap-3 mt-4">
+        <div class="self-stretch inline-flex items-center gap-3">
+          <div class="text-slate-700 text-xs font-semibold uppercase tracking-widest">Підтримувані поштові служби</div>
+          <div class="flex-1 h-px bg-[#1a2235]"></div>
+        </div>
+        <div v-if="availableCarriers.length === 0" class="text-[#4b6080] text-xs">Завантаження служб...</div>
+        <div v-else class="flex flex-col gap-2">
+          <label
+            v-for="carrier in availableCarriers"
+            :key="carrier.id"
+            class="flex items-center gap-3 cursor-pointer group"
+          >
+            <div class="relative flex items-center justify-center w-5 h-5 rounded border border-[#1e2535] bg-[#0d1117] group-hover:border-orange-500 transition-colors">
+              <input type="checkbox" v-model="selectedCarriers[carrier.id]" class="peer sr-only" />
+              <svg
+                class="w-3 h-3 text-orange-500 opacity-0 peer-checked:opacity-100 transition-opacity"
+                viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"
+              >
+                <path d="M11.6666 3.5L5.24992 9.91667L2.33325 7" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+            <span class="text-slate-200 text-sm select-none">{{ carrier.name }}</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- ── Платіжні реквізити (тільки при створенні) ──────────────────── -->
+      <div v-if="!isEditing" class="self-stretch flex flex-col gap-6 mt-2">
+        <div class="self-stretch inline-flex items-center gap-3">
+          <div class="text-slate-700 text-xs font-semibold uppercase tracking-widest">Платіжні реквізити (обов'язково)</div>
+          <div class="flex-1 h-px bg-[#1a2235]"></div>
+        </div>
+
+        <div class="flex flex-col gap-2">
+          <label class="text-[#4b6080] text-xs font-semibold uppercase">ЄДРПОУ / ІПН <span class="text-orange-500">*</span></label>
+          <input
+            v-model="requisiteForm.edrpou"
+            type="text"
+            maxlength="10"
+            placeholder="12345678"
+            :class="[
+              'w-full px-4 py-3.5 bg-[#0d1117] rounded-xl outline outline-1 text-slate-200 text-sm font-mono focus:outline-none transition-all',
+              submitted && errors.edrpou ? 'outline-red-500' : 'outline-[#1e2535]'
+            ]"
+            @input="errors.edrpou = false"
+          />
+        </div>
+
+        <div class="flex flex-col gap-2">
+          <label class="text-[#4b6080] text-xs font-semibold uppercase">IBAN <span class="text-orange-500">*</span></label>
+          <input
+            v-model="requisiteForm.iban"
+            type="text"
+            maxlength="29"
+            placeholder="UA213223130000026007233566001"
+            :class="[
+              'w-full px-4 py-3.5 bg-[#0d1117] rounded-xl outline outline-1 text-slate-200 text-sm font-mono focus:outline-none transition-all',
+              submitted && errors.iban ? 'outline-red-500' : 'outline-[#1e2535]'
+            ]"
+            @input="errors.iban = false"
+          />
+        </div>
+
+        <div class="flex flex-col gap-2">
+          <label class="text-[#4b6080] text-xs font-semibold uppercase">Назва банку <span class="text-orange-500">*</span></label>
+          <input
+            v-model="requisiteForm.bank_name"
+            type="text"
+            maxlength="255"
+            placeholder="АТ КБ «ПриватБанк»"
+            :class="[
+              'w-full px-4 py-3.5 bg-[#0d1117] rounded-xl outline outline-1 text-slate-200 text-sm focus:outline-none transition-all',
+              submitted && errors.bank_name ? 'outline-red-500' : 'outline-[#1e2535]'
+            ]"
+            @input="errors.bank_name = false"
+          />
         </div>
       </div>
 

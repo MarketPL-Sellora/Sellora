@@ -10,6 +10,9 @@ import AddProductForm   from '../components/forms/AddProductForm.vue'
 import CreateStoreForm  from '../components/forms/CreateStoreForm.vue'
 import CabinetCategories from '../components/cabinet/CabinetCategories.vue'
 import CabinetStores from '../components/cabinet/CabinetStores.vue'
+import CabinetShippingCarriers from '../components/cabinet/CabinetShippingCarriers.vue'
+import CabinetPromoCodes from '../components/cabinet/CabinetPromoCodes.vue'
+import CabinetRequisites from '../components/cabinet/CabinetRequisites.vue'
 import CabinetSettings from '../components/cabinet/CabinetSettings.vue'
 import ProductGrid from '../components/product/ProductGrid.vue'
 import { useUserStore } from '../state/userStore'
@@ -257,6 +260,9 @@ async function handleStoreStatus(newStatus: string) {
 
         <CabinetStores v-else-if="activeTab === 'stores' && userStore.user?.role === 'ADMIN'" />
         <CabinetCategories v-else-if="activeTab === 'categories' && userStore.user?.role === 'ADMIN'" />
+        <CabinetShippingCarriers v-else-if="activeTab === 'shipping-carriers' && userStore.user?.role === 'ADMIN'" />
+        <CabinetPromoCodes v-else-if="activeTab === 'promo-codes' && userStore.user?.role === 'ADMIN'" />
+        <CabinetRequisites v-else-if="activeTab === 'requisites' && hasStore" />
 
         <div v-else-if="activeTab === 'settings'">
           <div class="mb-6"><span class="text-gray-100 text-xl font-black font-['Unbounded']">Налаштування</span></div>

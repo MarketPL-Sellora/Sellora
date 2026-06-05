@@ -1,5 +1,8 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+
+// ─── Props ────────────────────────────────────────────────────────────────────
+const props = defineProps<{ products?: any[] }>()
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -13,6 +16,7 @@ interface Slide {
   discount: string
   image: string
   imageAlt: string
+  originalProduct?: any
 }
 
 interface Stat {
@@ -59,6 +63,52 @@ const slides: Slide[] = [
   },
 ]
 
+// ─── Computed slides (real products or fallback) ──────────────────────────────
+
+const displaySlides = computed<Slide[]>(() => {
+  if (props.products && props.products.length > 0) {
+    return props.products.slice(0, 3).map((p: any, index: number) => {
+      const badges = ['🔥 Гаряча пропозиція', '⚡ Новинка', '🎯 Топ продажів']
+      
+      // Безпечний парсинг значень
+      const title = p.title || p.name || 'Товар'
+      const standardPrice = Number(p.standardPrice) || Number(p.price) || 0
+      const groupPrice = Number(p.groupPrice) || 0
+      const targetSize = Number(p.groupTargetSize) || 0
+      
+      // Логіка визначення ціни (як у ProductCard)
+      const isGroupBuy = groupPrice > 0 && targetSize > 0
+      const finalPrice = isGroupBuy ? groupPrice : standardPrice
+      const oldPrice = isGroupBuy ? standardPrice : 0
+      
+      // Розбиваємо назву на дві частини
+      const nameParts = title.split(' ')
+      const titleWhite = nameParts.slice(0, 2).join(' ')
+      const titleAccent = nameParts.slice(2).join(' ')
+      
+      const discount = (oldPrice > 0 && finalPrice < oldPrice)
+        ? `-${Math.round((1 - finalPrice / oldPrice) * 100)}%` 
+        : ''
+        
+      const image = (p.images && p.images.length > 0) ? p.images[0] : (p.image || '../../assets/iphone.png')
+        
+      return {
+        badge: badges[index % badges.length],
+        titleWhite: titleWhite,
+        titleAccent: titleAccent,
+        description: p.description ? p.description.substring(0, 80) + '...' : 'Неймовірна пропозиція',
+        price: finalPrice > 0 ? `${finalPrice.toLocaleString('uk-UA')} ₴` : 'Ціну не вказано',
+        oldPrice: oldPrice > 0 ? `${oldPrice.toLocaleString('uk-UA')} ₴` : '',
+        discount: discount,
+        image: image,
+        imageAlt: title,
+        originalProduct: p
+      }
+    })
+  }
+  return slides
+})
+
 // ─── Stats data ────────────────────────────────────────────────────────────────
 
 const stats: Stat[] = [
@@ -76,7 +126,7 @@ const isAnimating = ref(false)
 function goTo(index: number) {
   if (isAnimating.value || index === current.value) return
   isAnimating.value = true
-  current.value = (index + slides.length) % slides.length
+  current.value = (index + displaySlides.value.length) % displaySlides.value.length
   setTimeout(() => (isAnimating.value = false), 400)
 }
 
@@ -127,7 +177,7 @@ const emit = defineEmits<{
       <!-- Slides -->
       <transition-group name="slide-fade" tag="div" class="absolute inset-0">
         <div
-          v-for="(slide, i) in slides"
+          v-for="(slide, i) in displaySlides"
           v-show="i === current"
           :key="slide.titleAccent"
           class="absolute inset-0 flex items-center overflow-hidden"
@@ -225,7 +275,7 @@ const emit = defineEmits<{
       <!-- Dot indicators -->
       <div class="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2">
         <button
-          v-for="(_, i) in slides"
+          v-for="(_, i) in displaySlides"
           :key="i"
           :aria-label="`Слайд ${i + 1}`"
           class="h-2 rounded transition-all duration-300"

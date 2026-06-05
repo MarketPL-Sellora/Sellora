@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import Header from '../components/layout/Header.vue'
 import Sidebar from '../components/layout/Sidebar.vue'
 import HeroBanner from '../components/layout/HeroBanner.vue'
@@ -9,9 +9,12 @@ import Footer from '../components/layout/Footer.vue'
 
 // 1. Імпортуємо стор, щоб викликати завантаження даних
 import { useProductStore } from '../state/productStore'
+import { useCartStore } from '../state/cartStore'
 
 const productStore = useProductStore()
+const cartStore = useCartStore()
 const route = useRoute()
+const router = useRouter()
 
 watch(
   () => route.query,
@@ -51,6 +54,21 @@ function handleFilter() {
 function handleCategory() {
   isMobileMenuOpen.value = false // Закриваємо меню після вибору
 }
+
+// ─── Обробка подій банера ─────────────────────────────────────────────────────
+function handleBannerBuy(slide: any) {
+  const productId = slide.originalProduct?.id
+  if (productId) {
+    cartStore.addToCart(productId, 1)
+  }
+}
+
+function handleBannerDetails(slide: any) {
+  const productId = slide.originalProduct?.id
+  if (productId) {
+    router.push(`/product/${productId}`)
+  }
+}
 </script>
 
 <template>
@@ -71,7 +89,11 @@ function handleCategory() {
 
       <section class="flex-1 flex flex-col gap-6 lg:gap-10 min-w-0">
 
-        <HeroBanner />
+        <HeroBanner
+          :products="productStore.products"
+          @buy="handleBannerBuy"
+          @details="handleBannerDetails"
+        />
 
         <div class="lg:hidden w-full">
           <button
