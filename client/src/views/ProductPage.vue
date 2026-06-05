@@ -23,6 +23,11 @@ const categoryStore = useCategoryStore()
 
 const productId = Number(route.params.id) || 3
 
+const groupPrice = computed(() => {
+  const p = productStore.currentProduct
+  return p?.groupPrice || 0
+})
+
 const isGroupBuyModalOpen = ref(false)
 const sessionData = ref<GroupBuySession | null>(null)
 const headerRef = ref<any>(null)
@@ -136,8 +141,11 @@ const productBreadcrumbs = computed(() => {
     <GroupBuyModal
       v-if="isGroupBuyModalOpen"
       :product-id="productId"
+      :group-price="groupPrice"
+      :session-uuid="sessionData?.uuid ?? null"
       @close="closeGroupModal"
       @open-auth="handleOpenAuth"
+      @success="async () => { if (sessionData?.uuid) { sessionData = await groupBuyStore.fetchSession(sessionData.uuid) } }"
     />
   </div>
 </template>

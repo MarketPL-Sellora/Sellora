@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { apiClient } from '../api/axios'
 
 export interface CartItem {
@@ -13,6 +13,8 @@ export interface CartItem {
   subTotal: number
   merchantName?: string
   stockQuantity?: number
+  merchantId?: number
+  storeName?: string
 }
 
 export interface CartData {
@@ -20,16 +22,141 @@ export interface CartData {
   totalAmount: number
 }
 
+export interface GroupedStore {
+  storeName: string
+  items: CartItem[]
+}
+
 export const useCartStore = defineStore('cart', () => {
   const isLoading = ref(false)
   const cart = ref<CartData | null>(null)
   const isCartLoading = ref(false)
+
+  // --- Selection state ---
+  const selectedProductIds = ref<number[]>([])
+  const selectedMerchantId = ref<number | null>(null)
+
+  // --- Computed: group items by merchantId ---
+  const groupedItems = computed<Record<number, GroupedStore>>(() => {
+    if (!cart.value?.items?.length) return {}
+
+    const groups: Record<number, GroupedStore> = {}
+
+    for (const item of cart.value.items) {
+      const mId = item.merchantId ?? 0
+      const name = item.storeName ?? item.merchantName ?? 'Невідомий магазин'
+
+      if (!groups[mId]) {
+        groups[mId] = { storeName: name, items: [] }
+      }
+      groups[mId].items.push(item)
+    }
+
+    return groups
+  })
+
+  // --- Computed: total only for selected items ---
+  const selectedTotalAmount = computed<number>(() => {
+    if (!cart.value?.items?.length || !selectedProductIds.value.length) return 0
+
+    return cart.value.items
+      .filter(item => selectedProductIds.value.includes(item.productId))
+      .reduce((sum, item) => sum + item.price * item.quantity, 0)
+  })
+
+  // --- Toggle single item selection ---
+  function toggleItemSelection(item: CartItem) {
+    const itemMerchantId = item.merchantId ?? 0
+    const isAlreadySelected = selectedProductIds.value.includes(item.productId)
+
+    if (isAlreadySelected) {
+      // Remove from selection
+      selectedProductIds.value = selectedProductIds.value.filter(id => id !== item.productId)
+
+      // If no items left, clear the merchant lock
+      if (selectedProductIds.value.length === 0) {
+        selectedMerchantId.value = null
+      }
+      return
+    }
+
+    // Adding — check merchant conflict
+    if (
+      selectedMerchantId.value !== null &&
+      selectedMerchantId.value !== itemMerchantId &&
+      selectedProductIds.value.length > 0
+    ) {
+      const confirmed = confirm('Можна вибрати товари лише з одного магазину. Скинути вибір?')
+      if (!confirmed) return
+
+      // Reset selection
+      selectedProductIds.value = []
+      selectedMerchantId.value = null
+    }
+
+    selectedProductIds.value.push(item.productId)
+    selectedMerchantId.value = itemMerchantId
+  }
+
+  // --- Toggle all items in a store group ---
+  function toggleStoreSelection(merchantId: number, items: CartItem[]) {
+    const storeProductIds = items.map(i => i.productId)
+    const allSelected = storeProductIds.every(id => selectedProductIds.value.includes(id))
+
+    if (allSelected) {
+      // Deselect all items in this store
+      selectedProductIds.value = selectedProductIds.value.filter(id => !storeProductIds.includes(id))
+
+      if (selectedProductIds.value.length === 0) {
+        selectedMerchantId.value = null
+      }
+      return
+    }
+
+    // Selecting — check merchant conflict
+    if (
+      selectedMerchantId.value !== null &&
+      selectedMerchantId.value !== merchantId &&
+      selectedProductIds.value.length > 0
+    ) {
+      const confirmed = confirm('Можна вибрати товари лише з одного магазину. Скинути вибір?')
+      if (!confirmed) return
+
+      selectedProductIds.value = []
+      selectedMerchantId.value = null
+    }
+
+    // Add missing product IDs
+    for (const id of storeProductIds) {
+      if (!selectedProductIds.value.includes(id)) {
+        selectedProductIds.value.push(id)
+      }
+    }
+    selectedMerchantId.value = merchantId
+  }
+
+  // --- Cleanup: remove stale product IDs from selection ---
+  function cleanupSelection() {
+    if (!cart.value?.items?.length) {
+      selectedProductIds.value = []
+      selectedMerchantId.value = null
+      return
+    }
+
+    const existingIds = new Set(cart.value.items.map(i => i.productId))
+    selectedProductIds.value = selectedProductIds.value.filter(id => existingIds.has(id))
+
+    if (selectedProductIds.value.length === 0) {
+      selectedMerchantId.value = null
+    }
+  }
 
   async function fetchCart() {
     isCartLoading.value = true
     try {
       const response = await apiClient.get<CartData>('/cart')
       cart.value = response.data
+      cleanupSelection()
     } catch (error) {
       cart.value = null
     } finally {
@@ -77,6 +204,8 @@ export const useCartStore = defineStore('cart', () => {
     try {
       await apiClient.delete('/cart')
       cart.value = null
+      selectedProductIds.value = []
+      selectedMerchantId.value = null
       return true
     } catch (error: any) {
       alert(error.response?.data?.message || 'Помилка очищення')
@@ -88,10 +217,16 @@ export const useCartStore = defineStore('cart', () => {
     isLoading,
     cart,
     isCartLoading,
+    selectedProductIds,
+    selectedMerchantId,
+    groupedItems,
+    selectedTotalAmount,
     fetchCart,
     addToCart,
     updateQuantity,
     removeItem,
     clearCart,
+    toggleItemSelection,
+    toggleStoreSelection,
   }
 })
