@@ -107,6 +107,15 @@ async function handleDelete(id: number) {
   }
 }
 
+// ─── Валідація IBAN ───────────────────────────────────────────────────────────
+function handleIbanInput(event: Event, targetObj: any, fieldName: string) {
+  let val = (event.target as HTMLInputElement).value.toUpperCase().replace(/[^A-Z0-9]/g, '')
+  if (!val.startsWith('UA')) {
+    val = 'UA' + val.replace(/^U?A?/, '')
+  }
+  targetObj[fieldName] = val.slice(0, 29)
+}
+
 // ─── Ініціалізація ────────────────────────────────────────────────────────────
 onMounted(fetchRequisites)
 </script>
@@ -243,8 +252,9 @@ onMounted(fetchRequisites)
           <input
             v-model="form.iban"
             type="text"
+            placeholder="UA000000000000000000000000000"
             maxlength="29"
-            placeholder="UA213223130000026007233566001"
+            @input="handleIbanInput($event, form, 'iban')"
             class="w-full px-4 py-2.5 mb-4 bg-[#0f1117] rounded-xl text-gray-100 text-sm outline outline-1 outline-[#1e2d3d] focus:outline-orange-500 transition-colors placeholder:text-gray-600 font-mono"
           />
 

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, computed } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useProductStore } from '../../state/productStore'
 import { useCategoryStore } from '../../state/categoryStore'
@@ -9,8 +9,49 @@ const route = useRoute()
 const productStore = useProductStore()
 const categoryStore = useCategoryStore()
 
+const sortOptions = [
+  { value: '', label: 'За замовчуванням' },
+  { value: 'standardPrice,asc', label: 'Від дешевих до дорогих' },
+  { value: 'standardPrice,desc', label: 'Від дорогих до дешевих' }
+]
+
+const isSortOpen = ref(false)
+const selectedSort = ref(
+  productStore.filters.sortBy && productStore.filters.sortDir
+    ? `${productStore.filters.sortBy},${productStore.filters.sortDir}`
+    : ''
+)
+
+const selectedSortObj = computed(() => 
+  sortOptions.find(o => o.value === selectedSort.value) || sortOptions[0]
+)
+
+function handleSortSelect(opt: { value: string, label: string }) {
+  selectedSort.value = opt.value
+  isSortOpen.value = false
+  
+  if (!opt.value) {
+    productStore.fetchProducts({ page: 0, sortBy: undefined, sortDir: undefined })
+  } else {
+    const [sortBy, sortDir] = opt.value.split(',')
+    productStore.fetchProducts({ page: 0, sortBy, sortDir })
+  }
+}
+
+// Закриття дропдауна при кліку поза ним
+function closeSortOutside(e: Event) {
+  if (!(e.target as Element).closest('.sort-dropdown-container')) {
+    isSortOpen.value = false
+  }
+}
+
 onMounted(() => {
+  document.addEventListener('click', closeSortOutside)
   productStore.fetchProducts()
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', closeSortOutside)
 })
 
 // Ми більше не перейменовуємо price на groupPrice!
@@ -89,11 +130,41 @@ function handleWishlistUpdate(payload: { id: number, isFavorite: boolean }) {
         </span>
       </div>
 
-      <div class="flex items-center gap-2">
+      <div class="flex items-center gap-2 sort-dropdown-container relative">
         <span class="text-gray-500 text-sm font-['Onest']">Сортувати:</span>
-        <button class="px-3 py-1.5 bg-[#1c1f2a] rounded-lg text-gray-300 text-sm font-['Onest'] outline outline-1 outline-white/10 transition-all hover:bg-white/5">
-          За популярністю
-        </button>
+        
+        <div class="relative">
+          <button
+            @click="isSortOpen = !isSortOpen"
+            class="flex items-center justify-between w-56 px-4 py-2 bg-[#1c1f2a] rounded-xl text-gray-300 text-sm font-['Onest'] outline outline-1 outline-white/10 transition-all hover:bg-white/5 focus:outline-orange-500"
+          >
+            <span>{{ selectedSortObj.label }}</span>
+            <svg 
+              class="w-4 h-4 text-gray-400 transition-transform duration-200" 
+              :class="{ 'rotate-180': isSortOpen }" 
+              viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+            >
+              <path d="M4 6l4 4 4-4"/>
+            </svg>
+          </button>
+      
+          <transition name="fade">
+            <div 
+              v-if="isSortOpen" 
+              class="absolute right-0 z-50 w-56 mt-2 bg-[#161820] border border-[#2a2d3e] rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.5)] overflow-hidden py-1.5"
+            >
+              <button
+                v-for="opt in sortOptions"
+                :key="opt.value"
+                @click="handleSortSelect(opt)"
+                class="w-full text-left px-4 py-2.5 text-sm font-['Onest'] transition-colors hover:bg-white/5"
+                :class="selectedSort === opt.value ? 'text-orange-400 bg-orange-500/10 font-medium' : 'text-gray-300'"
+              >
+                {{ opt.label }}
+              </button>
+            </div>
+          </transition>
+        </div>
       </div>
     </div>
 

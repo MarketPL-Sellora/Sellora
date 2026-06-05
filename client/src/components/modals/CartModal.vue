@@ -19,6 +19,11 @@ async function changeQuantity(item: CartItem, delta: number) {
   const newQty = item.quantity + delta
   if (newQty < 1) return
 
+  if (item.stockQuantity !== undefined && newQty > item.stockQuantity) {
+    alert(`Максимальна доступна кількість: ${item.stockQuantity} шт.`)
+    return
+  }
+
   const oldQty = item.quantity
   item.quantity = newQty // Optimistic UI
 
@@ -89,7 +94,11 @@ const fmt = (n: number) => (n || 0).toLocaleString('uk-UA') + ' ₴'
                 <div class="flex items-center bg-[#0f1117] rounded-lg border border-white/10">
                   <button class="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-white" @click="changeQuantity(item, -1)">−</button>
                   <span class="w-8 text-center text-sm font-medium text-white">{{ item.quantity }}</span>
-                  <button class="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-white" @click="changeQuantity(item, 1)">+</button>
+                  <button 
+                    class="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-white transition-colors disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-gray-400" 
+                    :disabled="item.stockQuantity !== undefined && item.quantity >= item.stockQuantity"
+                    @click="changeQuantity(item, 1)"
+                  >+</button>
                 </div>
                 <div class="text-right">
                   <div v-if="item.oldPrice" class="text-xs text-gray-500 line-through">{{ fmt(item.oldPrice * item.quantity) }}</div>
