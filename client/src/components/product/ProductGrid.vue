@@ -60,6 +60,14 @@ const gridTitle = computed(() => {
   return 'Популярні товари'
 })
 
+const remainingItems = computed(() => {
+  const currentlyLoaded = productStore.products.length;
+  const total = productStore.totalElements;
+  const remaining = total - currentlyLoaded;
+  // Показуємо розмір сторінки (24), але якщо залишилось менше, то реальну кількість
+  return remaining > productStore.filters.size ? productStore.filters.size : remaining;
+});
+
 function handleWishlistUpdate(payload: { id: number, isFavorite: boolean }) {
   // Якщо ми на сторінці улюблених і юзер зняв лайк
   if (route.path === '/favorites' && !payload.isFavorite) {
@@ -130,15 +138,15 @@ function handleWishlistUpdate(payload: { id: number, isFavorite: boolean }) {
     </Transition>
 
     <div
-      v-if="!productStore.isLoading && mappedProducts.length > 0"
+      v-if="remainingItems > 0"
       class="flex justify-center mt-4"
     >
       <button
         class="px-6 py-2.5 bg-[#1c1f2a] rounded-xl outline outline-1 outline-white/10 text-gray-400 text-sm font-['Onest'] transition-all hover:bg-white/5 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed"
-        :disabled="(productStore.filters.page + 1) * productStore.filters.size >= productStore.totalElements"
+        :disabled="productStore.isLoading"
         @click="productStore.fetchProducts({ page: productStore.filters.page + 1 })"
       >
-        Показати ще {{ productStore.filters.size }} товари ↓
+        Показати ще {{ remainingItems }} товарів ↓
       </button>
     </div>
 

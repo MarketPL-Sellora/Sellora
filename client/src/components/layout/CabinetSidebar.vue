@@ -56,6 +56,7 @@ const menuItems = computed<MenuItem[]>(() => {
   const items = !props.isUserSeller ? [...base] : [
     ...base.slice(0, 3),
     { id: 'my-products', label: 'Мої товари', count: productStore.myProducts.length, icon: 'seller' as const },
+    { id: 'requisites', label: 'Платіжні реквізити', icon: 'orders' as const },
     ...base.slice(3),
   ]
 
@@ -65,7 +66,9 @@ const menuItems = computed<MenuItem[]>(() => {
     const settingsIndex = items.findIndex(i => i.id === 'settings')
     items.splice(settingsIndex, 0, 
       { id: 'stores', label: 'Магазини', icon: 'groups' },
-      { id: 'categories', label: 'Категорії', icon: 'settings' }
+      { id: 'categories', label: 'Категорії', icon: 'settings' },
+      { id: 'shipping-carriers', label: 'Поштові служби', icon: 'orders' },
+      { id: 'promo-codes', label: 'Промокоди', icon: 'seller' }
     )
   }
 

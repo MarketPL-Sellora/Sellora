@@ -119,7 +119,10 @@ const productBreadcrumbs = computed(() => {
       </div>
 
       <div class="flex flex-col gap-16">
-        <ProductTabs :description="productStore.currentProduct?.description" />
+        <ProductTabs 
+          :description="productStore.currentProduct?.description" 
+          :attributes="productStore.currentProduct?.attributes" 
+        />
         <RelatedProducts 
           v-if="productStore.currentProduct?.categoryId"
           :category-id="productStore.currentProduct.categoryId" 

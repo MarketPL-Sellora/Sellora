@@ -3,6 +3,7 @@ import { ref, reactive, computed } from 'vue'
 
 const props = defineProps<{
   description?: string
+  attributes?: Record<string, string>
 }>()
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -11,12 +12,6 @@ interface Tab {
   id: string
   label: string
   count?: number
-}
-
-interface Feature {
-  icon: 'camera' | 'chip' | 'display' | 'pen' | 'battery' | 'ai'
-  title: string
-  subtitle: string
 }
 
 // —— Тип одного відгуку ——
@@ -46,40 +41,12 @@ const descriptionParagraphs = computed(() => {
   return desc.split(/\n\s*\n/).filter(p => p.trim().length > 0)
 })
 
-// ─── Features ────────────────────────────────────────────────────────────────
+// ─── Product features (from attributes) ─────────────────────────────────────
 
-const features: Feature[] = [
-  {
-    icon: 'camera',
-    title: '200 Мп камера',
-    subtitle: 'Quad-bayer сенсор, 100x zoom, нічна зйомка',
-  },
-  {
-    icon: 'chip',
-    title: 'Snapdragon 8 Gen 3',
-    subtitle: '4 нм чіп, 12 ГБ RAM, AnTuTu 2,1 млн',
-  },
-  {
-    icon: 'display',
-    title: '6.8" Dynamic AMOLED 2X',
-    subtitle: '3088×1440, 120 Гц, 2600 нт пікова яскравість',
-  },
-  {
-    icon: 'pen',
-    title: 'S Pen вбудований',
-    subtitle: 'Нульова затримка, підтримка AI',
-  },
-  {
-    icon: 'battery',
-    title: 'Акумулятор 5000 мАг',
-    subtitle: '45 Вт дротова, 15 Вт бездротова зарядка',
-  },
-  {
-    icon: 'ai',
-    title: 'Galaxy AI',
-    subtitle: 'Circle to Search, Live Translate, Note Assist',
-  },
-]
+const productFeatures = computed(() => {
+  if (!props.attributes) return []
+  return Object.entries(props.attributes).map(([key, value]) => ({ key, value }))
+})
 
 // —— Масив відгуків ——
 // Містить повний список відгуків поточного товару.
@@ -255,55 +222,17 @@ function setTab(id: string) {
             Ключові особливості
           </h3>
           <div class="flex flex-col gap-3">
+            <div v-if="productFeatures.length === 0" class="text-[#5a5f7a] text-sm font-['Onest']">
+              Характеристики не вказані
+            </div>
             <div
-              v-for="feat in features"
-              :key="feat.title"
+              v-for="feat in productFeatures.slice(0, 8)"
+              :key="feat.key"
               class="inline-flex justify-start items-start gap-3"
             >
-              <!-- Icon -->
-              <div class="w-7 h-7 shrink-0 mt-0.5 bg-orange-500/20 rounded-lg flex justify-center items-center">
-                <!-- camera -->
-                <svg v-if="feat.icon === 'camera'" class="w-3.5 h-3.5 text-orange-400" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.1">
-                  <rect x="1" y="4" width="12" height="9" rx="1.5"/>
-                  <circle cx="7" cy="8.5" r="2.5"/>
-                  <rect x="4.5" y="2" width="3.5" height="2" rx="0.5"/>
-                  <circle cx="11.5" cy="5.5" r="0.8" fill="currentColor"/>
-                </svg>
-                <!-- chip -->
-                <svg v-else-if="feat.icon === 'chip'" class="w-3.5 h-3.5 text-orange-400" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.1">
-                  <rect x="3.5" y="3.5" width="7" height="7" rx="1"/>
-                  <path d="M5 1v2.5M7 1v2.5M9 1v2.5M5 10.5V13M7 10.5V13M9 10.5V13M1 5h2.5M1 7h2.5M1 9h2.5M10.5 5H13M10.5 7H13M10.5 9H13"/>
-                </svg>
-                <!-- display -->
-                <svg v-else-if="feat.icon === 'display'" class="w-3.5 h-3.5 text-orange-400" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.1">
-                  <rect x="1" y="2" width="12" height="8" rx="1"/>
-                  <path d="M4.5 12h5M7 10v2"/>
-                </svg>
-                <!-- pen -->
-                <svg v-else-if="feat.icon === 'pen'" class="w-3.5 h-3.5 text-orange-400" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.1">
-                  <path d="M9.5 1.5l3 3-7 7H2.5v-3l7-7z" stroke-linecap="round" stroke-linejoin="round"/>
-                  <path d="M7.5 3.5l3 3" stroke-linecap="round"/>
-                </svg>
-                <!-- battery -->
-                <svg v-else-if="feat.icon === 'battery'" class="w-3.5 h-3.5 text-orange-400" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.1">
-                  <rect x="1" y="4" width="10" height="6" rx="1"/>
-                  <path d="M11 6v2" stroke-width="1.5" stroke-linecap="round"/>
-                  <path d="M13 5.5v3" stroke-linecap="round"/>
-                  <path d="M3.5 7h4" stroke-linecap="round"/>
-                  <path d="M5.5 5v4" stroke-linecap="round"/>
-                </svg>
-                <!-- ai -->
-                <svg v-else-if="feat.icon === 'ai'" class="w-3.5 h-3.5 text-orange-400" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.1">
-                  <circle cx="7" cy="7" r="5.5"/>
-                  <path d="M7 4v3l2 1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                  <circle cx="7" cy="7" r="1.5" fill="currentColor" stroke="none"/>
-                </svg>
-              </div>
-
-              <!-- Text -->
-              <div class="flex flex-col gap-0.5 min-w-0">
-                <span class="text-[#c8ccdf] text-sm font-normal font-['Onest'] leading-5">{{ feat.title }}</span>
-                <span class="text-[#5a5f7a] text-xs font-normal font-['Onest'] leading-4">{{ feat.subtitle }}</span>
+              <div class="flex flex-col gap-0.5 min-w-0 py-1">
+                <span class="text-[#c8ccdf] text-sm font-normal font-['Onest'] leading-5">{{ feat.key }}</span>
+                <span class="text-[#5a5f7a] text-xs font-normal font-['Onest'] leading-4">{{ feat.value }}</span>
               </div>
             </div>
           </div>
@@ -316,10 +245,19 @@ function setTab(id: string) {
       v-else-if="activeTab === 'specs'"
       class="self-stretch flex flex-col gap-4"
     >
-      <p class="text-[#5a5f7a] text-sm font-normal font-['Onest'] leading-6">
-        <!-- Тут буде таблиця характеристик -->
-        Технічні характеристики будуть тут.
-      </p>
+      <div v-if="productFeatures.length === 0" class="text-[#5a5f7a] text-sm font-normal font-['Onest'] leading-6">
+        Характеристики відсутні.
+      </div>
+      <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
+        <div 
+          v-for="feat in productFeatures" 
+          :key="'spec-' + feat.key"
+          class="flex flex-col sm:flex-row sm:items-end justify-between border-b border-[#1c1f2a] pb-2"
+        >
+          <span class="text-[#787d99] text-sm font-normal font-['Onest']">{{ feat.key }}</span>
+          <span class="text-white text-sm font-medium font-['Onest'] text-right">{{ feat.value }}</span>
+        </div>
+      </div>
     </div>
 
     <!-- ── ВІДГУКИ tab ────────────────────────────────────────────────────── -->
