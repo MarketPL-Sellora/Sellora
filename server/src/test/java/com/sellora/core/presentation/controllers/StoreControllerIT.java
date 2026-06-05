@@ -4,10 +4,12 @@ import com.sellora.core.AbstractIntegrationTest;
 import com.sellora.core.infrastructure.persistence.StoreRepository;
 import com.sellora.core.infrastructure.persistence.UserRepository;
 import jakarta.servlet.http.Cookie;
+import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+
 
 import static org.hamcrest.Matchers.*;
 import static org.junit.jupiter.api.Assertions.*;
@@ -31,6 +33,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *   - Тести що видаляють/змінюють store id=4 можуть конфліктувати між собою
  *   - GET /api/v1/stores вимагає авторизації (закрито Security конфігом)
  */
+@Transactional
 public class StoreControllerIT extends AbstractIntegrationTest {
 
   @Autowired
