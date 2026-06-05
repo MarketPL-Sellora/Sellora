@@ -23,6 +23,8 @@ export interface ProductApiItem {
 // ─── Тип фільтрів ─────────────────────────────────────────────────────────────
 
 export interface ProductFilters {
+  sortBy?: string
+  sortDir?: string
   categoryId?: number
   keyword?: string
   minPrice?: number
@@ -75,6 +77,8 @@ export const useProductStore = defineStore('products', () => {
       if (filters.groupMode) query.groupMode = filters.groupMode
       if (filters.storeId !== undefined) query.storeId = filters.storeId
       if (filters.onlyFavorites !== undefined) query.onlyFavorites = filters.onlyFavorites
+      if (filters.sortBy) query.sortBy = filters.sortBy
+      if (filters.sortDir) query.sortDir = filters.sortDir
 
       const response = await apiClient.get('/products', { params: query })
 
@@ -204,6 +208,8 @@ export const useProductStore = defineStore('products', () => {
     filters.groupMode = undefined
     filters.storeId = undefined
     filters.onlyFavorites = undefined
+    filters.sortBy = undefined
+    filters.sortDir = undefined
     filters.page = 0
     fetchProducts()
   }

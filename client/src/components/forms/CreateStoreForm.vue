@@ -116,6 +116,14 @@ const errors = reactive({
   bank_name:   false,
 })
 
+function handleIbanInput(event: Event, targetObj: any, fieldName: string) {
+  let val = (event.target as HTMLInputElement).value.toUpperCase().replace(/[^A-Z0-9]/g, '')
+  if (!val.startsWith('UA')) {
+    val = 'UA' + val.replace(/^U?A?/, '')
+  }
+  targetObj[fieldName] = val.slice(0, 29)
+}
+
 function validate(): boolean {
   errors.name        = !storeForm.name.trim()
   errors.city        = !storeForm.city.trim()
@@ -383,13 +391,13 @@ async function handleCreate() {
           <input
             v-model="requisiteForm.iban"
             type="text"
+            placeholder="UA000000000000000000000000000"
             maxlength="29"
-            placeholder="UA213223130000026007233566001"
+            @input="handleIbanInput($event, requisiteForm, 'iban'); errors.iban = false"
             :class="[
               'w-full px-4 py-3.5 bg-[#0d1117] rounded-xl outline outline-1 text-slate-200 text-sm font-mono focus:outline-none transition-all',
               submitted && errors.iban ? 'outline-red-500' : 'outline-[#1e2535]'
             ]"
-            @input="errors.iban = false"
           />
         </div>
 
