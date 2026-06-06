@@ -52,6 +52,17 @@ function goToCheckout() {
   router.push('/checkout')
 }
 
+function goToProduct(productId: number) {
+  emit('close')
+  router.push('/product/' + productId)
+}
+
+function goToStore(merchantId: number | undefined) {
+  if (!merchantId) return
+  emit('close')
+  router.push({ path: '/', query: { storeId: merchantId } })
+}
+
 function isItemSelected(productId: number): boolean {
   return cartStore.selectedProductIds.includes(productId)
 }
@@ -114,9 +125,9 @@ const fmt = (n: number) => (n || 0).toLocaleString('uk-UA') + ' ₴'
                   <div v-else-if="isStorePartiallySelected(Number(mId), group.items)" class="w-2.5 h-0.5 bg-orange-500 rounded"></div>
                 </div>
               </label>
-              <div class="flex items-center gap-2">
+              <div class="flex items-center gap-2 cursor-pointer" @click="goToStore(group.items[0]?.merchantId)">
                 <svg class="w-4 h-4 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 21v-7.5a.75.75 0 01.75-.75h3a.75.75 0 01.75.75V21m-4.5 0H2.36m11.14 0H18m0 0h3.64m-1.39 0V9.349m-16.5 11.65V9.35m0 0a3.001 3.001 0 003.75-.615A2.993 2.993 0 009.75 9.75c.896 0 1.7-.393 2.25-1.016a2.993 2.993 0 002.25 1.016c.896 0 1.7-.393 2.25-1.016A3.001 3.001 0 0021 9.349m-18 0a2.994 2.994 0 00.615-3.75L5.25 3h13.5l1.635 2.599A2.994 2.994 0 0021 9.349"/></svg>
-                <span class="text-white font-semibold text-sm">{{ group.storeName }}</span>
+                <span class="text-white font-semibold text-sm hover:text-orange-400 transition-colors">{{ group.storeName }}</span>
                 <span class="text-xs text-gray-500">({{ group.items.length }})</span>
               </div>
             </div>
@@ -137,11 +148,11 @@ const fmt = (n: number) => (n || 0).toLocaleString('uk-UA') + ' ₴'
                   </div>
                 </label>
 
-                <img :src="item.image || 'https://via.placeholder.com/80'" class="w-20 h-20 object-cover rounded-lg bg-white/5" />
-                <div class="flex flex-col flex-1 justify-between">
-                  <div class="pr-6">
-                    <h3 class="text-sm font-semibold text-white leading-tight line-clamp-2">{{ item.title }}</h3>
-                    <p class="text-xs text-gray-500 mt-1">{{ DICT.cart.vendor }} <span class="text-orange-400">{{ item.merchantName || 'Sellora' }}</span></p>
+                <img :src="item.image || 'https://via.placeholder.com/80'" class="w-20 h-20 object-cover rounded-lg bg-white/5 cursor-pointer hover:opacity-80 transition-opacity shrink-0" @click="goToProduct(item.productId)" />
+                <div class="flex flex-col flex-1 min-w-0 justify-between">
+                  <div class="pr-6 min-w-0">
+                    <h3 class="text-sm font-semibold text-white leading-tight line-clamp-2 cursor-pointer hover:text-orange-400 transition-colors" @click="goToProduct(item.productId)">{{ item.title }}</h3>
+                    <p class="text-sm text-gray-400 mt-1 truncate">{{ item.description || 'Опис відсутній' }}</p>
                   </div>
                   <div class="flex justify-between items-end mt-2">
                     <div class="flex items-center bg-[#0f1117] rounded-lg border border-white/10">
@@ -153,7 +164,7 @@ const fmt = (n: number) => (n || 0).toLocaleString('uk-UA') + ' ₴'
                         @click="changeQuantity(item, 1)"
                       >+</button>
                     </div>
-                    <div class="text-right">
+                    <div class="text-right shrink-0 whitespace-nowrap">
                       <div v-if="item.oldPrice" class="text-xs text-gray-500 line-through">{{ fmt(item.oldPrice * item.quantity) }}</div>
                       <div class="text-orange-500 font-bold font-['Unbounded']">{{ fmt(item.price * item.quantity) }}</div>
                     </div>
