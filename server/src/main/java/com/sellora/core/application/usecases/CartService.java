@@ -166,7 +166,9 @@ public class CartService {
         item.getQuantity(),
         subTotal,
         product.getStockQuantity(),
-        product.getStatus()
+        product.getStatus(),
+        product.getMerchantId(), // <--- Ось правильний метод для ID
+        "Продавець #" + product.getMerchantId() // <--- Тимчасова назва-заглушка
       );
     }).toList();
 

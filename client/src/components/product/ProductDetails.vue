@@ -46,14 +46,8 @@ watch(() => props.sessionData, (newData) => {
   }
 }, { immediate: true })
 
-async function handleJoin() {
-  if (!props.sessionData?.uuid) return
-
-  const ok = await groupBuyStore.joinSession(props.sessionData.uuid)
-
-  if (ok) {
-    localMembersCount.value += 1
-  }
+function handleJoin() {
+  emit('start-group')
 }
 
 // ─── ПЕРЕВІРКА НА ЗАПОВНЕНІСТЬ ГРУПИ ─────────────────────────────────────────

@@ -15,6 +15,27 @@ export interface GroupBuySession {
   isAvailable: boolean
 }
 
+export interface GroupBuyCheckoutPayload {
+  buyer_name: string
+  buyer_surname: string
+  buyer_phone: string
+  buyer_email: string
+  delivery_type: 'BRANCH' | 'COURIER' | 'PICKUP'
+  carrier_id: number | null
+  delivery_address: Record<string, string> | null
+  payment_method: 'ONLINE_CARD' | 'CASH_ON_DELIVERY'
+  order_comment: string | null
+  promo_code: null
+  product_id: number
+  quantity: number
+}
+
+export interface GroupBuyOrderResponse {
+  id?: number
+  payment_url?: string
+  [key: string]: unknown
+}
+
 export const useGroupBuyStore = defineStore('groupBuy', () => {
   const session    = ref<GroupBuySession | null>(null)
   const mySessions = ref<GroupBuySession[]>([])
@@ -43,45 +64,37 @@ export const useGroupBuyStore = defineStore('groupBuy', () => {
     }
   }
 
-  async function createSession(productId: number): Promise<GroupBuySession | null> {
+  async function createSession(payload: GroupBuyCheckoutPayload): Promise<GroupBuyOrderResponse | null> {
     isLoading.value = true
     error.value     = null
     try {
-      const response = await apiClient.post<GroupBuySession>('/group-buy/sessions', { productId })
-
-      // ХАК ДЛЯ ФРОНТА: Якщо бекенд віддає 0 учасників при створенні, ми ставимо 1
-      if (response.data.currentMembersCount === 0) {
-        response.data.currentMembersCount = 1
-      }
-
-      session.value = response.data
+      const response = await apiClient.post<GroupBuyOrderResponse>('/group-buy/sessions', payload)
 
       // Оновлюємо масив mySessions з бекенду
       await fetchMySessions()
 
       return response.data
-    } catch (err: unknown) {
-      error.value   = err instanceof Error ? err.message : 'Помилка створення сесії'
-      session.value = null
+    } catch (err: any) {
+      error.value   = err.response?.data?.message || (err instanceof Error ? err.message : 'Помилка створення сесії')
       return null
     } finally {
       isLoading.value = false
     }
   }
 
-  async function joinSession(uuid: string): Promise<boolean> {
+  async function joinSession(uuid: string, payload: GroupBuyCheckoutPayload): Promise<GroupBuyOrderResponse | null> {
     isLoading.value = true
     error.value     = null
     try {
-      await apiClient.post(`/group-buy/sessions/${uuid}/join`)
+      const response = await apiClient.post<GroupBuyOrderResponse>(`/group-buy/sessions/${uuid}/join`, payload)
 
       // Оновлюємо масив mySessions з бекенду
       await fetchMySessions()
 
-      return true
-    } catch (err: unknown) {
-      error.value = err instanceof Error ? err.message : 'Не вдалося приєднатися'
-      return false
+      return response.data
+    } catch (err: any) {
+      error.value = err.response?.data?.message || (err instanceof Error ? err.message : 'Не вдалося приєднатися')
+      return null
     } finally {
       isLoading.value = false
     }

@@ -10,5 +10,7 @@ public record CartItemResponseDto(
   Integer quantity,
   BigDecimal subTotal,
   Integer stockQuantity,
-  String status
+  String status,
+  Long merchantId,
+String storeName
 ) {}
