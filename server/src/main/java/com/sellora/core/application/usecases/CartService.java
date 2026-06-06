@@ -6,6 +6,7 @@ import com.sellora.core.domain.entities.Product;
 import com.sellora.core.infrastructure.persistence.CartItemRepository;
 import com.sellora.core.infrastructure.persistence.CartRepository;
 import com.sellora.core.infrastructure.persistence.ProductRepository;
+import com.sellora.core.infrastructure.persistence.StoreRepository;
 import com.sellora.core.presentation.dtos.*;
 import com.sellora.core.presentation.exceptions.BadRequestException;
 import com.sellora.core.presentation.exceptions.ResourceNotFoundException;
@@ -24,6 +25,7 @@ public class CartService {
   private final CartRepository cartRepository;
   private final CartItemRepository cartItemRepository;
   private final ProductRepository productRepository;
+  private final StoreRepository storeRepository;
 
   private Long getCurrentUserId() {
     Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
@@ -158,6 +160,11 @@ public class CartService {
 
       String image = (product.getImages() != null && !product.getImages().isEmpty()) ? product.getImages().get(0) : null;
 
+      // Витягуємо назву магазину з БД
+      String storeName = storeRepository.findById(product.getMerchantId())
+              .map(store -> store.getName()) // або getTitle(), залежно від того, як названо поле в Store
+              .orElse("Невідомий магазин");
+
       return new CartItemResponseDto(
         product.getId(),
         product.getTitle(),
@@ -167,8 +174,9 @@ public class CartService {
         subTotal,
         product.getStockQuantity(),
         product.getStatus(),
-        product.getMerchantId(), // <--- Ось правильний метод для ID
-        "Продавець #" + product.getMerchantId() // <--- Тимчасова назва-заглушка
+        product.getDescription(),
+        product.getMerchantId(),
+        storeName // <--- Передаємо реальну назву
       );
     }).toList();
 

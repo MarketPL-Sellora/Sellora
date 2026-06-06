@@ -11,6 +11,7 @@ export interface CartItem {
   oldPrice?: number
   quantity: number
   subTotal: number
+  description?: string
   merchantName?: string
   stockQuantity?: number
   merchantId?: number
