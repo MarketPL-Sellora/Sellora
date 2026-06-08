@@ -1,5 +1,6 @@
 package com.sellora.core.presentation.dtos;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -16,5 +17,8 @@ public record GroupBuySessionResponseDto(
   LocalDateTime expiresAt,
   boolean isAvailable,
   LocalDateTime serverTime,
-  List<GroupMemberDto> members
+  List<GroupMemberDto> members,
+
+  @JsonProperty("payment_url")
+  String paymentUrl
 ) {}
