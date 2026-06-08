@@ -9,7 +9,13 @@ import com.sellora.core.presentation.exceptions.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import java.util.stream.Collectors;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import java.util.Map;
+import java.util.stream.Collectors;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.OffsetDateTime;
@@ -242,6 +248,142 @@ public class OrderService {
       savedOrder.getUpdatedAt(),
 
       itemDtos
+    );
+  }
+
+  @Transactional(readOnly = true)
+  public Page<OrderPreviewDto> getUserOrdersHistory(Long userId, Pageable pageable) {
+    // 1. Отримуємо сторінку замовлень користувача
+    Page<Order> ordersPage = orderRepository.findAllByUserId(userId, pageable);
+
+    if (ordersPage.isEmpty()) {
+      return Page.empty(pageable);
+    }
+
+    // 2. Збираємо всі ID цих замовлень
+    List<Long> orderIds = ordersPage.getContent().stream()
+      .map(Order::getId)
+      .toList();
+
+    // 3. Дістаємо всі OrderItems для цих замовлень ОДНИМ запитом
+    List<OrderItem> allItems = orderItemRepository.findByOrderIdIn(orderIds);
+
+    // 4. Групуємо товари по orderId для швидкого доступу
+    Map<Long, List<OrderItem>> itemsByOrderId = allItems.stream()
+      .collect(Collectors.groupingBy(OrderItem::getOrderId));
+
+    // 5. Мапимо замовлення у DTO для фронтенду
+    return ordersPage.map(order -> {
+      List<OrderItem> orderItems = itemsByOrderId.getOrDefault(order.getId(), List.of());
+
+      List<OrderItemPreviewDto> previewItems = orderItems.stream()
+        .map(item -> new OrderItemPreviewDto(
+          item.getImageSnapshot(),
+          item.getTitleSnapshot()
+        ))
+        .toList();
+
+      return new OrderPreviewDto(
+        order.getId(),
+        order.getPurchaseType(),
+        order.getMerchantId(),
+        order.getFinalPrice(),
+        order.getPaymentStatus(),
+        order.getShippingStatus(),
+        order.getCreatedAt(),
+        previewItems
+      );
+    });
+  }
+
+  @Transactional(readOnly = true)
+  public Page<StoreOrderPreviewDto> getStoreOrders(Long storeId, Long requesterId, String paymentStatus, String shippingStatus, Pageable pageable) {
+
+    // Перевірка прав доступу: Requester має бути власником магазину або ADMIN
+    Store store = storeRepository.findById(storeId)
+      .orElseThrow(() -> new ResourceNotFoundException("Магазин не знайдено"));
+
+    User requester = userRepository.findById(requesterId)
+      .orElseThrow(() -> new UnauthorizedException("Користувача не знайдено"));
+
+    if (!store.getOwnerId().equals(requesterId) && !"ADMIN".equalsIgnoreCase(requester.getRole())) {
+      throw new ForbiddenException("Ви не маєте доступу до замовлень цього магазину");
+    }
+
+    // Отримання списку замовлень
+    Page<Order> ordersPage = orderRepository.findStoreOrdersWithFilters(storeId, paymentStatus, shippingStatus, pageable);
+
+    if (ordersPage.isEmpty()) return Page.empty(pageable);
+
+    // Оптимізована вибірка товарів
+    List<Long> orderIds = ordersPage.getContent().stream().map(Order::getId).toList();
+    List<OrderItem> allItems = orderItemRepository.findByOrderIdIn(orderIds);
+    Map<Long, List<OrderItem>> itemsByOrderId = allItems.stream().collect(Collectors.groupingBy(OrderItem::getOrderId));
+
+    // Мапінг у DTO для продавця (з ім'ям і телефоном)
+    return ordersPage.map(order -> {
+      List<OrderItem> orderItems = itemsByOrderId.getOrDefault(order.getId(), List.of());
+      List<OrderItemPreviewDto> previewItems = orderItems.stream()
+        .map(item -> new OrderItemPreviewDto(item.getImageSnapshot(), item.getTitleSnapshot()))
+        .toList();
+
+      return new StoreOrderPreviewDto(
+        order.getId(),
+        order.getPurchaseType(),
+        order.getBuyerName(),
+        order.getBuyerSurname(),
+        order.getBuyerPhone(),
+        order.getFinalPrice(),
+        order.getPaymentStatus(),
+        order.getShippingStatus(),
+        order.getCreatedAt(),
+        previewItems
+      );
+    });
+  }
+
+  @Transactional(readOnly = true)
+  public OrderResponseDto getOrderDetails(Long orderId, Long requesterId) {
+    Order order = orderRepository.findById(orderId)
+      .orElseThrow(() -> new ResourceNotFoundException("Замовлення не знайдено"));
+
+    User requester = userRepository.findById(requesterId)
+      .orElseThrow(() -> new UnauthorizedException("Користувача не знайдено"));
+
+    // Перевіряємо чи є користувач власником магазину
+    Store store = storeRepository.findById(order.getMerchantId()).orElse(null);
+    boolean isStoreOwner = store != null && store.getOwnerId().equals(requesterId);
+
+    // АВТОРИЗАЦІЯ: Тільки покупець, продавець (власник магазину) або ADMIN
+    if (!order.getUserId().equals(requesterId) && !isStoreOwner && !"ADMIN".equalsIgnoreCase(requester.getRole())) {
+      throw new ForbiddenException("Ви не маєте доступу до деталей цього замовлення");
+    }
+
+    // Отримуємо товари замовлення
+    List<OrderItem> items = orderItemRepository.findByOrderId(orderId);
+    List<OrderItemDto> itemDtos = items.stream().map(oi -> new OrderItemDto(
+      oi.getId(), oi.getProductId(), oi.getQuantity(), oi.getPriceSnapshot(),
+      oi.getPriceSnapshot().multiply(BigDecimal.valueOf(oi.getQuantity())),
+      oi.getTitleSnapshot(), oi.getImageSnapshot()
+    )).toList();
+
+    // Парсинг JSONB адреси
+    Object deliveryAddressJson = null;
+    if (order.getDeliveryAddress() != null) {
+      try {
+        deliveryAddressJson = objectMapper.readValue(order.getDeliveryAddress(), Object.class);
+      } catch (JsonProcessingException e) {
+        deliveryAddressJson = order.getDeliveryAddress();
+      }
+    }
+
+    return new OrderResponseDto(
+      order.getId(), order.getPurchaseType(), order.getSessionId(), order.getUserId(), order.getMerchantId(),
+      order.getBuyerName(), order.getBuyerSurname(), order.getBuyerPhone(), order.getBuyerEmail(),
+      order.getDeliveryType(), order.getCarrierId(), deliveryAddressJson, order.getTrackingNumber(),
+      order.getPaymentMethod(), order.getOrderComment(), order.getSubtotal(), order.getTax(),
+      order.getDiscount(), order.getFinalPrice(), order.getPaymentStatus(), order.getShippingStatus(),
+      null, order.getCreatedAt(), order.getUpdatedAt(), itemDtos
     );
   }
 }
