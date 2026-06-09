@@ -1,7 +1,12 @@
 package com.sellora.core.application.usecases;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.sellora.core.domain.entities.GroupBuySession;
+import com.sellora.core.domain.entities.GroupMember;
 import com.sellora.core.domain.entities.Order;
 import com.sellora.core.domain.entities.TransactionEvent;
+import com.sellora.core.infrastructure.persistence.GroupBuySessionRepository;
+import com.sellora.core.infrastructure.persistence.GroupMemberRepository;
 import com.sellora.core.infrastructure.persistence.OrderRepository;
 import com.sellora.core.infrastructure.persistence.TransactionEventRepository;
 import lombok.RequiredArgsConstructor;
@@ -10,6 +15,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.time.LocalDateTime;
+import java.util.Base64;
+import java.util.HashMap;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -17,8 +28,9 @@ public class PaymentService {
 
   private final TransactionEventRepository transactionRepository;
   private final OrderRepository orderRepository;
+  private final GroupBuySessionRepository groupBuySessionRepository;
+  private final GroupMemberRepository groupMemberRepository;
 
-  // Дістаємо ключі з application.yml
   @Value("${liqpay.public-key}")
   private String publicKey;
 
@@ -31,7 +43,6 @@ public class PaymentService {
     String internalEventType = "PENDING";
     String orderPaymentStatus = "PENDING";
 
-    // Змінюємо мапінг для transaction_events на PAYMENT
     if ("success".equalsIgnoreCase(status) || "wait_accept".equalsIgnoreCase(status) || "sandbox".equalsIgnoreCase(status)) {
       internalEventType = "PAYMENT";
       orderPaymentStatus = "PAID";
@@ -43,7 +54,6 @@ public class PaymentService {
       orderPaymentStatus = "REFUNDED";
     }
 
-    // 2. Записуємо в таблицю історії
     TransactionEvent event = new TransactionEvent();
     event.setIdempotencyKey(idempotencyKey);
     event.setOrderId(orderId);
@@ -51,18 +61,44 @@ public class PaymentService {
     event.setAmount(amount);
     transactionRepository.save(event);
 
-    // 3. Оновлюємо статус в таблиці Orders
     Order order = orderRepository.findById(orderId)
       .orElseThrow(() -> new RuntimeException("Замовлення не знайдено"));
 
     order.setPaymentStatus(orderPaymentStatus);
     orderRepository.save(order);
+
+    // --- ЛОГІКА ДЛЯ ГРУПОВИХ ПОКУПОК ---
+    if ("GROUP_BUY".equals(order.getPurchaseType()) && "PAID".equals(orderPaymentStatus)) {
+      if (!groupMemberRepository.existsBySessionIdAndUserId(order.getSessionId(), order.getUserId())) {
+
+        GroupMember member = new GroupMember();
+        member.setSessionId(order.getSessionId());
+        member.setUserId(order.getUserId());
+        member.setJoinedAt(LocalDateTime.now());
+        groupMemberRepository.save(member);
+
+        GroupBuySession session = groupBuySessionRepository.findById(order.getSessionId()).orElseThrow();
+        int currentMembers = groupMemberRepository.countBySessionId(session.getId());
+
+        if (currentMembers >= session.getLockedTargetSize()) {
+          session.setStatus("COMPLETED");
+          groupBuySessionRepository.save(session);
+
+          List<Order> sessionOrders = orderRepository.findBySessionId(session.getId());
+          for (Order o : sessionOrders) {
+            if ("WAITING_FOR_GROUP".equals(o.getPaymentStatus())) {
+              o.setPaymentStatus("PENDING");
+            }
+          }
+          orderRepository.saveAll(sessionOrders);
+        }
+      }
+    }
   }
 
   public String generatePaymentUrl(Long orderId, BigDecimal amount) {
     try {
-      java.util.HashMap<String, String> params = new java.util.HashMap<>();
-
+      HashMap<String, String> params = new HashMap<>();
       params.put("public_key", publicKey);
       params.put("action", "pay");
       params.put("amount", amount.toString());
@@ -70,20 +106,15 @@ public class PaymentService {
       params.put("description", "Оплата замовлення №" + orderId);
       params.put("order_id", String.valueOf(orderId));
       params.put("version", "3");
-
-      // --- ДОДАНО ДЛЯ ТЕСТУВАННЯ ---
-      params.put("sandbox", "1"); // Вмикає режим тестування (гроші не списуються)
-
-      // Замінюємо на актуальний Ngrok URL:
+      params.put("sandbox", "1");
       params.put("server_url", "https://bartender-payphone-sizzle.ngrok-free.dev/api/v1/payments/webhook");
 
-      // Кодуємо дані для URL згідно документації LiqPay
-      String data = java.util.Base64.getEncoder().encodeToString(
-        new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(params).getBytes(java.nio.charset.StandardCharsets.UTF_8)
+      String data = Base64.getEncoder().encodeToString(
+        new ObjectMapper().writeValueAsString(params).getBytes(StandardCharsets.UTF_8)
       );
       String signString = privateKey + data + privateKey;
-      java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-1");
-      String signature = java.util.Base64.getEncoder().encodeToString(md.digest(signString.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+      MessageDigest md = MessageDigest.getInstance("SHA-1");
+      String signature = Base64.getEncoder().encodeToString(md.digest(signString.getBytes(StandardCharsets.UTF_8)));
 
       return "https://www.liqpay.ua/api/3/checkout?data=" + data + "&signature=" + signature;
     } catch (Exception e) {
