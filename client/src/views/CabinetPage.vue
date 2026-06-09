@@ -14,6 +14,8 @@ import CabinetShippingCarriers from '../components/cabinet/CabinetShippingCarrie
 import CabinetPromoCodes from '../components/cabinet/CabinetPromoCodes.vue'
 import CabinetRequisites from '../components/cabinet/CabinetRequisites.vue'
 import CabinetSettings from '../components/cabinet/CabinetSettings.vue'
+import CabinetOrders from '../components/cabinet/CabinetOrders.vue'
+import CabinetStoreOrders from '../components/cabinet/CabinetStoreOrders.vue'
 import ProductGrid from '../components/product/ProductGrid.vue'
 import { useUserStore } from '../state/userStore'
 import { useProductStore } from '../state/productStore'
@@ -57,11 +59,7 @@ watch(() => userStore.sellerStore?.id, (merchantId) => {
   }
 }, { immediate: true })
 
-// Mock-дані для замовлень та обраного
-const mockOrders = ref([
-  { id: 101, brand: 'Apple', name: 'MacBook Air M3 13"', image: 'https://store.storeimages.cdn-apple.com/4982/as-images.apple.com/is/mba13-midnight-select-202402?wid=904&hei=840&fmt=jpeg&qlt=90', rating: 5, reviewCount: 214, groupCurrent: 3, groupTotal: 3, price: 52999, oldPrice: 59999 },
-  { id: 102, brand: 'Sony', name: 'WH-1000XM5 Headphones', image: 'https://www.bhphotovideo.com/images/images2500x2500/sony_wh1000xm5_b_wh_1000xm5_wireless_noise_canceling_over_ear_1668478.jpg', rating: 4, reviewCount: 98, groupCurrent: 2, groupTotal: 4, price: 9499, oldPrice: 11999 }
-])
+// Mock-дані для обраного
 
 watch(activeTab, (newTab) => {
   if (newTab === 'wishlist') {
@@ -161,12 +159,9 @@ async function handleStoreStatus(newStatus: string) {
 
       <div class="w-full lg:w-3/4 flex flex-col gap-6">
 
-        <div v-if="activeTab === 'orders'">
-          <div class="mb-6"><span class="text-gray-100 text-xl font-black font-['Unbounded']">Мої замовлення</span></div>
-          <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
-            <ProductCard v-for="item in mockOrders" :key="item.id" :product="(item as any)" :simple="true" />
-          </div>
-        </div>
+        <CabinetOrders v-if="activeTab === 'orders'" />
+
+        <CabinetStoreOrders v-else-if="activeTab === 'store-orders' && hasStore" />
 
         <div v-else-if="activeTab === 'wishlist'">
           <div class="mb-6"><span class="text-gray-100 text-xl font-black font-['Unbounded']">Обране</span></div>

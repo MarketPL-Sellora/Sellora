@@ -1,8 +1,11 @@
 <script setup lang="ts">
+import { ref } from 'vue'
 import Header from '../components/layout/Header.vue'
 import Footer from '../components/layout/Footer.vue'
 import CheckoutForm from '../components/forms/CheckoutForm.vue'
 import CheckoutSummary from '../components/forms/CheckoutSummary.vue'
+
+const checkoutFormRef = ref<InstanceType<typeof CheckoutForm> | null>(null)
 </script>
 
 <template>
@@ -17,11 +20,14 @@ import CheckoutSummary from '../components/forms/CheckoutSummary.vue'
       <div class="flex flex-col lg:flex-row gap-8 items-start">
 
         <div class="w-full lg:w-2/3 order-2 lg:order-1">
-          <CheckoutForm />
+          <CheckoutForm ref="checkoutFormRef" />
         </div>
 
         <div class="w-full lg:w-1/3 lg:sticky lg:top-6 order-1 lg:order-2">
-          <CheckoutSummary />
+          <CheckoutSummary
+            :discountAmount="checkoutFormRef?.discountAmount ?? 0"
+            :promoDiscount="checkoutFormRef?.promoDiscount ?? null"
+          />
         </div>
 
       </div>

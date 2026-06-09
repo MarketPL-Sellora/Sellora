@@ -5,6 +5,7 @@ import { useUserStore } from './state/userStore'
 import HomePage     from './views/HomePage.vue'
 import ProductPage  from './views/ProductPage.vue'
 import CheckoutPage from './views/CheckoutPage.vue'
+import OrderPage    from './views/OrderPage.vue'
 import CabinetPage  from './views/CabinetPage.vue'
 import NotFound from './views/NotFound.vue'
 
@@ -16,6 +17,7 @@ const routes = [
     name: 'product',
     component: ProductPage  },
   { path: '/checkout',     component: CheckoutPage },
+  { path: '/order/:id',    name: 'order', component: OrderPage },
   { path: '/cabinet',      component: CabinetPage, meta: { requiresAuth: true } },
   // Catch-all route для 404 помилки
   { path: '/:pathMatch(.*)*', name: 'NotFound', component: NotFound },
