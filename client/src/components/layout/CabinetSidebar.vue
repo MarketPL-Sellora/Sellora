@@ -1,9 +1,12 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '../../state/userStore'
 import { useGroupBuyStore } from '../../state/groupBuyStore'
 import { useProductStore } from '../../state/productStore'
+import { apiClient } from '../../api/axios'
+
+const ordersCount = ref(0)
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -37,13 +40,20 @@ onMounted(() => {
   if (props.isUserSeller && userStore.sellerStore?.id) {
     productStore.fetchMerchantProducts(userStore.sellerStore.id)
   }
+
+  // Отримуємо кількість замовлень
+  apiClient.get('/orders', { params: { page: 0, size: 1 } })
+    .then(res => {
+      ordersCount.value = res.data?.totalElements || res.data?.content?.length || 0
+    })
+    .catch(err => console.error('Failed to fetch orders count', err))
 })
 
 
 // ─── Menu items ───────────────────────────────────────────────────────────────
 // Базові пункти меню (доступні всім користувачам)
 const baseMenuItems = computed<MenuItem[]>(() => [
-  { id: 'orders',   label: 'Мої замовлення',      count: 4,                                      icon: 'orders'   },
+  { id: 'orders',   label: 'Мої замовлення',      count: ordersCount.value,                                      icon: 'orders'   },
   { id: 'groups',   label: 'Мої групові покупки', count: groupBuyStore.mySessions.length,  icon: 'groups'   },
   { id: 'wishlist', label: 'Обране',              count: productStore.favoritesCount,             icon: 'wishlist' },
   { id: 'settings', label: 'Налаштування',                                                       icon: 'settings' },
@@ -56,6 +66,7 @@ const menuItems = computed<MenuItem[]>(() => {
   const items = !props.isUserSeller ? [...base] : [
     ...base.slice(0, 3),
     { id: 'my-products', label: 'Мої товари', count: productStore.myProducts.length, icon: 'seller' as const },
+    { id: 'store-orders', label: 'Замовлення магазину', icon: 'orders' as const },
     { id: 'requisites', label: 'Платіжні реквізити', icon: 'orders' as const },
     ...base.slice(3),
   ]

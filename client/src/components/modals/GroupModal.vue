@@ -24,6 +24,124 @@ const emit = defineEmits<{
 const store     = useGroupBuyStore()
 const userStore = useUserStore()
 
+// ─── Shipping methods (carriers) ──────────────────────────────────────────────
+
+interface ShippingMethod {
+  id: number
+  name: string
+  code: string
+  is_active: boolean
+}
+
+const shippingMethods = ref<ShippingMethod[]>([])
+const selectedCarrierId = ref<number | null>(null)
+const shippingMethodsLoading = ref(false)
+
+async function fetchShippingMethods(storeId: number) {
+  shippingMethodsLoading.value = true
+  try {
+    const [methodsResponse, carriersResponse] = await Promise.all([
+      apiClient.get(`/stores/${storeId}/shipping_methods`),
+      apiClient.get('/shipping_carriers')
+    ])
+
+    const rawData = methodsResponse.data
+    let methodsArray = []
+    if (rawData && rawData.shipping_methods && Array.isArray(rawData.shipping_methods)) {
+      methodsArray = rawData.shipping_methods
+    } else if (Array.isArray(rawData)) {
+      methodsArray = rawData
+    }
+
+    const carriersData = Array.isArray(carriersResponse.data) ? carriersResponse.data : carriersResponse.data?.content || []
+    const dynamicCarrierNames: Record<number, string> = {}
+    carriersData.forEach((c: any) => {
+      dynamicCarrierNames[c.id] = c.name
+    })
+
+    shippingMethods.value = methodsArray
+      .map((m: any) => ({
+        id: m.carrier_id ?? m.id,
+        name: dynamicCarrierNames[m.carrier_id] || m.carrier_name || m.name || 'Невідома служба',
+        code: m.code ?? '',
+        is_active: m.is_enabled ?? m.is_active ?? true
+      }))
+      .filter((m: any) => m.is_active !== false)
+
+    if (shippingMethods.value.length > 0) {
+      selectedCarrierId.value = shippingMethods.value[0].id
+    }
+  } catch (error) {
+    console.error('Failed to fetch shipping methods', error)
+    shippingMethods.value = []
+  } finally {
+    shippingMethodsLoading.value = false
+  }
+}
+
+// ─── Autocomplete: Cities & Branches (mock data) ─────────────────────────────
+
+const mockCities = [
+  'Київ', 'Харків', 'Одеса', 'Дніпро', 'Львів', 'Запоріжжя',
+  'Чернівці', 'Полтава', 'Вінниця', 'Миколаїв', 'Суми', 'Рівне',
+  'Житомир', 'Черкаси', 'Хмельницький', 'Івано-Франківськ', 'Тернопіль',
+  'Кропивницький', 'Ужгород', 'Луцьк', 'Херсон',
+]
+
+const mockBranches = [
+  'Відділення №1', 'Відділення №2', 'Відділення №3', 'Відділення №4',
+  'Відділення №5', 'Відділення №10', 'Відділення №15', 'Відділення №20',
+  'Поштомат №1', 'Поштомат №5', 'Поштомат №10', 'Поштомат №25',
+  'Поштомат №50', 'Поштомат №100',
+]
+
+const cityQuery = ref('')
+const branchQuery = ref('')
+const isCityDropdownOpen = ref(false)
+const isBranchDropdownOpen = ref(false)
+
+const filteredCities = computed(() => {
+  const q = cityQuery.value.toLowerCase().trim()
+  if (!q) return mockCities
+  return mockCities.filter(c => c.toLowerCase().includes(q))
+})
+
+const filteredBranches = computed(() => {
+  const q = branchQuery.value.toLowerCase().trim()
+  if (!q) return mockBranches
+  return mockBranches.filter(b => b.toLowerCase().includes(q))
+})
+
+function selectCity(city: string) {
+  form.city = city
+  cityQuery.value = city
+  isCityDropdownOpen.value = false
+}
+
+function selectBranch(branch: string) {
+  form.branch = branch
+  branchQuery.value = branch
+  isBranchDropdownOpen.value = false
+}
+
+function onCityInput() {
+  form.city = cityQuery.value
+  isCityDropdownOpen.value = true
+}
+
+function onBranchInput() {
+  form.branch = branchQuery.value
+  isBranchDropdownOpen.value = true
+}
+
+function closeCityDropdown() {
+  setTimeout(() => { isCityDropdownOpen.value = false }, 150)
+}
+
+function closeBranchDropdown() {
+  setTimeout(() => { isBranchDropdownOpen.value = false }, 150)
+}
+
 // ─── Steps: 'info' → 'checkout' ───────────────────────────────────────────────
 const currentStep = ref<'info' | 'checkout'>('info')
 
@@ -215,7 +333,7 @@ async function handleSubmitOrder() {
     buyer_phone: form.phone.trim(),
     buyer_email: form.email.trim(),
     delivery_type: deliveryMethod.value,
-    carrier_id: null,
+    carrier_id: selectedCarrierId.value || (deliveryMethod.value !== 'PICKUP' ? 1 : null),
     delivery_address: buildDeliveryAddress(),
     payment_method: paymentMethod.value,
     order_comment: form.comment.trim() || null,
@@ -264,11 +382,28 @@ async function handleSubmitOrder() {
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
 onMounted(async () => {
+  // Автозаповнення даних юзера
+  if (userStore.user) {
+    form.firstName = userStore.user.firstName || form.firstName;
+    form.lastName = userStore.user.lastName || form.lastName;
+    form.phone = userStore.user.phone || form.phone;
+    form.email = userStore.user.email || form.email;
+  }
+
   if (isJoinMode.value && props.sessionUuid) {
-    // Join mode — fetch existing session info
     await store.fetchSession(props.sessionUuid)
-    // Go directly to checkout for join
     currentStep.value = 'checkout'
+  }
+
+  // Дістаємо магазин товару і тягнемо пошти
+  try {
+    const prodRes = await apiClient.get(`/products/${props.productId}`)
+    const merchantId = prodRes.data.merchant_id || prodRes.data.merchantId
+    if (merchantId) {
+      await fetchShippingMethods(merchantId)
+    }
+  } catch (e) {
+    console.error('Failed to fetch product for shipping methods', e)
   }
 })
 </script>
@@ -570,40 +705,93 @@ onMounted(async () => {
                   </button>
                 </div>
 
+                <div v-if="deliveryMethod === 'BRANCH'" class="flex flex-col gap-3 pt-3">
+                  <div v-if="shippingMethodsLoading" class="text-slate-500 text-xs font-['Onest'] animate-pulse">Завантаження служб доставки...</div>
+                  <template v-else-if="shippingMethods.length > 0">
+                    <div class="flex flex-col gap-2">
+                      <label v-for="method in shippingMethods" :key="method.id"
+                        class="px-3 py-2.5 rounded-lg outline outline-1 outline-offset-[-1px] flex items-center gap-3 cursor-pointer transition-all active:scale-[0.99]"
+                        :class="selectedCarrierId === method.id ? 'bg-orange-500/10 outline-orange-500' : 'bg-white/5 outline-white/10 hover:outline-white/20'"
+                      >
+                        <input type="radio" name="group-shipping-carrier" :value="method.id" v-model="selectedCarrierId" class="sr-only" />
+                        <div class="w-4 h-4 rounded-full flex items-center justify-center shrink-0" :class="selectedCarrierId === method.id ? 'outline outline-2 outline-offset-[-2px] outline-orange-500' : 'border-2 border-gray-600'">
+                          <div v-if="selectedCarrierId === method.id" class="w-2 h-2 bg-orange-500 rounded-full" />
+                        </div>
+                        <span class="text-xs font-medium font-['Onest'] transition-colors" :class="selectedCarrierId === method.id ? 'text-orange-500' : 'text-slate-300'">
+                          {{ method.name }}
+                        </span>
+                      </label>
+                    </div>
+                  </template>
+                  <div v-else class="px-3 py-2 bg-red-500/10 rounded-lg text-red-400 text-xs font-['Onest'] text-center">
+                    Немає доступних служб доставки
+                  </div>
+                </div>
+
                 <!-- Dynamic delivery fields -->
                 <div v-if="deliveryMethod !== 'PICKUP'" class="grid grid-cols-2 gap-3">
-                  <!-- City -->
+                  <!-- City autocomplete (BRANCH & COURIER) -->
                   <div class="relative col-span-1">
-                    <select
-                      v-model="form.city"
-                      class="w-full appearance-none h-10 pl-3 pr-8 bg-white/5 rounded-lg outline outline-1 outline-white/10 text-slate-200 text-sm font-['Onest'] transition-all focus:outline-orange-500 focus:ring-1 focus:ring-orange-500/40 focus:outline-none cursor-pointer"
-                    >
-                      <option value="" disabled>{{ DICT.forms.placeholders.selectCity }}</option>
-                      <option>Київ</option>
-                      <option>Харків</option>
-                      <option>Одеса</option>
-                      <option>Дніпро</option>
-                      <option>Львів</option>
-                    </select>
+                    <input
+                      v-model="cityQuery"
+                      type="text"
+                      autocomplete="off"
+                      :placeholder="DICT.forms.placeholders.selectCity"
+                      class="w-full h-10 px-3 pr-8 bg-white/5 rounded-lg outline outline-1 outline-white/10 text-slate-200 text-sm font-['Onest'] placeholder-gray-600 transition-all focus:outline-orange-500 focus:ring-1 focus:ring-orange-500/40 focus:outline-none"
+                      @input="onCityInput"
+                      @focus="isCityDropdownOpen = true"
+                      @blur="closeCityDropdown"
+                    />
                     <svg class="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500 pointer-events-none" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
                       <path d="M4 6l4 4 4-4" stroke-linecap="round" stroke-linejoin="round"/>
                     </svg>
+                    <!-- Dropdown -->
+                    <ul
+                      v-if="isCityDropdownOpen && filteredCities.length > 0"
+                      class="absolute z-50 left-0 right-0 top-full mt-1 max-h-48 overflow-y-auto bg-gray-800 rounded-lg border border-gray-700 shadow-xl"
+                    >
+                      <li
+                        v-for="city in filteredCities"
+                        :key="city"
+                        class="px-3 py-2 text-xs text-gray-200 font-['Onest'] cursor-pointer transition-colors hover:bg-gray-700 hover:text-orange-400"
+                        :class="form.city === city ? 'bg-gray-700/60 text-orange-400' : ''"
+                        @mousedown.prevent="selectCity(city)"
+                      >
+                        {{ city }}
+                      </li>
+                    </ul>
                   </div>
 
-                  <!-- Branch (BRANCH only) -->
+                  <!-- Branch autocomplete (BRANCH only) -->
                   <div v-if="deliveryMethod === 'BRANCH'" class="relative col-span-1">
-                    <select
-                      v-model="form.branch"
-                      class="w-full appearance-none h-10 pl-3 pr-8 bg-white/5 rounded-lg outline outline-1 outline-white/10 text-slate-200 text-sm font-['Onest'] transition-all focus:outline-orange-500 focus:ring-1 focus:ring-orange-500/40 focus:outline-none cursor-pointer"
-                    >
-                      <option value="" disabled>{{ DICT.forms.placeholders.selectBranch }}</option>
-                      <option>Відділення №1</option>
-                      <option>Відділення №2</option>
-                      <option>Поштомат №100</option>
-                    </select>
+                    <input
+                      v-model="branchQuery"
+                      type="text"
+                      autocomplete="off"
+                      :placeholder="DICT.forms.placeholders.selectBranch"
+                      class="w-full h-10 px-3 pr-8 bg-white/5 rounded-lg outline outline-1 outline-white/10 text-slate-200 text-sm font-['Onest'] placeholder-gray-600 transition-all focus:outline-orange-500 focus:ring-1 focus:ring-orange-500/40 focus:outline-none"
+                      @input="onBranchInput"
+                      @focus="isBranchDropdownOpen = true"
+                      @blur="closeBranchDropdown"
+                    />
                     <svg class="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500 pointer-events-none" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
                       <path d="M4 6l4 4 4-4" stroke-linecap="round" stroke-linejoin="round"/>
                     </svg>
+                    <!-- Dropdown -->
+                    <ul
+                      v-if="isBranchDropdownOpen && filteredBranches.length > 0"
+                      class="absolute z-50 left-0 right-0 top-full mt-1 max-h-48 overflow-y-auto bg-gray-800 rounded-lg border border-gray-700 shadow-xl"
+                    >
+                      <li
+                        v-for="branch in filteredBranches"
+                        :key="branch"
+                        class="px-3 py-2 text-xs text-gray-200 font-['Onest'] cursor-pointer transition-colors hover:bg-gray-700 hover:text-orange-400"
+                        :class="form.branch === branch ? 'bg-gray-700/60 text-orange-400' : ''"
+                        @mousedown.prevent="selectBranch(branch)"
+                      >
+                        {{ branch }}
+                      </li>
+                    </ul>
                   </div>
 
                   <!-- Street (COURIER only) -->

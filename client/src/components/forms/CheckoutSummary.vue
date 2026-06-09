@@ -2,6 +2,11 @@
 import { computed } from 'vue'
 import { useCartStore } from '../../state/cartStore'
 
+const props = defineProps<{
+  discountAmount?: number
+  promoDiscount?: { code: string; discountType: string; discountValue: number } | null
+}>()
+
 const cartStore = useCartStore()
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -18,6 +23,24 @@ const selectedItems = computed(() => {
   return cartStore.cart.items.filter(item =>
     cartStore.selectedProductIds.includes(item.productId)
   )
+})
+
+// ─── Commission & totals (display only) ───────────────────────────────────────
+
+const subtotal = computed<number>(() => cartStore.selectedTotalAmount || 0)
+
+const discount = computed<number>(() => {
+  const val = props.discountAmount
+  return (typeof val === 'number' && !isNaN(val)) ? val : 0
+})
+
+const serviceTax = computed<number>(() => {
+  const base = Math.max(0, subtotal.value - discount.value)
+  return Math.round(base * 0.01)
+})
+
+const totalAmount = computed<number>(() => {
+  return Math.max(0, subtotal.value - discount.value + serviceTax.value)
 })
 
 // ─── Trust badges ─────────────────────────────────────────────────────────────
@@ -92,12 +115,31 @@ const fmt = (n: number) => (n || 0).toLocaleString('uk-UA') + ' ₴'
 
         <!-- ── Price breakdown ────────────────────────────────────────────── -->
         <div class="self-stretch pb-1 flex flex-col gap-2">
+          <!-- Subtotal -->
           <div class="self-stretch inline-flex justify-between items-start">
             <span class="text-gray-400 text-sm font-normal font-['Onest'] leading-5">
               Вартість товарів ({{ selectedItems.length }})
             </span>
             <span class="text-gray-200 text-sm font-normal font-['Onest'] leading-5">
-              {{ fmt(cartStore.selectedTotalAmount) }}
+              {{ fmt(subtotal) }}
+            </span>
+          </div>
+          <!-- Discount -->
+          <div v-if="discount > 0" class="self-stretch inline-flex justify-between items-start">
+            <span class="text-gray-400 text-sm font-normal font-['Onest'] leading-5">
+              Знижка
+            </span>
+            <span class="text-green-400 text-sm font-semibold font-['Onest'] leading-5">
+              − {{ fmt(discount) }}
+            </span>
+          </div>
+          <!-- Service commission (1%) -->
+          <div class="self-stretch inline-flex justify-between items-start">
+            <span class="text-gray-400 text-sm font-normal font-['Onest'] leading-5">
+              Комісія сервісу (1%)
+            </span>
+            <span class="text-gray-200 text-sm font-normal font-['Onest'] leading-5">
+              {{ fmt(serviceTax) }}
             </span>
           </div>
         </div>
@@ -107,10 +149,10 @@ const fmt = (n: number) => (n || 0).toLocaleString('uk-UA') + ' ₴'
         <!-- ── Total ───────────────────────────────────────────────────────── -->
         <div class="self-stretch flex flex-wrap justify-between items-center gap-2">
           <span class="text-gray-300 text-xs md:text-sm font-bold font-['Unbounded'] leading-5 tracking-tight">
-            ДО СПЛАТИ
+            РАЗОМ ДО СПЛАТИ
           </span>
           <span class="text-white text-xl md:text-2xl font-extrabold font-['Unbounded'] leading-8 whitespace-nowrap">
-            {{ fmt(cartStore.selectedTotalAmount) }}
+            {{ fmt(totalAmount) }}
           </span>
         </div>
       </template>

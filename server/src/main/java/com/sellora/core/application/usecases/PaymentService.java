@@ -21,6 +21,7 @@ import java.time.LocalDateTime;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
+import java.net.URLEncoder;
 
 @Service
 @RequiredArgsConstructor
@@ -107,7 +108,7 @@ public class PaymentService {
       params.put("order_id", String.valueOf(orderId));
       params.put("version", "3");
       params.put("sandbox", "1");
-      params.put("server_url", "https://bartender-payphone-sizzle.ngrok-free.dev/api/v1/payments/webhook");
+      params.put("server_url", "https://thieving-attitude-embroider.ngrok-free.dev/api/v1/payments/webhook");
 
       String data = Base64.getEncoder().encodeToString(
         new ObjectMapper().writeValueAsString(params).getBytes(StandardCharsets.UTF_8)
@@ -116,7 +117,11 @@ public class PaymentService {
       MessageDigest md = MessageDigest.getInstance("SHA-1");
       String signature = Base64.getEncoder().encodeToString(md.digest(signString.getBytes(StandardCharsets.UTF_8)));
 
-      return "https://www.liqpay.ua/api/3/checkout?data=" + data + "&signature=" + signature;
+      // URL-кодування рядків
+      String encodedData = java.net.URLEncoder.encode(data, StandardCharsets.UTF_8.name());
+      String encodedSignature = java.net.URLEncoder.encode(signature, StandardCharsets.UTF_8.name());
+
+      return "https://www.liqpay.ua/api/3/checkout?data=" + encodedData + "&signature=" + encodedSignature;
     } catch (Exception e) {
       throw new RuntimeException("Помилка генерації посилання LiqPay", e);
     }

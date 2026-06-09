@@ -3,14 +3,92 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { DICT } from '../../constants/dictionary'
 import { useCartStore } from '../../state/cartStore'
+import { useUserStore } from '../../state/userStore'
 import { apiClient } from '../../api/axios'
 
 const router = useRouter()
 const cartStore = useCartStore()
+const userStore = useUserStore()
 
-onMounted(() => {
+// ─── Shipping methods (carriers) ──────────────────────────────────────────────
+
+interface ShippingMethod {
+  id: number
+  name: string
+  code: string
+  is_active: boolean
+}
+
+const shippingMethods = ref<ShippingMethod[]>([])
+const selectedCarrierId = ref<number | null>(null)
+const shippingMethodsLoading = ref(false)
+
+async function fetchShippingMethods(storeId: number) {
+  shippingMethodsLoading.value = true
+  try {
+    // Робимо два запити паралельно: методи конкретного магазину і всі доступні пошти в системі
+    const [methodsResponse, carriersResponse] = await Promise.all([
+      apiClient.get(`/stores/${storeId}/shipping_methods`),
+      apiClient.get('/shipping_carriers')
+    ])
+
+    // 1. Дістаємо методи магазину (масив ID)
+    const rawData = methodsResponse.data
+    let methodsArray = []
+    if (rawData && rawData.shipping_methods && Array.isArray(rawData.shipping_methods)) {
+      methodsArray = rawData.shipping_methods
+    } else if (Array.isArray(rawData)) {
+      methodsArray = rawData
+    }
+
+    // 2. Дістаємо глобальні пошти і створюємо динамічний словник { id: name }
+    const carriersData = Array.isArray(carriersResponse.data) ? carriersResponse.data : carriersResponse.data?.content || []
+    const dynamicCarrierNames: Record<number, string> = {}
+    carriersData.forEach((c: any) => {
+      dynamicCarrierNames[c.id] = c.name
+    })
+
+    // 3. Об'єднуємо дані
+    shippingMethods.value = methodsArray
+      .map((m: any) => ({
+        id: m.carrier_id ?? m.id,
+        name: dynamicCarrierNames[m.carrier_id] || m.carrier_name || m.name || 'Невідома служба',
+        code: m.code ?? '',
+        is_active: m.is_enabled ?? m.is_active ?? true
+      }))
+      .filter((m: any) => m.is_active !== false)
+
+    if (shippingMethods.value.length > 0) {
+      selectedCarrierId.value = shippingMethods.value[0].id
+    }
+  } catch (error) {
+    console.error('Failed to fetch shipping methods', error)
+    shippingMethods.value = []
+  } finally {
+    shippingMethodsLoading.value = false
+  }
+}
+
+onMounted(async () => {
+  // 1. Завантажуємо кошик, якщо його немає
   if (!cartStore.cart) {
-    cartStore.fetchCart()
+    await cartStore.fetchCart()
+  }
+
+  // 2. FIX F5: Якщо вибраних товарів немає, але кошик не пустий — автоматично виділяємо всі товари
+  if (cartStore.selectedProductIds.length === 0 && cartStore.cart?.items?.length) {
+    cartStore.selectedProductIds = cartStore.cart.items.map((item: any) => item.productId)
+  }
+
+  // 3. Автозаповнення Email
+  if (userStore.user?.email) {
+    form.email = userStore.user.email
+  }
+
+  // 4. Отримуємо правильний storeId і тягнемо пошту
+  const activeStoreId = cartStore.selectedMerchantId || cartStore.cart?.items?.[0]?.merchantId
+  if (activeStoreId) {
+    fetchShippingMethods(activeStoreId)
   }
 })
 
@@ -51,6 +129,69 @@ const form = reactive({
   house:     '',
   comment:   '',
 })
+
+// ─── Autocomplete: Cities & Branches (mock data) ─────────────────────────────
+
+const mockCities = [
+  'Київ', 'Харків', 'Одеса', 'Дніпро', 'Львів', 'Запоріжжя',
+  'Чернівці', 'Полтава', 'Вінниця', 'Миколаїв', 'Суми', 'Рівне',
+  'Житомир', 'Черкаси', 'Хмельницький', 'Івано-Франківськ', 'Тернопіль',
+  'Кропивницький', 'Ужгород', 'Луцьк', 'Херсон',
+]
+
+const mockBranches = [
+  'Відділення №1', 'Відділення №2', 'Відділення №3', 'Відділення №4',
+  'Відділення №5', 'Відділення №10', 'Відділення №15', 'Відділення №20',
+  'Поштомат №1', 'Поштомат №5', 'Поштомат №10', 'Поштомат №25',
+  'Поштомат №50', 'Поштомат №100',
+]
+
+const cityQuery = ref('')
+const branchQuery = ref('')
+const isCityDropdownOpen = ref(false)
+const isBranchDropdownOpen = ref(false)
+
+const filteredCities = computed(() => {
+  const q = cityQuery.value.toLowerCase().trim()
+  if (!q) return mockCities
+  return mockCities.filter(c => c.toLowerCase().includes(q))
+})
+
+const filteredBranches = computed(() => {
+  const q = branchQuery.value.toLowerCase().trim()
+  if (!q) return mockBranches
+  return mockBranches.filter(b => b.toLowerCase().includes(q))
+})
+
+function selectCity(city: string) {
+  form.city = city
+  cityQuery.value = city
+  isCityDropdownOpen.value = false
+}
+
+function selectBranch(branch: string) {
+  form.branch = branch
+  branchQuery.value = branch
+  isBranchDropdownOpen.value = false
+}
+
+function onCityInput() {
+  form.city = cityQuery.value
+  isCityDropdownOpen.value = true
+}
+
+function onBranchInput() {
+  form.branch = branchQuery.value
+  isBranchDropdownOpen.value = true
+}
+
+function closeCityDropdown() {
+  setTimeout(() => { isCityDropdownOpen.value = false }, 150)
+}
+
+function closeBranchDropdown() {
+  setTimeout(() => { isBranchDropdownOpen.value = false }, 150)
+}
 
 // ─── Delivery ─────────────────────────────────────────────────────────────────
 
@@ -122,10 +263,13 @@ async function applyPromo() {
     }
 
     // Save valid promo
+    const type = data.discount_type || data.discountType;
+    const val = Number(data.value || data.discount_value);
+
     promoDiscount.value = {
       code: code,
-      discountType: data.discount_type, // 'PERCENTAGE' or 'FIXED'
-      discountValue: data.discount_value,
+      discountType: type, // 'PERCENTAGE' or 'FIXED'
+      discountValue: val,
     }
     promoApplied.value = true
     promoError.value = false
@@ -153,17 +297,28 @@ function clearPromo() {
 
 const discountAmount = computed<number>(() => {
   if (!promoDiscount.value) return 0
-  const base = cartStore.selectedTotalAmount
+  const subtotal = cartStore.selectedTotalAmount || 0
+  const val = Number(promoDiscount.value.discountValue) || 0
 
   if (promoDiscount.value.discountType === 'PERCENTAGE') {
-    return Math.round(base * promoDiscount.value.discountValue / 100)
+    return Math.round((subtotal * val) / 100)
   }
   // FIXED
-  return Math.min(promoDiscount.value.discountValue, base)
+  return val
+})
+
+const serviceTax = computed<number>(() => {
+  const subtotal = cartStore.selectedTotalAmount || 0
+  const disc = discountAmount.value || 0
+  const base = Math.max(0, subtotal - disc)
+  return Math.round(base * 0.01)
 })
 
 const finalTotalAmount = computed<number>(() => {
-  return Math.max(0, cartStore.selectedTotalAmount - discountAmount.value)
+  const subtotal = cartStore.selectedTotalAmount || 0
+  const disc = discountAmount.value || 0
+  const tax = serviceTax.value || 0
+  return Math.max(0, subtotal - disc + tax)
 })
 
 // ─── Submit ───────────────────────────────────────────────────────────────────
@@ -219,14 +374,25 @@ async function handleSubmit() {
     .filter(item => cartStore.selectedProductIds.includes(item.productId))
     .map(item => ({ product_id: item.productId, quantity: item.quantity }))
 
+  // Resolve store_id: prefer selectedMerchantId, fallback to first selected item's merchantId
+  const resolvedStoreId = cartStore.selectedMerchantId
+    ?? cartStore.cart?.items?.find(i => cartStore.selectedProductIds.includes(i.productId))?.merchantId
+    ?? null
+
+  // Resolve carrier_id: use selected carrier, fallback to 1 for delivery methods that require it
+  let resolvedCarrierId: number | null = selectedCarrierId.value
+  if (!resolvedCarrierId && deliveryMethod.value !== 'PICKUP') {
+    resolvedCarrierId = 1 // MVP fallback
+  }
+
   const payload = {
-    store_id: cartStore.selectedMerchantId,
+    store_id: resolvedStoreId,
     buyer_name: form.firstName.trim(),
     buyer_surname: form.lastName.trim(),
     buyer_phone: form.phone.trim(),
     buyer_email: form.email.trim(),
     delivery_type: deliveryMethod.value,
-    carrier_id: null,
+    carrier_id: resolvedCarrierId,
     delivery_address: buildDeliveryAddress(),
     payment_method: paymentMethod.value,
     order_comment: form.comment.trim() || null,
@@ -238,17 +404,47 @@ async function handleSubmit() {
     const response = await apiClient.post('/orders/cart/checkout', payload)
     const data = response.data
 
-    // Refresh cart (backend removes ordered items)
-    await cartStore.fetchCart()
+    if (response.status >= 200 && response.status < 300) {
+      // Clear selected items on success so they don't persist
+      cartStore.selectedProductIds = []
+      
+      // Refresh cart (backend removes ordered items)
+      await cartStore.fetchCart()
 
-    // Handle redirect
-    if (paymentMethod.value === 'ONLINE_CARD' && data.payment_url) {
-      window.location.href = data.payment_url
+      // Handle redirect
+      if (paymentMethod.value === 'ONLINE_CARD' && data.payment_url) {
+        const paymentUrl = data.payment_url;
+        const urlObj = new URL(paymentUrl);
+        const dataParam = urlObj.searchParams.get('data');
+        const sigParam = urlObj.searchParams.get('signature');
+
+        // Створюємо невидиму POST-форму
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = 'https://www.liqpay.ua/api/3/checkout';
+
+        const dataInput = document.createElement('input');
+        dataInput.type = 'hidden';
+        dataInput.name = 'data';
+        dataInput.value = dataParam || '';
+        form.appendChild(dataInput);
+
+        const sigInput = document.createElement('input');
+        sigInput.type = 'hidden';
+        sigInput.name = 'signature';
+        sigInput.value = sigParam || '';
+        form.appendChild(sigInput);
+
+        document.body.appendChild(form);
+        form.submit();
+      } else {
+        router.push('/order/' + data.id)
+      }
     } else {
-      router.push('/order/' + data.id)
+      throw new Error(data.message || 'Невідома помилка сервера')
     }
   } catch (error: any) {
-    submitError.value = error.response?.data?.message || 'Помилка при оформленні замовлення'
+    submitError.value = error.response?.data?.message || error.message || 'Помилка при оформленні замовлення'
     alert(submitError.value)
   } finally {
     isSubmitting.value = false
@@ -256,6 +452,11 @@ async function handleSubmit() {
 }
 
 const fmt = (n: number) => (n || 0).toLocaleString('uk-UA') + ' ₴'
+
+defineExpose({
+  discountAmount,
+  promoDiscount,
+})
 </script>
 
 <template>
@@ -388,51 +589,138 @@ const fmt = (n: number) => (n || 0).toLocaleString('uk-UA') + ' ₴'
         </button>
       </div>
 
+      <!-- Shipping carrier selection (before address fields, only for BRANCH/COURIER) -->
+      <div v-if="deliveryMethod === 'BRANCH'" class="self-stretch pt-2 flex flex-col gap-3 mb-4">
+
+        <!-- Shipping carrier cards -->
+        <div v-if="shippingMethodsLoading" class="text-gray-500 text-sm font-['Onest'] animate-pulse py-2">
+          Завантаження служб доставки...
+        </div>
+
+        <template v-else-if="shippingMethods.length > 0">
+          <span class="text-gray-400 text-xs font-medium font-['Onest'] leading-4 tracking-tight">
+            Оберіть службу доставки <span class="text-orange-500">*</span>
+          </span>
+          <div class="flex flex-col gap-2">
+            <label
+              v-for="method in shippingMethods"
+              :key="method.id"
+              class="flex items-center gap-3 px-4 py-3 rounded-[10px] outline outline-1 outline-offset-[-1px] cursor-pointer transition-all duration-150"
+              :class="
+                selectedCarrierId === method.id
+                  ? 'bg-orange-500/10 outline-orange-500'
+                  : 'bg-gray-900 outline-gray-700 hover:outline-gray-500 hover:bg-gray-900/70'
+              "
+            >
+              <input
+                type="radio"
+                name="shipping-carrier"
+                :value="method.id"
+                v-model="selectedCarrierId"
+                class="sr-only"
+              />
+              <!-- Radio circle -->
+              <div
+                class="w-5 h-5 rounded-full flex items-center justify-center transition-all duration-150 shrink-0"
+                :class="
+                  selectedCarrierId === method.id
+                    ? 'outline outline-2 outline-offset-[-2px] outline-orange-500'
+                    : 'border-2 border-gray-600'
+                "
+              >
+                <div
+                  v-if="selectedCarrierId === method.id"
+                  class="w-2.5 h-2.5 bg-orange-500 rounded-full"
+                />
+              </div>
+              <span
+                class="text-sm font-medium font-['Onest'] leading-5 transition-colors duration-150"
+                :class="selectedCarrierId === method.id ? 'text-orange-500' : 'text-gray-300'"
+              >
+                {{ method.name }}
+              </span>
+            </label>
+          </div>
+        </template>
+        <div v-else class="px-4 py-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm font-['Onest'] text-center">
+          Немає доступних служб доставки для цього магазину
+        </div>
+      </div>
+
       <!-- Dynamic delivery fields -->
       <div v-if="deliveryMethod !== 'PICKUP'" class="self-stretch pt-1 grid grid-cols-1 sm:grid-cols-2 gap-4">
 
-        <!-- City (BRANCH & COURIER) -->
+        <!-- City autocomplete (BRANCH & COURIER) -->
         <div class="flex flex-col gap-1.5">
           <label class="text-gray-400 text-xs font-medium font-['Onest'] leading-4 tracking-tight">
             {{ DICT.forms.labels.city }} <span class="text-orange-500">*</span>
           </label>
           <div class="relative">
-            <select
-              v-model="form.city"
-              class="w-full appearance-none h-11 pl-3.5 pr-10 bg-gray-900 rounded-lg outline outline-1 outline-offset-[-1px] outline-gray-700 text-gray-200 text-sm font-normal font-['Onest'] transition-all duration-150 focus:outline-orange-500 focus:ring-1 focus:ring-orange-500/40 focus:outline-none cursor-pointer"
-            >
-              <option value="" disabled>{{ DICT.forms.placeholders.selectCity }}</option>
-              <option>Київ</option>
-              <option>Харків</option>
-              <option>Одеса</option>
-              <option>Дніпро</option>
-              <option>Львів</option>
-            </select>
-            <!-- Chevron -->
+            <input
+              v-model="cityQuery"
+              type="text"
+              autocomplete="off"
+              :placeholder="DICT.forms.placeholders.selectCity"
+              class="w-full h-11 px-3.5 pr-10 bg-gray-900 rounded-lg outline outline-1 outline-offset-[-1px] outline-gray-700 text-gray-200 text-sm font-normal font-['Onest'] placeholder-gray-600 transition-all duration-150 focus:outline-orange-500 focus:ring-1 focus:ring-orange-500/40 focus:outline-none"
+              @input="onCityInput"
+              @focus="isCityDropdownOpen = true"
+              @blur="closeCityDropdown"
+            />
             <svg class="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
               <path d="M4 6l4 4 4-4" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
+            <!-- Dropdown -->
+            <ul
+              v-if="isCityDropdownOpen && filteredCities.length > 0"
+              class="absolute z-50 left-0 right-0 top-full mt-1 max-h-48 overflow-y-auto bg-gray-800 rounded-lg border border-gray-700 shadow-xl"
+            >
+              <li
+                v-for="city in filteredCities"
+                :key="city"
+                class="px-3.5 py-2.5 text-sm text-gray-200 font-['Onest'] cursor-pointer transition-colors hover:bg-gray-700 hover:text-orange-400"
+                :class="form.city === city ? 'bg-gray-700/60 text-orange-400' : ''"
+                @mousedown.prevent="selectCity(city)"
+              >
+                {{ city }}
+              </li>
+            </ul>
           </div>
         </div>
 
-        <!-- Branch (BRANCH only) -->
+        <!-- Branch autocomplete (BRANCH only) -->
         <div v-if="deliveryMethod === 'BRANCH'" class="flex flex-col gap-1.5">
           <label class="text-gray-400 text-xs font-medium font-['Onest'] leading-4 tracking-tight">
             {{ DICT.forms.labels.branch }} <span class="text-orange-500">*</span>
           </label>
           <div class="relative">
-            <select
-              v-model="form.branch"
-              class="w-full appearance-none h-11 pl-3.5 pr-10 bg-gray-900 rounded-lg outline outline-1 outline-offset-[-1px] outline-gray-700 text-gray-200 text-sm font-normal font-['Onest'] transition-all duration-150 focus:outline-orange-500 focus:ring-1 focus:ring-orange-500/40 focus:outline-none cursor-pointer"
-            >
-              <option value="" disabled>{{ DICT.forms.placeholders.selectBranch }}</option>
-              <option>Відділення №1</option>
-              <option>Відділення №2</option>
-              <option>Поштомат №100</option>
-            </select>
+            <input
+              v-model="branchQuery"
+              type="text"
+              autocomplete="off"
+              :placeholder="DICT.forms.placeholders.selectBranch"
+              class="w-full h-11 px-3.5 pr-10 bg-gray-900 rounded-lg outline outline-1 outline-offset-[-1px] outline-gray-700 text-gray-200 text-sm font-normal font-['Onest'] placeholder-gray-600 transition-all duration-150 focus:outline-orange-500 focus:ring-1 focus:ring-orange-500/40 focus:outline-none"
+              @input="onBranchInput"
+              @focus="isBranchDropdownOpen = true"
+              @blur="closeBranchDropdown"
+            />
             <svg class="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
               <path d="M4 6l4 4 4-4" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
+            <!-- Dropdown -->
+            <ul
+              v-if="isBranchDropdownOpen && filteredBranches.length > 0"
+              class="absolute z-50 left-0 right-0 top-full mt-1 max-h-48 overflow-y-auto bg-gray-800 rounded-lg border border-gray-700 shadow-xl"
+            >
+              <li
+                v-for="branch in filteredBranches"
+                :key="branch"
+                class="px-3.5 py-2.5 text-sm text-gray-200 font-['Onest'] cursor-pointer transition-colors hover:bg-gray-700 hover:text-orange-400"
+                :class="form.branch === branch ? 'bg-gray-700/60 text-orange-400' : ''"
+                @mousedown.prevent="selectBranch(branch)"
+              >
+                {{ branch }}
+              </li>
+            </ul>
           </div>
         </div>
 
@@ -462,6 +750,7 @@ const fmt = (n: number) => (n || 0).toLocaleString('uk-UA') + ' ₴'
           />
         </div>
       </div>
+
 
       <!-- Comment (always visible) -->
       <div class="self-stretch flex flex-col gap-1.5">
@@ -524,15 +813,6 @@ const fmt = (n: number) => (n || 0).toLocaleString('uk-UA') + ' ₴'
               <span class="text-gray-200 text-sm font-bold font-['Onest'] leading-5">{{ opt.label }}</span>
               <span class="text-gray-500 text-xs font-medium font-['Onest'] leading-4">{{ opt.subtitle }}</span>
             </div>
-          </div>
-
-          <!-- Card badges -->
-          <div class="flex items-start gap-[4.80px] shrink-0">
-            <div
-              v-for="i in opt.badges"
-              :key="i"
-              class="w-8 h-5 bg-gray-700 rounded border border-gray-600"
-            />
           </div>
         </button>
       </div>
@@ -623,13 +903,17 @@ const fmt = (n: number) => (n || 0).toLocaleString('uk-UA') + ' ₴'
           <span class="text-gray-400 text-sm font-normal font-['Onest']">Знижка за промокодом</span>
           <span class="text-green-400 text-sm font-semibold font-['Onest']">− {{ fmt(discountAmount) }}</span>
         </div>
+        <div class="flex justify-between items-center">
+          <span class="text-gray-400 text-sm font-normal font-['Onest']">Комісія сервісу (1%)</span>
+          <span class="text-gray-200 text-sm font-normal font-['Onest']">{{ fmt(serviceTax) }}</span>
+        </div>
       </div>
 
       <div class="self-stretch h-px border-t border-gray-700" />
 
       <!-- Total -->
       <div class="flex justify-between items-center">
-        <span class="text-gray-300 text-sm font-bold font-['Unbounded'] tracking-tight">ДО СПЛАТИ</span>
+        <span class="text-gray-300 text-sm font-bold font-['Unbounded'] tracking-tight">РАЗОМ ДО СПЛАТИ</span>
         <span class="text-white text-2xl font-extrabold font-['Unbounded']">{{ fmt(finalTotalAmount) }}</span>
       </div>
 
@@ -654,14 +938,13 @@ const fmt = (n: number) => (n || 0).toLocaleString('uk-UA') + ' ₴'
 </template>
 
 <style scoped>
-/* Remove default select styling on webkit */
-select {
-  -webkit-appearance: none;
-}
-/* Scrollbar styling for textarea */
-textarea::-webkit-scrollbar { width: 4px; }
-textarea::-webkit-scrollbar-track { background: transparent; }
-textarea::-webkit-scrollbar-thumb { background: #3d4158; border-radius: 2px; }
+/* Scrollbar styling for textarea and autocomplete dropdowns */
+textarea::-webkit-scrollbar,
+ul::-webkit-scrollbar { width: 4px; }
+textarea::-webkit-scrollbar-track,
+ul::-webkit-scrollbar-track { background: transparent; }
+textarea::-webkit-scrollbar-thumb,
+ul::-webkit-scrollbar-thumb { background: #3d4158; border-radius: 2px; }
 /* Shake animation for promo error */
 @keyframes shake {
   0%, 100% { transform: translateX(0); }
