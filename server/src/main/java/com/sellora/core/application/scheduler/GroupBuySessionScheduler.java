@@ -1,12 +1,17 @@
 package com.sellora.core.application.scheduler;
 
+import com.sellora.core.application.usecases.OrderService;
 import com.sellora.core.application.usecases.RefundService;
 import com.sellora.core.domain.entities.GroupBuySession;
+import com.sellora.core.domain.entities.Order;
 import com.sellora.core.infrastructure.persistence.GroupBuySessionRepository;
+import com.sellora.core.infrastructure.persistence.GroupMemberRepository;
+import com.sellora.core.infrastructure.persistence.OrderRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -17,36 +22,65 @@ import java.util.List;
 public class GroupBuySessionScheduler {
 
   private final GroupBuySessionRepository sessionRepository;
+  private final GroupMemberRepository groupMemberRepository;
+  private final OrderRepository orderRepository;
+  private final OrderService orderService;
   private final RefundService refundService;
 
-  @Scheduled(fixedRate = 60000)
+  // cron = "0 */15 * * * *" запускає задачу кожні 15 хвилин
+  @Scheduled(cron = "0 */15 * * * *")
+  @Transactional
   public void checkExpiredSessions() {
     log.info("Запуск планувальника: перевірка протермінованих сесій...");
 
-    // Шукаємо сесії, які ACTIVE, але час їх життя вже минув
     List<GroupBuySession> expiredSessions = sessionRepository.findByStatusAndExpiresAtBefore(
       "ACTIVE", LocalDateTime.now()
     );
 
     if (expiredSessions.isEmpty()) {
-      return; // Немає протермінованих, просто виходимо
+      return;
     }
 
     log.info("Знайдено протермінованих сесій: {}. Починаємо обробку.", expiredSessions.size());
 
+    int completedCount = 0;
+    int cancelledCount = 0;
+
     for (GroupBuySession session : expiredSessions) {
       try {
-        // 1. Змінюємо статус на CANCELLED (або EXPIRED)
-        session.setStatus("CANCELLED");
-        sessionRepository.save(session);
+        int membersCount = groupMemberRepository.countBySessionId(session.getId());
 
-        // 2. Викликаємо сервіс повернення коштів
-        refundService.processRefundForSession(session.getId());
+        if (membersCount >= session.getLockedTargetSize()) {
+          // Група зібралась в останній момент
+          session.setStatus("COMPLETED");
+          sessionRepository.save(session);
+          completedCount++;
+          log.info("Сесію ID {} успішно переведено в COMPLETED (учасників: {}).", session.getId(), membersCount);
+        } else {
+          // Група НЕ зібралась
+          session.setStatus("CANCELLED");
+          sessionRepository.save(session);
 
-        log.info("Сесію ID {} успішно скасовано.", session.getId());
+          // Скасовуємо всі пов'язані замовлення та повертаємо товари на склад
+          List<Order> sessionOrders = orderRepository.findBySessionId(session.getId());
+          for (Order order : sessionOrders) {
+            if (!"CANCELLED".equalsIgnoreCase(order.getPaymentStatus())) {
+              orderService.processOrderCancellationLogic(order);
+            }
+          }
+
+          // Викликаємо сервіс повернення коштів (залишив твій існуючий виклик)
+          refundService.processRefundForSession(session.getId());
+
+          cancelledCount++;
+          log.info("Сесію ID {} скасовано (недобір: {}/{}), замовлення анульовано.",
+            session.getId(), membersCount, session.getLockedTargetSize());
+        }
       } catch (Exception e) {
         log.error("Помилка при обробці сесії ID {}: {}", session.getId(), e.getMessage());
       }
     }
+
+    log.info("Обробку завершено. Успішно зібрано: {}, Скасовано: {}", completedCount, cancelledCount);
   }
 }

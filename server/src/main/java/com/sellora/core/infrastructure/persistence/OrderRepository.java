@@ -8,6 +8,7 @@ import org.springframework.stereotype.Repository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Repository
@@ -27,4 +28,9 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     @Param("shippingStatus") String shippingStatus,
     Pageable pageable
   );
+
+
+  @Query("SELECT o FROM Order o WHERE o.paymentMethod = 'ONLINE_CARD' " +
+    "AND o.paymentStatus = 'PENDING' AND o.createdAt < :threshold")
+  java.util.List<Order> findExpiredPendingOrders(@org.springframework.data.repository.query.Param("threshold") LocalDateTime threshold);
 }

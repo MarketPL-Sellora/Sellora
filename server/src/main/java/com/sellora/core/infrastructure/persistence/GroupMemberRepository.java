@@ -22,4 +22,6 @@ public interface GroupMemberRepository extends JpaRepository<GroupMember, Long> 
   // НОВЕ: Перевірка (Task 3), чи юзер є ініціатором/учасником АКТИВНОЇ сесії на конкретний товар
   @Query("SELECT COUNT(m) > 0 FROM GroupMember m JOIN GroupBuySession s ON m.sessionId = s.id WHERE m.userId = :userId AND s.productId = :productId AND s.status = 'ACTIVE'")
   boolean isUserInActiveSessionForProduct(@Param("userId") Long userId, @Param("productId") Long productId);
+
+  java.util.Optional<com.sellora.core.domain.entities.GroupMember> findBySessionIdAndUserId(Long sessionId, Long userId);
 }
