@@ -4,9 +4,11 @@ import { useRoute, useRouter } from 'vue-router'
 import Header from '../components/layout/Header.vue'
 import Footer from '../components/layout/Footer.vue'
 import { apiClient } from '../api/axios'
+import { useUserStore } from '../state/userStore'
 
 const route = useRoute()
 const router = useRouter()
+const userStore = useUserStore()
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -54,6 +56,8 @@ interface Order {
 const order = ref<Order | null>(null)
 const isLoading = ref(true)
 const error = ref<string | null>(null)
+const isActionLoading = ref(false)
+const transactions = ref<any[]>([])
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -120,6 +124,45 @@ const deliveryAddressFormatted = computed(() => {
 
 // ─── Fetch ────────────────────────────────────────────────────────────────────
 
+async function fetchTransactions() {
+  if (!order.value || userStore.sellerStore?.id !== order.value.store_id) return
+  try {
+    const res = await apiClient.get(`/orders/${order.value.id}/transactions`)
+    transactions.value = res.data
+  } catch (e) {
+    console.error('Помилка завантаження транзакцій', e)
+  }
+}
+
+async function retryPayment() {
+  if (!order.value) return
+  isActionLoading.value = true
+  try {
+    const res = await apiClient.post(`/orders/${order.value.id}/pay`)
+    if (res.data?.payment_url) {
+      window.location.href = res.data.payment_url
+    }
+  } catch (e: any) {
+    alert(e.response?.data?.message || 'Помилка генерації посилання на оплату')
+  } finally {
+    isActionLoading.value = false
+  }
+}
+
+async function cancelOrder() {
+  if (!order.value || !confirm('Ви впевнені, що хочете скасувати це замовлення?')) return
+  isActionLoading.value = true
+  try {
+    await apiClient.patch(`/orders/${order.value.id}/cancel`)
+    order.value.payment_status = 'CANCELLED'
+    alert('Замовлення успішно скасовано')
+  } catch (e: any) {
+    alert(e.response?.data?.message || 'Помилка скасування замовлення')
+  } finally {
+    isActionLoading.value = false
+  }
+}
+
 onMounted(async () => {
   const orderId = route.params.id
   if (!orderId) {
@@ -131,6 +174,7 @@ onMounted(async () => {
   try {
     const response = await apiClient.get<Order>(`/orders/${orderId}`)
     order.value = response.data
+    await fetchTransactions()
   } catch (err: any) {
     if (err.response?.status === 404) {
       error.value = 'Замовлення не знайдено'
@@ -389,15 +433,60 @@ onMounted(async () => {
           </div>
         </section>
 
-        <!-- ── Pay button (if pending online payment) ─────────────────────── -->
-        <div v-if="order.payment_status === 'PENDING' && order.payment_method === 'ONLINE_CARD' && order.payment_url" class="flex justify-center">
-          <a
-            :href="order.payment_url"
-            class="px-8 py-4 bg-gradient-to-b from-orange-500 to-[#ea6c0a] rounded-xl shadow-[0px_4px_20px_0px_rgba(249,115,22,0.35)] text-white text-base font-bold font-['Unbounded'] leading-6 tracking-wide transition-all duration-150 hover:from-orange-400 hover:to-orange-500 hover:shadow-[0px_6px_28px_0px_rgba(249,115,22,0.55)] active:scale-[0.98]"
-          >
-            Оплатити замовлення ➔
-          </a>
+        <!-- ── Actions ──────────────────────────────────────────────────── -->
+        <div class="flex flex-col gap-4 items-center">
+          <div v-if="order.payment_status === 'PENDING' && order.payment_method === 'ONLINE_CARD' && userStore.user?.id === order.user_id" 
+               class="w-full max-w-2xl px-4 py-3 bg-amber-500/10 border border-amber-500/20 rounded-xl flex items-start gap-3">
+            <span class="text-amber-500 text-lg">⚠️</span>
+            <p class="text-amber-400 text-sm font-['Onest']">Замовлення очікує оплати. Натисніть кнопку «Оплатити», щоб завершити оформлення.</p>
+          </div>
+
+          <div class="flex flex-wrap justify-center gap-4">
+            <button
+              v-if="order.payment_status === 'PENDING' && order.payment_method === 'ONLINE_CARD' && userStore.user?.id === order.user_id"
+              @click="retryPayment"
+              :disabled="isActionLoading"
+              class="px-8 py-4 bg-gradient-to-b from-orange-500 to-[#ea6c0a] rounded-xl shadow-[0px_4px_20px_0px_rgba(249,115,22,0.35)] text-white text-base font-bold font-['Unbounded'] tracking-wide transition-all hover:from-orange-400 hover:to-orange-500 active:scale-[0.98] disabled:opacity-50"
+            >
+              {{ isActionLoading ? 'Обробка...' : 'Оплатити замовлення ➔' }}
+            </button>
+
+            <button
+              v-if="order.shipping_status === 'PENDING' && !['CANCELLED', 'REFUNDED'].includes(order.payment_status) && userStore.user?.id === order.user_id"
+              @click="cancelOrder"
+              :disabled="isActionLoading"
+              class="px-8 py-4 rounded-xl border border-red-500/30 text-red-400 text-base font-bold font-['Unbounded'] tracking-wide transition-all hover:bg-red-500/10 active:scale-[0.98] disabled:opacity-50"
+            >
+              Скасувати замовлення
+            </button>
+          </div>
         </div>
+
+        <!-- ── Transactions History ────────────────────────────────────────── -->
+        <section v-if="userStore.sellerStore?.id === order.store_id && transactions.length > 0" class="p-6 md:p-8 bg-[#1c1f2a] rounded-2xl border border-gray-800/50 flex flex-col gap-4 mt-6">
+          <h3 class="text-sm font-bold font-['Unbounded'] text-gray-300 uppercase tracking-wider flex items-center gap-2">
+            <svg class="w-4 h-4 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            Історія транзакцій
+          </h3>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left">
+              <thead>
+                <tr class="border-b border-gray-800 text-gray-500 text-xs font-medium font-['Onest']">
+                  <th class="pb-2 font-normal">Тип</th>
+                  <th class="pb-2 font-normal text-right">Сума</th>
+                  <th class="pb-2 font-normal text-right">Дата</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-800/50">
+                <tr v-for="trx in transactions" :key="trx.id" class="text-sm font-['Onest'] text-gray-300">
+                  <td class="py-3 font-medium" :class="{'text-emerald-400': trx.event_type === 'PAYMENT', 'text-red-400': trx.event_type === 'FAILED'}">{{ trx.event_type }}</td>
+                  <td class="py-3 text-right font-bold text-white">{{ fmt(trx.amount) }}</td>
+                  <td class="py-3 text-right text-gray-500 text-xs">{{ formatDate(trx.created_at) }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
 
       </template>
 
