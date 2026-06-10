@@ -11,13 +11,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import java.util.stream.Collectors;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import java.util.Map;
-import java.util.stream.Collectors;
+
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
@@ -36,6 +33,9 @@ public class OrderService {
   private final PromoCodeRepository promoCodeRepository;
   private final PromoUsageHistoryRepository promoUsageHistoryRepository;
   private final PaymentService paymentService;
+  private final GroupBuySessionRepository groupBuySessionRepository;
+  private final TransactionEventRepository transactionEventRepository;
+  private final GroupMemberRepository groupMemberRepository;
   private final ObjectMapper objectMapper;
 
   @Transactional
@@ -253,26 +253,20 @@ public class OrderService {
 
   @Transactional(readOnly = true)
   public Page<OrderPreviewDto> getUserOrdersHistory(Long userId, Pageable pageable) {
-    // 1. Отримуємо сторінку замовлень користувача
     Page<Order> ordersPage = orderRepository.findAllByUserId(userId, pageable);
 
     if (ordersPage.isEmpty()) {
       return Page.empty(pageable);
     }
 
-    // 2. Збираємо всі ID цих замовлень
     List<Long> orderIds = ordersPage.getContent().stream()
       .map(Order::getId)
       .toList();
 
-    // 3. Дістаємо всі OrderItems для цих замовлень ОДНИМ запитом
     List<OrderItem> allItems = orderItemRepository.findByOrderIdIn(orderIds);
-
-    // 4. Групуємо товари по orderId для швидкого доступу
     Map<Long, List<OrderItem>> itemsByOrderId = allItems.stream()
       .collect(Collectors.groupingBy(OrderItem::getOrderId));
 
-    // 5. Мапимо замовлення у DTO для фронтенду
     return ordersPage.map(order -> {
       List<OrderItem> orderItems = itemsByOrderId.getOrDefault(order.getId(), List.of());
 
@@ -298,8 +292,6 @@ public class OrderService {
 
   @Transactional(readOnly = true)
   public Page<StoreOrderPreviewDto> getStoreOrders(Long storeId, Long requesterId, String paymentStatus, String shippingStatus, Pageable pageable) {
-
-    // Перевірка прав доступу: Requester має бути власником магазину або ADMIN
     Store store = storeRepository.findById(storeId)
       .orElseThrow(() -> new ResourceNotFoundException("Магазин не знайдено"));
 
@@ -310,17 +302,13 @@ public class OrderService {
       throw new ForbiddenException("Ви не маєте доступу до замовлень цього магазину");
     }
 
-    // Отримання списку замовлень
     Page<Order> ordersPage = orderRepository.findStoreOrdersWithFilters(storeId, paymentStatus, shippingStatus, pageable);
-
     if (ordersPage.isEmpty()) return Page.empty(pageable);
 
-    // Оптимізована вибірка товарів
     List<Long> orderIds = ordersPage.getContent().stream().map(Order::getId).toList();
     List<OrderItem> allItems = orderItemRepository.findByOrderIdIn(orderIds);
     Map<Long, List<OrderItem>> itemsByOrderId = allItems.stream().collect(Collectors.groupingBy(OrderItem::getOrderId));
 
-    // Мапінг у DTO для продавця (з ім'ям і телефоном)
     return ordersPage.map(order -> {
       List<OrderItem> orderItems = itemsByOrderId.getOrDefault(order.getId(), List.of());
       List<OrderItemPreviewDto> previewItems = orderItems.stream()
@@ -350,16 +338,13 @@ public class OrderService {
     User requester = userRepository.findById(requesterId)
       .orElseThrow(() -> new UnauthorizedException("Користувача не знайдено"));
 
-    // Перевіряємо чи є користувач власником магазину
     Store store = storeRepository.findById(order.getMerchantId()).orElse(null);
     boolean isStoreOwner = store != null && store.getOwnerId().equals(requesterId);
 
-    // АВТОРИЗАЦІЯ: Тільки покупець, продавець (власник магазину) або ADMIN
     if (!order.getUserId().equals(requesterId) && !isStoreOwner && !"ADMIN".equalsIgnoreCase(requester.getRole())) {
       throw new ForbiddenException("Ви не маєте доступу до деталей цього замовлення");
     }
 
-    // Отримуємо товари замовлення
     List<OrderItem> items = orderItemRepository.findByOrderId(orderId);
     List<OrderItemDto> itemDtos = items.stream().map(oi -> new OrderItemDto(
       oi.getId(), oi.getProductId(), oi.getQuantity(), oi.getPriceSnapshot(),
@@ -367,7 +352,6 @@ public class OrderService {
       oi.getTitleSnapshot(), oi.getImageSnapshot()
     )).toList();
 
-    // Парсинг JSONB адреси
     Object deliveryAddressJson = null;
     if (order.getDeliveryAddress() != null) {
       try {
@@ -385,5 +369,196 @@ public class OrderService {
       order.getDiscount(), order.getFinalPrice(), order.getPaymentStatus(), order.getShippingStatus(),
       null, order.getCreatedAt(), order.getUpdatedAt(), itemDtos
     );
+  }
+
+  @Transactional
+  public OrderResponseDto updateOrder(Long orderId, Long requesterId, UpdateOrderRequestDto request) {
+    Order order = orderRepository.findById(orderId)
+      .orElseThrow(() -> new ResourceNotFoundException("Замовлення не знайдено"));
+
+    Store store = storeRepository.findById(order.getMerchantId())
+      .orElseThrow(() -> new ResourceNotFoundException("Магазин не знайдено"));
+
+    // Перевірка, що юзер — власник магазину
+    if (!store.getOwnerId().equals(requesterId)) {
+      throw new ForbiddenException("Тільки власник магазину може оновлювати це замовлення");
+    }
+
+    // Оновлення Payment Status
+    if (request.paymentStatus() != null) {
+      if ("ONLINE_CARD".equalsIgnoreCase(order.getPaymentMethod())) {
+        throw new BadRequestException("Статус оплати для онлайн-оплати змінюється автоматично через платіжну систему");
+      }
+      if ("CASH_ON_DELIVERY".equalsIgnoreCase(order.getPaymentMethod())) {
+        String newPaymentStatus = request.paymentStatus().toUpperCase();
+        if (!List.of("PENDING", "PAID", "CANCELLED").contains(newPaymentStatus)) {
+          throw new BadRequestException("Недопустимий статус оплати. Дозволено: PENDING, PAID, CANCELLED");
+        }
+        order.setPaymentStatus(newPaymentStatus);
+      }
+    }
+
+    // Оновлення Shipping Status
+    if (request.shippingStatus() != null) {
+      String newShippingStatus = request.shippingStatus().toUpperCase();
+      if (!List.of("PENDING", "PROCESSING", "SHIPPED", "DELIVERED").contains(newShippingStatus)) {
+        throw new BadRequestException("Недопустимий статус доставки");
+      }
+      order.setShippingStatus(newShippingStatus);
+    }
+
+    // Оновлення Tracking Number
+    if (request.trackingNumber() != null) {
+      String tracking = request.trackingNumber().trim();
+      if (tracking.isEmpty()) {
+        throw new BadRequestException("Трек-номер не може бути порожнім");
+      }
+      order.setTrackingNumber(tracking);
+    }
+
+    orderRepository.save(order);
+
+    return getOrderDetails(orderId, requesterId);
+  }
+
+  @Transactional(readOnly = true)
+  public PaymentUrlResponseDto retryPayment(Long orderId, Long requesterId) {
+    Order order = orderRepository.findById(orderId)
+      .orElseThrow(() -> new ResourceNotFoundException("Замовлення не знайдено"));
+
+    // 1. Перевірка доступу (тільки покупець)
+    if (!order.getUserId().equals(requesterId)) {
+      throw new ForbiddenException("Ви не маєте доступу до цього замовлення");
+    }
+
+    // 2. Валідація методу оплати
+    if (!"ONLINE_CARD".equalsIgnoreCase(order.getPaymentMethod())) {
+      throw new BadRequestException("Повторна оплата доступна тільки для замовлень з онлайн-оплатою");
+    }
+
+    // 3. Валідація статусу оплати
+    if (!"PENDING".equalsIgnoreCase(order.getPaymentStatus())) {
+      throw new BadRequestException("Замовлення вже оплачено або скасовано");
+    }
+
+    // 4. Генерація нового посилання
+    String paymentUrl = paymentService.generatePaymentUrl(order.getId(), order.getFinalPrice());
+    return new PaymentUrlResponseDto(paymentUrl);
+  }
+
+  @Transactional
+  public OrderCancelResponseDto cancelOrder(Long orderId, Long requesterId) {
+    Order order = orderRepository.findById(orderId)
+      .orElseThrow(() -> new ResourceNotFoundException("Замовлення не знайдено"));
+
+    // 1. Авторизація (тільки покупець)
+    if (!order.getUserId().equals(requesterId)) {
+      throw new ForbiddenException("Ви не можете скасувати чуже замовлення");
+    }
+
+    // 2. Валідація статусів
+    if (!"PENDING".equalsIgnoreCase(order.getShippingStatus())) {
+      throw new BadRequestException("Неможливо скасувати замовлення, яке вже обробляється або відправлено");
+    }
+    if ("CANCELLED".equalsIgnoreCase(order.getPaymentStatus()) || "REFUNDED".equalsIgnoreCase(order.getPaymentStatus())) {
+      throw new BadRequestException("Замовлення вже скасовано");
+    }
+
+    // ВИКЛИКАЄМО СПІЛЬНУ ЛОГІКУ
+    processOrderCancellationLogic(order);
+
+    return new OrderCancelResponseDto(
+      order.getId(),
+      order.getPaymentStatus(),
+      order.getShippingStatus(),
+      "Замовлення успішно скасовано"
+    );
+  }
+
+  // --- СПІЛЬНА ЛОГІКА ДЛЯ РУЧНОГО ТА АВТОМАТИЧНОГО СКАСУВАННЯ ---
+  public void processOrderCancellationLogic(Order order) {
+    // 1. Повернення товару на склад
+    List<OrderItem> items = orderItemRepository.findByOrderId(order.getId());
+    for (OrderItem item : items) {
+      Product product = productRepository.findByIdForUpdate(item.getProductId())
+        .orElseThrow(() -> new ResourceNotFoundException("Товар не знайдено"));
+
+      product.setStockQuantity(product.getStockQuantity() + item.getQuantity());
+      if ("OUT_OF_STOCK".equalsIgnoreCase(product.getStatus()) && product.getStockQuantity() > 0) {
+        product.setStatus("ACTIVE");
+      }
+      productRepository.save(product);
+    }
+
+    // 2. Повернення промокоду (якщо був використаний)
+    promoUsageHistoryRepository.findByOrderId(order.getId()).ifPresent(history -> {
+      promoCodeRepository.findById(history.getPromoId()).ifPresent(promoCode -> {
+        promoCode.setUsedCount(Math.max(0, promoCode.getUsedCount() - 1));
+        promoCodeRepository.save(promoCode);
+      });
+      promoUsageHistoryRepository.delete(history);
+    });
+
+    // 3. Логіка для GROUP_BUY
+    if ("GROUP_BUY".equalsIgnoreCase(order.getPurchaseType()) && order.getSessionId() != null) {
+      groupMemberRepository.findBySessionIdAndUserId(order.getSessionId(), order.getUserId()).ifPresent(member -> {
+        groupMemberRepository.delete(member);
+
+        int remainingMembers = groupMemberRepository.countBySessionId(order.getSessionId()) - 1;
+        if (remainingMembers <= 0) {
+          groupBuySessionRepository.findById(order.getSessionId()).ifPresent(session -> {
+            session.setStatus("CANCELLED");
+            groupBuySessionRepository.save(session);
+          });
+        }
+      });
+    }
+
+    // 4. Оновлення статусу замовлення
+    order.setPaymentStatus("CANCELLED");
+    orderRepository.save(order);
+  }
+
+  // --- МЕТОД ДЛЯ ПЛАНУВАЛЬНИКА ---
+  @Transactional
+  public int cancelExpiredPendingOrders() {
+    LocalDateTime threshold = LocalDateTime.now().minusHours(24);
+    List<Order> expiredOrders = orderRepository.findExpiredPendingOrders(threshold);
+
+    for (Order order : expiredOrders) {
+      processOrderCancellationLogic(order);
+    }
+
+    return expiredOrders.size(); // Повертаємо кількість скасованих
+  }
+
+  @Transactional(readOnly = true)
+  public List<TransactionEventDto> getOrderTransactions(Long orderId, Long requesterId) {
+    Order order = orderRepository.findById(orderId)
+      .orElseThrow(() -> new ResourceNotFoundException("Замовлення не знайдено"));
+
+    Store store = storeRepository.findById(order.getMerchantId())
+      .orElseThrow(() -> new ResourceNotFoundException("Магазин не знайдено"));
+
+    User requester = userRepository.findById(requesterId)
+      .orElseThrow(() -> new UnauthorizedException("Користувача не знайдено"));
+
+    // Перевірка доступу: тільки власник магазину або ADMIN
+    if (!store.getOwnerId().equals(requesterId) && !"ADMIN".equalsIgnoreCase(requester.getRole())) {
+      throw new ForbiddenException("Тільки власник магазину або адміністратор може переглядати транзакції");
+    }
+
+    // Отримуємо відсортовані події
+    List<TransactionEvent> events = transactionEventRepository.findByOrderIdOrderByCreatedAtDesc(orderId);
+
+    // Мапимо у DTO
+    return events.stream().map(event -> new TransactionEventDto(
+      event.getId(),
+      event.getIdempotencyKey(),
+      event.getOrderId(),
+      event.getEventType(),
+      event.getAmount(),
+      event.getCreatedAt()
+    )).toList();
   }
 }

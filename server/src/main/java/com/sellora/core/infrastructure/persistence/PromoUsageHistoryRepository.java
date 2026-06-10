@@ -7,4 +7,5 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface PromoUsageHistoryRepository extends JpaRepository<PromoUsageHistory, Long> {
   boolean existsByUserIdAndPromoId(Long userId, Long promoId);
+  java.util.Optional<com.sellora.core.domain.entities.PromoUsageHistory> findByOrderId(Long orderId);
 }

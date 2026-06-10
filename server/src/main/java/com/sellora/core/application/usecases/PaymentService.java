@@ -108,7 +108,7 @@ public class PaymentService {
       params.put("order_id", String.valueOf(orderId));
       params.put("version", "3");
       params.put("sandbox", "1");
-      params.put("server_url", "https://thieving-attitude-embroider.ngrok-free.dev/api/v1/payments/webhook");
+      params.put("server_url", "https://bartender-payphone-sizzle.ngrok-free.dev/api/v1/payments/webhook");
 
       String data = Base64.getEncoder().encodeToString(
         new ObjectMapper().writeValueAsString(params).getBytes(StandardCharsets.UTF_8)
