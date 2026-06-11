@@ -11,6 +11,9 @@ databaseChangeLog:
   - include:
       file: changes/logistics-promo-schema-2026-06-04.sql
       relativeToChangelogFile: true
+  - include:
+      file: changes/product-reviews-schema-2026-06-11.sql
+      relativeToChangelogFile: true
 
 
   - include:
