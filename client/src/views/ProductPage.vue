@@ -13,6 +13,7 @@ import GroupBuyModal        from '../components/modals/GroupModal.vue'
 import { useGroupBuyStore } from '../state/groupBuyStore'
 import { useProductStore }  from '../state/productStore'
 import { useCategoryStore } from '../state/categoryStore'
+import { useUserStore } from '../state/userStore'
 import type { GroupBuySession } from '../state/groupBuyStore'
 
 const route  = useRoute()
@@ -20,6 +21,7 @@ const router = useRouter()
 const groupBuyStore = useGroupBuyStore()
 const productStore  = useProductStore()
 const categoryStore = useCategoryStore()
+const userStore = useUserStore()
 
 const productId = Number(route.params.id) || 3
 
@@ -41,13 +43,25 @@ function handleOpenAuth() {
 
 onMounted(async () => {
   await categoryStore.fetchFlatCategories()
-  // Завантажуємо товар з бекенду
   await productStore.fetchProductById(productId)
 
-  // Завантажуємо сесію групової покупки (якщо є)
-  const uuid = route.query.session as string | undefined
-  if (uuid) {
-    sessionData.value = await groupBuyStore.fetchSession(uuid)
+  const uuidFromUrl = route.query.session as string | undefined
+  
+  if (uuidFromUrl) {
+    sessionData.value = await groupBuyStore.fetchSession(uuidFromUrl)
+  } else if (userStore.isAuthenticated) {
+    // Якщо URL чистий, але юзер залогований — шукаємо його активну сесію
+    const mySessions = await groupBuyStore.fetchMySessions() || []
+    const activeSession = mySessions.find((s: any) => 
+      s.productId === productId && s.status === 'ACTIVE'
+    )
+
+    if (activeSession) {
+      // Бекенд віддає повний об'єкт, тому просто підставляємо його
+      sessionData.value = activeSession
+      // Додаємо UUID в URL без перезавантаження сторінки
+      router.replace({ query: { ...route.query, session: activeSession.uuid } })
+    }
   }
 })
 
@@ -57,19 +71,28 @@ watch(
   async (newId, oldId) => {
     if (newId && newId !== oldId) {
       const id = Number(newId);
-      
-      // Завантажуємо новий товар
       await productStore.fetchProductById(id);
       
-      // Опціонально: завантажуємо сесію, якщо в URL є ?session=...
-      const uuid = route.query.session as string | undefined;
-      if (uuid) {
-        sessionData.value = await groupBuyStore.fetchSession(uuid);
+      const uuidFromUrl = route.query.session as string | undefined;
+      
+      if (uuidFromUrl) {
+        sessionData.value = await groupBuyStore.fetchSession(uuidFromUrl);
+      } else if (userStore.isAuthenticated) {
+        const mySessions = await groupBuyStore.fetchMySessions() || [];
+        const activeSession = mySessions.find((s: any) => 
+          s.productId === id && s.status === 'ACTIVE'
+        );
+        
+        if (activeSession) {
+          sessionData.value = activeSession;
+          router.replace({ query: { ...route.query, session: activeSession.uuid } });
+        } else {
+          sessionData.value = null;
+        }
       } else {
-        sessionData.value = null; // Скидаємо сесію від попереднього товару
+        sessionData.value = null;
       }
 
-      // Скролимо сторінку нагору, щоб користувач побачив новий товар
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   }
