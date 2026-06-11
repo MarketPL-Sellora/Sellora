@@ -28,3 +28,7 @@ databaseChangeLog:
       file: changes/user-favorites-seed-2026-05-14.sql
       relativeToChangelogFile: true
       context: dev
+  - include:
+      file: changes/product-reviews-seed-2026-06-11.sql
+      relativeToChangelogFile: true
+      context: dev
