@@ -413,32 +413,9 @@ async function handleSubmit() {
 
       // Handle redirect
       if (paymentMethod.value === 'ONLINE_CARD' && data.payment_url) {
-        const paymentUrl = data.payment_url;
-        const urlObj = new URL(paymentUrl);
-        const dataParam = urlObj.searchParams.get('data');
-        const sigParam = urlObj.searchParams.get('signature');
-
-        // Створюємо невидиму POST-форму
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = 'https://www.liqpay.ua/api/3/checkout';
-
-        const dataInput = document.createElement('input');
-        dataInput.type = 'hidden';
-        dataInput.name = 'data';
-        dataInput.value = dataParam || '';
-        form.appendChild(dataInput);
-
-        const sigInput = document.createElement('input');
-        sigInput.type = 'hidden';
-        sigInput.name = 'signature';
-        sigInput.value = sigParam || '';
-        form.appendChild(sigInput);
-
-        document.body.appendChild(form);
-        form.submit();
+        window.location.href = data.payment_url;
       } else {
-        router.push('/order/' + data.id)
+        router.push('/order/' + data.id);
       }
     } else {
       throw new Error(data.message || 'Невідома помилка сервера')

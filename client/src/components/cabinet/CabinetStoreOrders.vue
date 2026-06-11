@@ -20,7 +20,8 @@ const editForm = ref({
 
 const isPaymentOpen = ref(false)
 const isShippingOpen = ref(false)
-const paymentStatuses = ['PENDING', 'PAID', 'FAILED', 'REFUNDED', 'WAITING_FOR_GROUP']
+const isSaving = ref(false)
+const paymentStatuses = ['PENDING', 'PAID', 'CANCELLED']
 const shippingStatuses = ['PENDING', 'PROCESSING', 'SHIPPED', 'DELIVERED']
 
 async function fetchOrders() {
@@ -83,9 +84,25 @@ function closeManageModal() {
   selectedOrder.value = null
 }
 
-function saveOrderChanges() {
-  console.log('Дані для PUT запиту:', editForm.value)
-  closeManageModal()
+async function saveOrderChanges() {
+  if (!selectedOrder.value) return;
+  isSaving.value = true;
+  try {
+    const payload = {
+      payment_status: editForm.value.payment_status || null,
+      shipping_status: editForm.value.shipping_status || null,
+      tracking_number: editForm.value.tracking_number || null
+    };
+
+    await apiClient.put(`/orders/${selectedOrder.value.id}`, payload);
+    alert('Зміни успішно збережено!');
+    closeManageModal();
+    fetchOrders(); // Оновлюємо таблицю після успішного збереження
+  } catch (e: any) {
+    alert(e.response?.data?.message || 'Помилка при збереженні змін');
+  } finally {
+    isSaving.value = false;
+  }
 }
 </script>
 
@@ -182,12 +199,20 @@ function saveOrderChanges() {
           <label class="text-slate-400 text-xs font-['Onest']">Статус оплати</label>
           <div class="relative">
             <div 
-              class="w-full bg-white/5 outline outline-1 outline-white/10 text-slate-200 text-sm font-['Onest'] rounded-lg p-2.5 cursor-pointer flex justify-between items-center transition-all hover:outline-orange-500/50"
-              @click="isPaymentOpen = !isPaymentOpen; isShippingOpen = false"
+              class="w-full bg-white/5 outline outline-1 outline-white/10 text-slate-200 text-sm font-['Onest'] rounded-lg p-2.5 flex justify-between items-center transition-all"
+              :class="selectedOrder?.payment_method === 'ONLINE_CARD' ? 'opacity-60 cursor-not-allowed bg-gray-800' : 'cursor-pointer hover:outline-orange-500/50'"
+              @click="() => {
+                if (selectedOrder?.payment_method === 'ONLINE_CARD') return;
+                isPaymentOpen = !isPaymentOpen;
+                isShippingOpen = false;
+              }"
             >
               <span>{{ editForm.payment_status || 'Оберіть статус' }}</span>
-              <svg class="w-4 h-4 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M6 9l6 6 6-6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              <svg v-if="selectedOrder?.payment_method !== 'ONLINE_CARD'" class="w-4 h-4 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M6 9l6 6 6-6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </div>
+            <p v-if="selectedOrder?.payment_method === 'ONLINE_CARD'" class="text-[10px] text-orange-400 mt-1">
+              * Статус змінюється автоматично при оплаті карткою
+            </p>
             
             <ul 
               v-if="isPaymentOpen" 
@@ -255,9 +280,10 @@ function saveOrderChanges() {
         </button>
         <button 
           @click="saveOrderChanges"
-          class="px-4 py-2 rounded-xl bg-orange-500 text-white text-sm font-bold hover:bg-orange-600 transition-colors shadow-lg shadow-orange-500/20"
+          :disabled="isSaving"
+          class="px-4 py-2 rounded-xl bg-orange-500 text-white text-sm font-bold hover:bg-orange-600 transition-colors shadow-lg shadow-orange-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          Зберегти
+          {{ isSaving ? 'Збереження...' : 'Зберегти' }}
         </button>
       </div>
     </div>
