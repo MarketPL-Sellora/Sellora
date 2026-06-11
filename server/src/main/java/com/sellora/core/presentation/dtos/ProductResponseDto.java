@@ -1,5 +1,6 @@
 package com.sellora.core.presentation.dtos;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
@@ -13,11 +14,13 @@ public record ProductResponseDto(
   Integer groupTargetSize,
   Integer stockQuantity,
   Long categoryId,
-  String categoryName, // Заповнюється, якщо full=true
+  String categoryName,
   Long merchantId,
-  String storeName,    // Заповнюється, якщо full=true
+  String storeName,
   Map<String, Object> attributes,
   List<String> images,
   String status,
-  boolean isFavorite
+  boolean isFavorite,
+  @JsonProperty("user_active_session_uuid")
+  String userActiveSessionUuid
 ) {}

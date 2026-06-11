@@ -11,7 +11,7 @@ import com.sellora.core.presentation.exceptions.BadRequestException;
 import com.sellora.core.presentation.exceptions.ConflictException;
 import com.sellora.core.presentation.exceptions.ForbiddenException;
 import com.sellora.core.presentation.exceptions.ResourceNotFoundException;
-import com.sellora.core.presentation.exceptions.UnauthorizedException; // Додано
+import com.sellora.core.presentation.exceptions.UnauthorizedException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -38,9 +38,8 @@ public class ProductService {
   private final StoreRepository storeRepository;
   private final CategoryRepository categoryRepository;
   private final GroupBuySessionRepository groupBuySessionRepository;
-  private final UserFavoriteRepository userFavoriteRepository; // НОВИЙ РЕПОЗИТОРІЙ
+  private final UserFavoriteRepository userFavoriteRepository;
 
-  // --- ХЕЛПЕР ДЛЯ БЕЗПЕЧНОГО ОТРИМАННЯ ID ---
   private Long getCurrentUserIdOrNull() {
     Authentication auth = SecurityContextHolder.getContext().getAuthentication();
     if (auth != null && auth.isAuthenticated() && !auth.getPrincipal().equals("anonymousUser")) {
@@ -88,17 +87,15 @@ public class ProductService {
       throw new UnauthorizedException("Для перегляду улюблених товарів потрібно авторизуватись");
     }
 
-    // Отримуємо масив ID всіх підкатегорій
     List<Long> categoryIdsToSearch = null;
     if (categoryId != null) {
       categoryIdsToSearch = categoryRepository.findCategoryTreeIds(categoryId);
     }
 
-    // Використовуємо hasCategoryIdIn замість hasCategoryId
     Specification<Product> spec = Specification.where(ProductSpecification.hasTitle(keyword))
       .and(ProductSpecification.priceGreaterThanOrEqual(minPrice))
       .and(ProductSpecification.priceLessThanOrEqual(maxPrice))
-      .and(ProductSpecification.hasCategoryIdIn(categoryIdsToSearch)) // <--- ЗМІНЕНО ТУТ
+      .and(ProductSpecification.hasCategoryIdIn(categoryIdsToSearch))
       .and(ProductSpecification.hasStatus(status))
       .and(ProductSpecification.hasStoreId(storeId))
       .and(ProductSpecification.hasGroupSession(groupMode));
@@ -123,7 +120,6 @@ public class ProductService {
     return mapToProductResponseDtoPage(productsPage, getCurrentUserIdOrNull());
   }
 
-  /// --- ХЕЛПЕР ДЛЯ ПАКЕТНОЇ ПЕРЕВІРКИ УЛЮБЛЕНИХ ТА ІМЕН ---
   private Page<ProductResponseDto> mapToProductResponseDtoPage(Page<Product> productsPage, Long currentUserId) {
     List<Product> products = productsPage.getContent();
     if (products.isEmpty()) {
@@ -132,22 +128,18 @@ public class ProductService {
 
     List<Long> productIds = products.stream().map(Product::getId).toList();
 
-    // 1. Отримуємо улюблені
     final Set<Long> favoriteIds = (currentUserId != null)
       ? userFavoriteRepository.findFavoriteProductIdsByUserAndProducts(currentUserId, productIds)
       : new HashSet<>();
 
-    // 2. Оптимізована вибірка назв категорій (щоб уникнути проблеми N+1)
     Set<Long> categoryIds = products.stream().map(Product::getCategoryId).collect(Collectors.toSet());
     Map<Long, String> categoryNames = categoryRepository.findAllById(categoryIds).stream()
       .collect(Collectors.toMap(Category::getId, Category::getName));
 
-    // 3. Оптимізована вибірка назв магазинів
     Set<Long> merchantIds = products.stream().map(Product::getMerchantId).collect(Collectors.toSet());
     Map<Long, String> storeNames = storeRepository.findAllById(merchantIds).stream()
       .collect(Collectors.toMap(Store::getId, Store::getName));
 
-    // 4. Мапінг DTO з підставленими іменами
     return productsPage.map(product -> new ProductResponseDto(
       product.getId(), product.getTitle(), product.getDescription(),
       product.getStandardPrice(), product.getGroupPrice(), product.getGroupTargetSize(),
@@ -157,10 +149,12 @@ public class ProductService {
       product.getMerchantId(),
       storeNames.get(product.getMerchantId()),
       product.getAttributes(), product.getImages(), product.getStatus(),
-      favoriteIds.contains(product.getId())
+      favoriteIds.contains(product.getId()),
+      null // У списку товарів ми передаємо null, щоб не робити зайвих запитів до БД
     ));
   }
 
+  // --- ОНОВЛЕНИЙ МЕТОД: ДОДАНО ЛОГІКУ ПЕРЕВІРКИ АКТИВНОЇ СЕСІЇ ---
   public ProductResponseDto getProductById(Long id, boolean full) {
     Product product = productRepository.findById(id)
       .orElseThrow(() -> new ResourceNotFoundException("Товар не знайдено"));
@@ -168,6 +162,7 @@ public class ProductService {
     String storeName = null;
     String categoryName = null;
     boolean isFavorite = false;
+    String userActiveSessionUuid = null; // Змінна для нового поля
 
     if (full) {
       storeName = storeRepository.findById(product.getMerchantId()).map(Store::getName).orElse(null);
@@ -177,6 +172,9 @@ public class ProductService {
     Long currentUserId = getCurrentUserIdOrNull();
     if (currentUserId != null) {
       isFavorite = userFavoriteRepository.existsByUserIdAndProductId(currentUserId, id);
+
+      // Якщо юзер авторизований, перевіряємо, чи є в нього активна сесія на цей товар
+      userActiveSessionUuid = groupBuySessionRepository.findActiveSessionUuidForUserAndProduct(currentUserId, id).orElse(null);
     }
 
     return new ProductResponseDto(
@@ -184,7 +182,8 @@ public class ProductService {
       product.getStandardPrice(), product.getGroupPrice(), product.getGroupTargetSize(),
       product.getStockQuantity(), product.getCategoryId(), categoryName,
       product.getMerchantId(), storeName, product.getAttributes(), product.getImages(), product.getStatus(),
-      isFavorite
+      isFavorite,
+      userActiveSessionUuid // Передаємо у DTO
     );
   }
 
