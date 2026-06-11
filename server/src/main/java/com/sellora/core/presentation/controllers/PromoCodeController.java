@@ -5,6 +5,7 @@ import com.sellora.core.domain.entities.User;
 import com.sellora.core.infrastructure.persistence.PromoCodeRepository;
 import com.sellora.core.infrastructure.persistence.UserRepository;
 import com.sellora.core.presentation.dtos.PromoCodeDto;
+import com.sellora.core.presentation.exceptions.BadRequestException;
 import com.sellora.core.presentation.exceptions.ConflictException;
 import com.sellora.core.presentation.exceptions.ForbiddenException;
 import com.sellora.core.presentation.exceptions.ResourceNotFoundException;
@@ -35,6 +36,12 @@ public class PromoCodeController {
   @PostMapping
   @PreAuthorize("isAuthenticated()")
   public ResponseEntity<PromoCodeDto> create(@Valid @RequestBody PromoCodeDto dto, @AuthenticationPrincipal Long userId) {
+    // Валідація дат
+    if (dto.startDate() != null && dto.endDate() != null) {
+      if (dto.endDate().isBefore(dto.startDate())) {
+        throw new BadRequestException("Дата завершення дії промокоду не може бути раніше дати початку");
+      }
+    }
     verifyAdmin(userId);
     if (repository.existsByCode(dto.code())) throw new ConflictException("Промокод вже існує");
 
@@ -54,6 +61,12 @@ public class PromoCodeController {
   @PutMapping("/{id}")
   @PreAuthorize("isAuthenticated()")
   public ResponseEntity<PromoCodeDto> update(@PathVariable Long id, @Valid @RequestBody PromoCodeDto dto, @AuthenticationPrincipal Long userId) {
+    // Валідація дат
+    if (dto.startDate() != null && dto.endDate() != null) {
+      if (dto.endDate().isBefore(dto.startDate())) {
+        throw new BadRequestException("Дата завершення дії промокоду не може бути раніше дати початку");
+      }
+    }
     verifyAdmin(userId);
     PromoCode promo = repository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Промокод не знайдено"));
     if (repository.existsByCodeAndIdNot(dto.code(), id)) throw new ConflictException("Промокод вже існує");
