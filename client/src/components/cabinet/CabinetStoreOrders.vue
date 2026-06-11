@@ -1,9 +1,29 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { apiClient } from '../../api/axios'
 import { useUserStore } from '../../state/userStore'
 
+const router = useRouter()
 const userStore = useUserStore()
+
+const paymentLabels: Record<string, string> = {
+  PENDING: 'Очікує',
+  PAID: 'Оплачено',
+  FAILED: 'Помилка',
+  REFUNDED: 'Повернено',
+  WAITING_FOR_GROUP: 'Збір групи',
+  CANCELLED: 'Скасовано'
+}
+
+const shippingLabels: Record<string, string> = {
+  PENDING: 'Очікує відправки',
+  PROCESSING: 'В обробці',
+  SHIPPED: 'Відправлено',
+  DELIVERED: 'Доставлено',
+  RETURNED: 'Повернено'
+}
+
 const orders = ref<any[]>([])
 const isLoading = ref(true)
 const error = ref('')
@@ -67,17 +87,7 @@ async function openManageModal(order: any) {
   }
 }
 
-function formatAddress(addressObj: any) {
-  if (!addressObj) return 'Не вказано'
-  try {
-    const addr = typeof addressObj === 'string' ? JSON.parse(addressObj) : addressObj
-    if (addr.branch) return `${addr.city || ''}, ${addr.branch}`
-    if (addr.street) return `${addr.city || ''}, вул. ${addr.street}, буд. ${addr.house || ''}`
-    return addr.city || 'Адреса не вказана'
-  } catch (e) {
-    return 'Помилка форматування адреси'
-  }
-}
+
 
 function closeManageModal() {
   isModalOpen.value = false
@@ -153,21 +163,29 @@ async function saveOrderChanges() {
             <td class="px-4 py-3 font-bold text-orange-400">{{ fmtPrice(order.total_amount || order.finalPrice) }}</td>
             <td class="px-4 py-3">
               <span class="px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wide bg-gray-800 text-gray-400">
-                {{ order.payment_status || order.paymentStatus }}
+                {{ paymentLabels[order.payment_status || order.paymentStatus] || order.payment_status }}
               </span>
             </td>
             <td class="px-4 py-3">
               <span class="px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wide bg-blue-500/10 text-blue-400">
-                {{ order.shipping_status || order.shippingStatus }}
+                {{ shippingLabels[order.shipping_status || order.shippingStatus] || order.shipping_status }}
               </span>
             </td>
             <td class="px-4 py-3 text-right">
-              <button 
-                @click="openManageModal(order)"
-                class="px-3 py-1.5 rounded-lg bg-orange-500/10 text-orange-500 text-xs font-bold hover:bg-orange-500/20 transition-colors"
-              >
-                Керувати
-              </button>
+              <div class="flex justify-end gap-2">
+                <button 
+                  @click="router.push('/order/' + order.id)"
+                  class="px-3 py-1.5 rounded-lg bg-white/5 text-gray-300 text-xs font-bold hover:bg-white/10 transition-colors"
+                >
+                  Деталі
+                </button>
+                <button 
+                  @click="openManageModal(order)"
+                  class="px-3 py-1.5 rounded-lg bg-orange-500/10 text-orange-500 text-xs font-bold hover:bg-orange-500/20 transition-colors"
+                >
+                  Керувати
+                </button>
+              </div>
             </td>
           </tr>
         </tbody>
@@ -186,14 +204,6 @@ async function saveOrderChanges() {
       </div>
 
       <div class="flex flex-col gap-4">
-        <!-- Info -->
-        <div class="p-3 bg-white/5 rounded-xl border border-white/10 flex flex-col gap-1">
-          <span class="text-slate-400 text-xs font-['Onest']">Адреса доставки</span>
-          <p class="text-gray-200 text-sm font-['Onest']">
-            {{ isLoadingDetails ? 'Завантаження адреси...' : formatAddress(selectedOrder?.delivery_address) }}
-          </p>
-        </div>
-
         <!-- Payment Status -->
         <div class="flex flex-col gap-1.5">
           <label class="text-slate-400 text-xs font-['Onest']">Статус оплати</label>
@@ -207,7 +217,7 @@ async function saveOrderChanges() {
                 isShippingOpen = false;
               }"
             >
-              <span>{{ editForm.payment_status || 'Оберіть статус' }}</span>
+              <span>{{ paymentLabels[editForm.payment_status] || editForm.payment_status || 'Оберіть статус' }}</span>
               <svg v-if="selectedOrder?.payment_method !== 'ONLINE_CARD'" class="w-4 h-4 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M6 9l6 6 6-6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </div>
             <p v-if="selectedOrder?.payment_method === 'ONLINE_CARD'" class="text-[10px] text-orange-400 mt-1">
@@ -224,7 +234,7 @@ async function saveOrderChanges() {
                 class="p-2.5 text-sm text-gray-200 hover:bg-white/10 cursor-pointer font-['Onest']"
                 @click="editForm.payment_status = status; isPaymentOpen = false"
               >
-                {{ status }}
+                {{ paymentLabels[status] }}
               </li>
             </ul>
           </div>
@@ -238,7 +248,7 @@ async function saveOrderChanges() {
               class="w-full bg-white/5 outline outline-1 outline-white/10 text-slate-200 text-sm font-['Onest'] rounded-lg p-2.5 cursor-pointer flex justify-between items-center transition-all hover:outline-orange-500/50"
               @click="isShippingOpen = !isShippingOpen; isPaymentOpen = false"
             >
-              <span>{{ editForm.shipping_status || 'Оберіть статус' }}</span>
+              <span>{{ shippingLabels[editForm.shipping_status] || editForm.shipping_status || 'Оберіть статус' }}</span>
               <svg class="w-4 h-4 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M6 9l6 6 6-6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </div>
             
@@ -252,7 +262,7 @@ async function saveOrderChanges() {
                 class="p-2.5 text-sm text-gray-200 hover:bg-white/10 cursor-pointer font-['Onest']"
                 @click="editForm.shipping_status = status; isShippingOpen = false"
               >
-                {{ status }}
+                {{ shippingLabels[status] }}
               </li>
             </ul>
           </div>
