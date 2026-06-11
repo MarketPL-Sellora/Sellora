@@ -22,7 +22,6 @@ public interface ProductRepository extends JpaRepository<Product, Long>, JpaSpec
 
   Page<Product> findAllByMerchantId(Long merchantId, Pageable pageable);
 
-  // НОВЕ: Перевірка наявності товарів у категорії
   boolean existsByCategoryId(Long categoryId);
 
   // Додай цей метод у ProductRepository

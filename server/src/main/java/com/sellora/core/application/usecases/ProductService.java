@@ -28,6 +28,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -76,7 +77,6 @@ public class ProductService {
     return productRepository.save(product);
   }
 
-  // --- ОНОВЛЕНИЙ МЕТОД ФІЛЬТРАЦІЇ ---
   public Page<ProductResponseDto> filterProducts(
     String keyword, BigDecimal minPrice, BigDecimal maxPrice, Long categoryId,
     String status, Long storeId, String groupMode, boolean onlyFavorites,
@@ -84,20 +84,25 @@ public class ProductService {
 
     Long currentUserId = getCurrentUserIdOrNull();
 
-    // Захист: якщо хочуть улюблені, але юзер не авторизований - кидаємо красиву 401
     if (onlyFavorites && currentUserId == null) {
       throw new UnauthorizedException("Для перегляду улюблених товарів потрібно авторизуватись");
     }
 
+    // Отримуємо масив ID всіх підкатегорій
+    List<Long> categoryIdsToSearch = null;
+    if (categoryId != null) {
+      categoryIdsToSearch = categoryRepository.findCategoryTreeIds(categoryId);
+    }
+
+    // Використовуємо hasCategoryIdIn замість hasCategoryId
     Specification<Product> spec = Specification.where(ProductSpecification.hasTitle(keyword))
       .and(ProductSpecification.priceGreaterThanOrEqual(minPrice))
       .and(ProductSpecification.priceLessThanOrEqual(maxPrice))
-      .and(ProductSpecification.hasCategoryId(categoryId))
+      .and(ProductSpecification.hasCategoryIdIn(categoryIdsToSearch)) // <--- ЗМІНЕНО ТУТ
       .and(ProductSpecification.hasStatus(status))
       .and(ProductSpecification.hasStoreId(storeId))
       .and(ProductSpecification.hasGroupSession(groupMode));
 
-    // Якщо увімкнено фільтр - додаємо Specification з сабкверією
     if (onlyFavorites) {
       spec = spec.and(ProductSpecification.isFavorite(currentUserId));
     }
@@ -107,7 +112,6 @@ public class ProductService {
 
     Page<Product> productsPage = productRepository.findAll(spec, pageable);
 
-    // Використовуємо наш новий метод для швидкого мапінгу
     return mapToProductResponseDtoPage(productsPage, currentUserId);
   }
 
@@ -119,21 +123,39 @@ public class ProductService {
     return mapToProductResponseDtoPage(productsPage, getCurrentUserIdOrNull());
   }
 
-  // --- ХЕЛПЕР ДЛЯ ПАКЕТНОЇ ПЕРЕВІРКИ УЛЮБЛЕНИХ ---
-  // --- ХЕЛПЕР ДЛЯ ПАКЕТНОЇ ПЕРЕВІРКИ УЛЮБЛЕНИХ ---
+  /// --- ХЕЛПЕР ДЛЯ ПАКЕТНОЇ ПЕРЕВІРКИ УЛЮБЛЕНИХ ТА ІМЕН ---
   private Page<ProductResponseDto> mapToProductResponseDtoPage(Page<Product> productsPage, Long currentUserId) {
-    List<Long> productIds = productsPage.getContent().stream().map(Product::getId).toList();
+    List<Product> products = productsPage.getContent();
+    if (products.isEmpty()) {
+      return Page.empty(productsPage.getPageable());
+    }
 
-    // ВИПРАВЛЕННЯ: Ініціалізуємо змінну один раз за допомогою тернарного оператора
-    final Set<Long> favoriteIds = (currentUserId != null && !productIds.isEmpty())
+    List<Long> productIds = products.stream().map(Product::getId).toList();
+
+    // 1. Отримуємо улюблені
+    final Set<Long> favoriteIds = (currentUserId != null)
       ? userFavoriteRepository.findFavoriteProductIdsByUserAndProducts(currentUserId, productIds)
       : new HashSet<>();
 
-    // Мапінг DTO з підставленим isFavorite
+    // 2. Оптимізована вибірка назв категорій (щоб уникнути проблеми N+1)
+    Set<Long> categoryIds = products.stream().map(Product::getCategoryId).collect(Collectors.toSet());
+    Map<Long, String> categoryNames = categoryRepository.findAllById(categoryIds).stream()
+      .collect(Collectors.toMap(Category::getId, Category::getName));
+
+    // 3. Оптимізована вибірка назв магазинів
+    Set<Long> merchantIds = products.stream().map(Product::getMerchantId).collect(Collectors.toSet());
+    Map<Long, String> storeNames = storeRepository.findAllById(merchantIds).stream()
+      .collect(Collectors.toMap(Store::getId, Store::getName));
+
+    // 4. Мапінг DTO з підставленими іменами
     return productsPage.map(product -> new ProductResponseDto(
       product.getId(), product.getTitle(), product.getDescription(),
       product.getStandardPrice(), product.getGroupPrice(), product.getGroupTargetSize(),
-      product.getStockQuantity(), product.getCategoryId(), null, product.getMerchantId(), null,
+      product.getStockQuantity(),
+      product.getCategoryId(),
+      categoryNames.get(product.getCategoryId()),
+      product.getMerchantId(),
+      storeNames.get(product.getMerchantId()),
       product.getAttributes(), product.getImages(), product.getStatus(),
       favoriteIds.contains(product.getId())
     ));
