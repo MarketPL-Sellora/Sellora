@@ -33,4 +33,15 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
   @Query("SELECT o FROM Order o WHERE o.paymentMethod = 'ONLINE_CARD' " +
     "AND o.paymentStatus = 'PENDING' AND o.createdAt < :threshold")
   java.util.List<Order> findExpiredPendingOrders(@org.springframework.data.repository.query.Param("threshold") LocalDateTime threshold);
+
+
+  @Query(value = "SELECT COUNT(o.id) > 0 FROM orders o " +
+    "JOIN order_items oi ON o.id = oi.order_id " +
+    "WHERE o.user_id = :userId " +
+    "AND oi.product_id = :productId " +
+    "AND o.payment_status = 'PAID' " +
+    "AND o.shipping_status = 'DELIVERED'",
+    nativeQuery = true)
+  boolean hasUserBoughtAndReceivedProduct(@Param("userId") Long userId, @Param("productId") Long productId);
+
 }

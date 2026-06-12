@@ -56,6 +56,12 @@ public class Product {
 
   private String status;
 
+  @Column(name = "rating", precision = 3, scale = 2)
+  private BigDecimal rating = BigDecimal.ZERO;
+
+  @Column(name = "reviews_count")
+  private Integer reviewsCount = 0;
+
   @Column(name = "created_at", insertable = false, updatable = false)
   private LocalDateTime createdAt;
 
