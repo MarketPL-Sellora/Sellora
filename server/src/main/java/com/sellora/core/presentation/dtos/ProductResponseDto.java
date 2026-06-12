@@ -22,5 +22,9 @@ public record ProductResponseDto(
   String status,
   boolean isFavorite,
   @JsonProperty("user_active_session_uuid")
-  String userActiveSessionUuid
+  String userActiveSessionUuid,
+  BigDecimal rating,
+  @JsonProperty("reviews_count")
+  Integer reviewsCount,
+  List<ReviewWithUserDto> reviews
 ) {}

@@ -38,6 +38,7 @@ public class ProductService {
   private final StoreRepository storeRepository;
   private final CategoryRepository categoryRepository;
   private final GroupBuySessionRepository groupBuySessionRepository;
+  private final ProductReviewRepository productReviewRepository; // Додай це
   private final UserFavoriteRepository userFavoriteRepository;
 
   private Long getCurrentUserIdOrNull() {
@@ -150,11 +151,13 @@ public class ProductService {
       storeNames.get(product.getMerchantId()),
       product.getAttributes(), product.getImages(), product.getStatus(),
       favoriteIds.contains(product.getId()),
-      null // У списку товарів ми передаємо null, щоб не робити зайвих запитів до БД
+      null,
+      product.getRating(),
+      product.getReviewsCount(),
+      null
     ));
   }
 
-  // --- ОНОВЛЕНИЙ МЕТОД: ДОДАНО ЛОГІКУ ПЕРЕВІРКИ АКТИВНОЇ СЕСІЇ ---
   public ProductResponseDto getProductById(Long id, boolean full) {
     Product product = productRepository.findById(id)
       .orElseThrow(() -> new ResourceNotFoundException("Товар не знайдено"));
@@ -162,18 +165,19 @@ public class ProductService {
     String storeName = null;
     String categoryName = null;
     boolean isFavorite = false;
-    String userActiveSessionUuid = null; // Змінна для нового поля
+    String userActiveSessionUuid = null;
+    List<com.sellora.core.presentation.dtos.ReviewWithUserDto> reviews = null; // НОВЕ
 
     if (full) {
       storeName = storeRepository.findById(product.getMerchantId()).map(Store::getName).orElse(null);
       categoryName = categoryRepository.findById(product.getCategoryId()).map(Category::getName).orElse(null);
+      // Завантажуємо відгуки тільки на сторінці самого товару
+      reviews = productReviewRepository.findReviewsWithUserEmailByProductId(id);
     }
 
     Long currentUserId = getCurrentUserIdOrNull();
     if (currentUserId != null) {
       isFavorite = userFavoriteRepository.existsByUserIdAndProductId(currentUserId, id);
-
-      // Якщо юзер авторизований, перевіряємо, чи є в нього активна сесія на цей товар
       userActiveSessionUuid = groupBuySessionRepository.findActiveSessionUuidForUserAndProduct(currentUserId, id).orElse(null);
     }
 
@@ -183,7 +187,10 @@ public class ProductService {
       product.getStockQuantity(), product.getCategoryId(), categoryName,
       product.getMerchantId(), storeName, product.getAttributes(), product.getImages(), product.getStatus(),
       isFavorite,
-      userActiveSessionUuid // Передаємо у DTO
+      userActiveSessionUuid,
+      product.getRating(),       // <--- ДОДАНО
+      product.getReviewsCount(), // <--- ДОДАНО
+      reviews                    // <--- ДОДАНО
     );
   }
 
