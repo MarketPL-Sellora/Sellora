@@ -3,6 +3,7 @@ import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import Header from '../components/layout/Header.vue'
 import Footer from '../components/layout/Footer.vue'
+import ReviewModal from '../components/modals/ReviewModal.vue'
 import { apiClient } from '../api/axios'
 import { useUserStore } from '../state/userStore'
 
@@ -58,6 +59,29 @@ const isLoading = ref(true)
 const error = ref<string | null>(null)
 const isActionLoading = ref(false)
 const transactions = ref<any[]>([])
+
+const reviewStatuses = ref<Record<number, { can_review: boolean, reason: string | null }>>({})
+const isReviewModalOpen = ref(false)
+const reviewProductId = ref<number | null>(null)
+
+async function checkOrderReviews() {
+  if (!order.value || order.value.shipping_status !== 'DELIVERED' || order.value.payment_status !== 'PAID') {
+    return
+  }
+  for (const item of order.value.items) {
+    try {
+      const res = await apiClient.get(`/reviews/${item.product_id}/check`)
+      reviewStatuses.value[item.product_id] = res.data
+    } catch (e) {
+      console.error(`Помилка перевірки відгуку для ${item.product_id}`, e)
+    }
+  }
+}
+
+function openReviewModal(productId: number) {
+  reviewProductId.value = productId
+  isReviewModalOpen.value = true
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -175,6 +199,7 @@ onMounted(async () => {
     const response = await apiClient.get<Order>(`/orders/${orderId}`)
     order.value = response.data
     await fetchTransactions()
+    await checkOrderReviews()
   } catch (err: any) {
     if (err.response?.status === 404) {
       error.value = 'Замовлення не знайдено'
@@ -388,6 +413,24 @@ onMounted(async () => {
               <span class="text-white text-sm md:text-base font-bold font-['Onest'] whitespace-nowrap shrink-0">
                 {{ fmt(item.total_price ?? item.totalPrice ?? ((item.unit_price ?? item.unitPrice ?? 0) * item.quantity) ?? item.subtotal ?? 0) }}
               </span>
+
+              <!-- Review button -->
+              <div v-if="order.shipping_status === 'DELIVERED' && order.payment_status === 'PAID'" class="ml-4 shrink-0 flex items-center">
+                <button
+                  v-if="reviewStatuses[item.product_id]?.can_review"
+                  @click.stop="openReviewModal(item.product_id)"
+                  class="px-3 py-1.5 bg-orange-500/10 text-orange-400 hover:bg-orange-500/20 rounded-lg text-xs font-bold transition-colors"
+                >
+                  Залишити відгук
+                </button>
+                <span
+                  v-else-if="reviewStatuses[item.product_id]?.can_review === false && reviewStatuses[item.product_id]?.reason === 'ALREADY_REVIEWED'"
+                  class="text-green-400 text-xs font-bold flex items-center gap-1"
+                >
+                  <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                  Відгук залишено
+                </span>
+              </div>
             </div>
           </div>
         </section>
@@ -489,6 +532,16 @@ onMounted(async () => {
         </section>
 
       </template>
+
+      <ReviewModal
+        v-if="isReviewModalOpen && reviewProductId"
+        :product-id="reviewProductId"
+        @close="isReviewModalOpen = false"
+        @success="() => {
+          isReviewModalOpen = false;
+          checkOrderReviews();
+        }"
+      />
 
     </main>
 

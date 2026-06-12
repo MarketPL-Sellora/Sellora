@@ -156,7 +156,7 @@ export const useProductStore = defineStore('products', () => {
     isLoading.value = true
     error.value = null
     try {
-      const response = await apiClient.get('/products/' + id)
+      const response = await apiClient.get('/products/' + id, { params: { full: true } })
       currentProduct.value = response.data
     } catch (err: unknown) {
       error.value = err instanceof Error ? err.message : 'Помилка завантаження товару'

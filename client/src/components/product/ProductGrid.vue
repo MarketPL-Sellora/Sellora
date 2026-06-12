@@ -70,6 +70,11 @@ const mappedProducts = computed(() =>
   }))
 )
 
+const storeName = computed(() => {
+  const items = mappedProducts.value
+  return items && items.length > 0 ? (items[0] as any).storeName || (items[0] as any).store_name || '' : ''
+})
+
 const gridTitle = computed(() => {
   // 1. Якщо ми дивимось товари конкретного магазину
   if (route.query.storeId) {
@@ -124,7 +129,7 @@ function handleWishlistUpdate(payload: { id: number, isFavorite: boolean }) {
 
     <div v-if="route.path !== '/cabinet'" class="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 border-b border-white/10 pb-4">
       <div class="flex items-baseline gap-3">
-        <h2 class="text-white text-2xl font-bold font-['Unbounded']">{{ gridTitle }}</h2>
+        <h2 class="text-white text-2xl font-bold font-['Unbounded']">{{ gridTitle }} <span v-if="storeName && route.query.storeId" class="text-orange-500 ml-2">{{ storeName }}</span></h2>
         <span class="text-gray-500 text-sm font-['Onest']">
           {{ productStore.totalElements }} позицій
         </span>

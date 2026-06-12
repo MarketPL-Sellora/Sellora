@@ -148,6 +148,7 @@ const productBreadcrumbs = computed(() => {
 
       <div class="flex flex-col gap-16">
         <ProductTabs 
+          :api-product="productStore.currentProduct"
           :description="productStore.currentProduct?.description" 
           :attributes="productStore.currentProduct?.attributes" 
         />

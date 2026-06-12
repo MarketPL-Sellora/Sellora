@@ -34,10 +34,12 @@ async function handleAddToCart() {
     setTimeout(() => { showCartToast.value = false }, 3000)
   }
 }
-const joinSuccess = computed(() => {
-  if (!props.sessionData?.uuid) return false;
-  return groupBuyStore.mySessions.some(s => s.uuid === props.sessionData!.uuid);
-});
+const activeSessionForProduct = computed(() => {
+  if (!props.apiProduct?.id) return null
+  return groupBuyStore.mySessions.find(s => s.productId === props.apiProduct!.id)
+})
+
+const isUserInGroup = computed(() => !!activeSessionForProduct.value)
 const localMembersCount = ref(0)
 
 watch(() => props.sessionData, (newData) => {
@@ -102,8 +104,9 @@ const product = computed(() => {
     brand: ap.attributes?.['Бренд'] || 'Sellora',
     name: ap.title,
     sku: String(ap.id),
-    rating: 0,
-    reviewCount: 0,
+    rating: (ap as any).rating || 0,
+    reviewCount: (ap as any).reviews_count || 0,
+    reviews: ((ap as any).reviews as ReviewItem[]) || [],
     inStock: (ap.stockQuantity ?? 0) > 0,
     groupPrice,
     standardPrice,
@@ -183,6 +186,8 @@ onMounted(async () => {
   timerInterval = setInterval(updateCountdown, 1000)
 })
 onUnmounted(() => clearInterval(timerInterval))
+
+
 
 const countdownFormatted = computed(() => countdownText.value)
 
@@ -348,7 +353,7 @@ const emit = defineEmits<{
             ЗБІР ЗАВЕРШЕНО (ЧАС ВИЧЕРПАНО)
           </div>
 
-          <div v-else-if="joinSuccess" class="w-full h-14 py-4 bg-green-600 rounded-xl text-white text-[11px] sm:text-xs md:text-base font-normal font-['Unbounded'] leading-6 tracking-wide text-center flex items-center justify-center">
+          <div v-else-if="isUserInGroup" class="w-full h-14 py-4 bg-green-600 rounded-xl text-white text-[11px] sm:text-xs md:text-base font-normal font-['Unbounded'] leading-6 tracking-wide text-center flex items-center justify-center">
             ВИ ВЖЕ БЕРЕТЕ УЧАСТЬ ✓
           </div>
 

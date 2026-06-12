@@ -130,12 +130,7 @@ const isDragging = ref(false)
 
 // ─── 3. Характеристики ───────────────────────────────────────────────────────
 
-const characteristics = ref<Characteristic[]>([
-  { name: 'Бренд',   value: 'Apple'             },
-  { name: 'Модель',  value: 'iPhone 15 Pro Max'  },
-  { name: 'Колір',   value: 'Natural Titanium'   },
-  { name: "Пам'ять", value: '256 ГБ'             },
-])
+const characteristics = ref<Characteristic[]>([])
 
 function addCharacteristic() {
   characteristics.value.push({ name: '', value: '' })
