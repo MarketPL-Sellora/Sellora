@@ -76,4 +76,14 @@ public class ProductSpecification {
       return cb.exists(subquery);
     };
   }
+
+  public static org.springframework.data.jpa.domain.Specification<com.sellora.core.domain.entities.Product> hasCategoryIdIn(java.util.List<Long> categoryIds) {
+    return (root, query, criteriaBuilder) -> {
+      if (categoryIds == null || categoryIds.isEmpty()) {
+        return null;
+      }
+      // Тепер шукаємо через SQL-оператор IN (...)
+      return root.get("categoryId").in(categoryIds);
+    };
+  }
 }
