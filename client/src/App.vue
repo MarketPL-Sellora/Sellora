@@ -2,15 +2,20 @@
 import { onMounted } from 'vue';
 import { useCategoryStore } from './state/categoryStore';
 import { useUserStore } from './state/userStore'; // ДОДАНО
+import { useGroupBuyStore } from './state/groupBuyStore'; // ДОДАНО
 
 // Ініціалізуємо сховища
 const categoryStore = useCategoryStore();
 const userStore = useUserStore(); // ДОДАНО
+const groupBuyStore = useGroupBuyStore(); // ДОДАНО
 
 // Завантажуємо дані один раз при старті додатку
 onMounted(async () => { // ЗМІНЕНО НА async
   categoryStore.fetchCategories();
   await userStore.fetchMe(); // ДОДАНО: перевіряємо авторизацію при старті
+  if (userStore.isAuthenticated) {
+    groupBuyStore.fetchMySessions();
+  }
 });
 
 // Зараз ми дивимося сторінку товару.
