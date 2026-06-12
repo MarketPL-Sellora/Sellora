@@ -56,7 +56,7 @@ public class ProductControllerTest {
   void getProducts_ReturnsOkWithPage() {
     Page<ProductResponseDto> page = new PageImpl<>(List.of(
       new ProductResponseDto(1L, "Title", "Desc", BigDecimal.TEN, BigDecimal.ONE,
-        5, 10, 1L, null, 1L, null, Map.of(), List.of(), "ACTIVE", false)
+        5, 10, 1L, null, 1L, null, Map.of(), List.of(), "ACTIVE", false, null)
     ));
     when(productService.filterProducts(
       any(), any(), any(), any(), any(), any(), any(),
@@ -80,7 +80,7 @@ public class ProductControllerTest {
     ProductResponseDto dto = new ProductResponseDto(
       1L, "Title", "Desc", BigDecimal.TEN, BigDecimal.ONE, 5, 10,
       1L, "Category", 1L, "Store", Map.of(), List.of(), "ACTIVE",
-      false // Додано параметр isFavorite
+      false, null
     );
     when(productService.getProductById(eq(1L), anyBoolean())).thenReturn(dto);
 

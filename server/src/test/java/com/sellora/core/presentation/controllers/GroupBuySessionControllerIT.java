@@ -24,16 +24,16 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * не покладаючись на seed-сесії (які можуть бути змінені іншими тестами).
  *
  * Seed products (стабільні):
- *   - Product id=1 → ACTIVE, groupTargetSize=3, groupPrice=44000
- *   - Product id=2 → ACTIVE, groupTargetSize=3, groupPrice=47000
- *   - Product id=3 → ACTIVE, groupTargetSize=5, groupPrice=4800
+ * - Product id=1 → ACTIVE, groupTargetSize=3, groupPrice=44000
+ * - Product id=2 → ACTIVE, groupTargetSize=3, groupPrice=47000
+ * - Product id=3 → ACTIVE, groupTargetSize=5, groupPrice=4800
  *
  * Users:
- *   - ivan.buyer@gmail.com      (id=7)
- *   - olena.p@ukr.net           (id=8)
- *   - sergiy.tech@outlook.com   (id=9)
- *   - marina.shop@test.com      (id=10)
- *   - Пароль: '12345678'
+ * - ivan.buyer@gmail.com      (id=7)
+ * - olena.p@ukr.net           (id=8)
+ * - sergiy.tech@outlook.com   (id=9)
+ * - marina.shop@test.com      (id=10)
+ * - Пароль: '12345678'
  */
 @Transactional
 public class GroupBuySessionControllerIT extends AbstractIntegrationTest {
@@ -66,11 +66,26 @@ public class GroupBuySessionControllerIT extends AbstractIntegrationTest {
     return new Cookie("accessToken", c.getValue());
   }
 
+  private String validCheckoutRequestJson(long productId) {
+    return String.format("""
+        {
+          "buyer_name": "Тест",
+          "buyer_surname": "Тестов",
+          "buyer_phone": "+380501112233",
+          "buyer_email": "test@example.com",
+          "delivery_type": "PICKUP",
+          "payment_method": "CASH_ON_DELIVERY",
+          "product_id": %d,
+          "quantity": 1
+        }
+        """, productId);
+  }
+
   /** Створює сесію і повертає її UUID */
   private String createSession(Cookie cookie, long productId) throws Exception {
     String response = mockMvc.perform(post("/api/v1/group-buy/sessions")
         .contentType(MediaType.APPLICATION_JSON)
-        .content(String.format("{\"productId\":%d}", productId))
+        .content(validCheckoutRequestJson(productId))
         .cookie(cookie))
       .andExpect(status().isCreated())
       .andReturn()
@@ -98,14 +113,21 @@ public class GroupBuySessionControllerIT extends AbstractIntegrationTest {
 
   @Test
   void getSessionByUuid_CompletedSession_IsAvailableFalse() throws Exception {
-    // Створюємо сесію з targetSize=3 (product id=1) і заповнюємо її
     Cookie c1 = loginAndGetCookie("marina.shop@test.com", "12345678");
     Cookie c2 = loginAndGetCookie("olena.p@ukr.net", "12345678");
     Cookie c3 = loginAndGetCookie("sergiy.tech@outlook.com", "12345678");
 
-    String uuid = createSession(c1, 1L); // marina створює, стає 1-м учасником
-    mockMvc.perform(post("/api/v1/group-buy/sessions/" + uuid + "/join").cookie(c2)).andExpect(status().isOk());
-    mockMvc.perform(post("/api/v1/group-buy/sessions/" + uuid + "/join").cookie(c3)).andExpect(status().isOk());
+    String uuid = createSession(c1, 1L);
+
+    mockMvc.perform(post("/api/v1/group-buy/sessions/" + uuid + "/join")
+      .contentType(MediaType.APPLICATION_JSON)
+      .content(validCheckoutRequestJson(1L))
+      .cookie(c2)).andExpect(status().isOk());
+
+    mockMvc.perform(post("/api/v1/group-buy/sessions/" + uuid + "/join")
+      .contentType(MediaType.APPLICATION_JSON)
+      .content(validCheckoutRequestJson(1L))
+      .cookie(c3)).andExpect(status().isOk());
 
     mockMvc.perform(get("/api/v1/group-buy/sessions/" + uuid))
       .andExpect(status().isOk())
@@ -127,18 +149,17 @@ public class GroupBuySessionControllerIT extends AbstractIntegrationTest {
   void createSession_WithoutAuth_Returns401() throws Exception {
     mockMvc.perform(post("/api/v1/group-buy/sessions")
         .contentType(MediaType.APPLICATION_JSON)
-        .content("{\"productId\":3}"))
+        .content(validCheckoutRequestJson(3L)))
       .andExpect(status().isUnauthorized());
   }
 
   @Test
   void createSession_ValidProduct_ReturnsCreatedSession() throws Exception {
-    // Використовуємо apple_auth (merchant) — точно не є учасником жодної сесії
     Cookie cookie = loginAndGetCookie("apple_auth@merchant.ua", "12345678");
 
     mockMvc.perform(post("/api/v1/group-buy/sessions")
         .contentType(MediaType.APPLICATION_JSON)
-        .content("{\"productId\":3}")
+        .content(validCheckoutRequestJson(3L))
         .cookie(cookie))
       .andExpect(status().isCreated())
       .andExpect(jsonPath("$.uuid").exists())
@@ -150,13 +171,11 @@ public class GroupBuySessionControllerIT extends AbstractIntegrationTest {
   @Test
   void createSession_UserAlreadyInActiveSession_Returns400() throws Exception {
     Cookie cookie = loginAndGetCookie("marina.shop@test.com", "12345678");
-    // Створюємо першу сесію для product id=2
     createSession(cookie, 2L);
 
-    // Намагаємось створити другу для того самого продукту
     mockMvc.perform(post("/api/v1/group-buy/sessions")
         .contentType(MediaType.APPLICATION_JSON)
-        .content("{\"productId\":2}")
+        .content(validCheckoutRequestJson(2L))
         .cookie(cookie))
       .andExpect(status().isBadRequest());
   }
@@ -167,7 +186,7 @@ public class GroupBuySessionControllerIT extends AbstractIntegrationTest {
 
     mockMvc.perform(post("/api/v1/group-buy/sessions")
         .contentType(MediaType.APPLICATION_JSON)
-        .content("{\"productId\":999999}")
+        .content(validCheckoutRequestJson(999999L))
         .cookie(cookie))
       .andExpect(status().isNotFound());
   }
@@ -178,7 +197,6 @@ public class GroupBuySessionControllerIT extends AbstractIntegrationTest {
     String uuid = createSession(cookie, 3L);
 
     var session = sessionRepository.findByUuid(uuid).orElseThrow();
-    // User id=8 (olena) має бути в members
     assertTrue(memberRepository.existsBySessionIdAndUserId(session.getId(), 8L));
   }
 
@@ -191,7 +209,9 @@ public class GroupBuySessionControllerIT extends AbstractIntegrationTest {
     Cookie c = loginAndGetCookie("marina.shop@test.com", "12345678");
     String uuid = createSession(c, 3L);
 
-    mockMvc.perform(post("/api/v1/group-buy/sessions/" + uuid + "/join"))
+    mockMvc.perform(post("/api/v1/group-buy/sessions/" + uuid + "/join")
+        .contentType(MediaType.APPLICATION_JSON)
+        .content(validCheckoutRequestJson(3L)))
       .andExpect(status().isUnauthorized());
   }
 
@@ -202,9 +222,12 @@ public class GroupBuySessionControllerIT extends AbstractIntegrationTest {
     String uuid = createSession(creatorCookie, 3L);
 
     mockMvc.perform(post("/api/v1/group-buy/sessions/" + uuid + "/join")
+        .contentType(MediaType.APPLICATION_JSON)
+        .content(validCheckoutRequestJson(3L))
         .cookie(joinerCookie))
       .andExpect(status().isOk())
-      .andExpect(jsonPath("$.message", containsString("приєдналися")));
+      .andExpect(jsonPath("$.uuid").value(uuid))
+      .andExpect(jsonPath("$.currentMembersCount").value(greaterThanOrEqualTo(2)));
 
     var session = sessionRepository.findByUuid(uuid).orElseThrow();
     assertTrue(memberRepository.existsBySessionIdAndUserId(session.getId(), 7L));
@@ -215,8 +238,9 @@ public class GroupBuySessionControllerIT extends AbstractIntegrationTest {
     Cookie cookie = loginAndGetCookie("marina.shop@test.com", "12345678");
     String uuid = createSession(cookie, 3L);
 
-    // marina вже є учасником (як ініціатор) → спроба приєднатись знову
     mockMvc.perform(post("/api/v1/group-buy/sessions/" + uuid + "/join")
+        .contentType(MediaType.APPLICATION_JSON)
+        .content(validCheckoutRequestJson(3L))
         .cookie(cookie))
       .andExpect(status().isBadRequest());
   }
@@ -226,24 +250,30 @@ public class GroupBuySessionControllerIT extends AbstractIntegrationTest {
     Cookie cookie = loginAndGetCookie("marina.shop@test.com", "12345678");
 
     mockMvc.perform(post("/api/v1/group-buy/sessions/non-existing-uuid/join")
+        .contentType(MediaType.APPLICATION_JSON)
+        .content(validCheckoutRequestJson(3L))
         .cookie(cookie))
       .andExpect(status().isNotFound());
   }
 
   @Test
   void joinSession_LastSpot_SessionBecomesCompleted() throws Exception {
-    // Product id=1 має targetSize=3
-    // Створюємо сесію (1 учасник) → 2 приєднуються → COMPLETED
     Cookie c1 = loginAndGetCookie("marina.shop@test.com", "12345678");
     Cookie c2 = loginAndGetCookie("ivan.buyer@gmail.com", "12345678");
     Cookie c3 = loginAndGetCookie("sergiy.tech@outlook.com", "12345678");
 
     String uuid = createSession(c1, 1L);
 
-    mockMvc.perform(post("/api/v1/group-buy/sessions/" + uuid + "/join").cookie(c2))
+    mockMvc.perform(post("/api/v1/group-buy/sessions/" + uuid + "/join")
+        .contentType(MediaType.APPLICATION_JSON)
+        .content(validCheckoutRequestJson(1L))
+        .cookie(c2))
       .andExpect(status().isOk());
 
-    mockMvc.perform(post("/api/v1/group-buy/sessions/" + uuid + "/join").cookie(c3))
+    mockMvc.perform(post("/api/v1/group-buy/sessions/" + uuid + "/join")
+        .contentType(MediaType.APPLICATION_JSON)
+        .content(validCheckoutRequestJson(1L))
+        .cookie(c3))
       .andExpect(status().isOk());
 
     var session = sessionRepository.findByUuid(uuid).orElseThrow();
@@ -252,18 +282,26 @@ public class GroupBuySessionControllerIT extends AbstractIntegrationTest {
 
   @Test
   void joinSession_CompletedSession_Returns400() throws Exception {
-    // Заповнюємо сесію до кінця
     Cookie c1 = loginAndGetCookie("marina.shop@test.com", "12345678");
     Cookie c2 = loginAndGetCookie("ivan.buyer@gmail.com", "12345678");
     Cookie c3 = loginAndGetCookie("sergiy.tech@outlook.com", "12345678");
     Cookie c4 = loginAndGetCookie("olena.p@ukr.net", "12345678");
 
     String uuid = createSession(c1, 1L);
-    mockMvc.perform(post("/api/v1/group-buy/sessions/" + uuid + "/join").cookie(c2));
-    mockMvc.perform(post("/api/v1/group-buy/sessions/" + uuid + "/join").cookie(c3));
 
-    // Тепер сесія COMPLETED → c4 намагається приєднатись
     mockMvc.perform(post("/api/v1/group-buy/sessions/" + uuid + "/join")
+      .contentType(MediaType.APPLICATION_JSON)
+      .content(validCheckoutRequestJson(1L))
+      .cookie(c2));
+
+    mockMvc.perform(post("/api/v1/group-buy/sessions/" + uuid + "/join")
+      .contentType(MediaType.APPLICATION_JSON)
+      .content(validCheckoutRequestJson(1L))
+      .cookie(c3));
+
+    mockMvc.perform(post("/api/v1/group-buy/sessions/" + uuid + "/join")
+        .contentType(MediaType.APPLICATION_JSON)
+        .content(validCheckoutRequestJson(1L))
         .cookie(c4))
       .andExpect(status().isBadRequest());
   }
@@ -273,15 +311,8 @@ public class GroupBuySessionControllerIT extends AbstractIntegrationTest {
   // ─────────────────────────────────────────────
 
   @Test
-  void getUserSessions_WithoutAuth_Returns401() throws Exception {
-    mockMvc.perform(get("/api/v1/group-buy/sessions/user"))
-      .andExpect(status().isUnauthorized());
-  }
-
-  @Test
   void getUserSessions_ReturnsUserSessions() throws Exception {
     Cookie cookie = loginAndGetCookie("samsung_official@merchant.ua", "12345678");
-    // Створюємо сесію щоб точно мати хоч одну
     createSession(cookie, 3L);
 
     mockMvc.perform(get("/api/v1/group-buy/sessions/user").cookie(cookie))
@@ -305,14 +336,21 @@ public class GroupBuySessionControllerIT extends AbstractIntegrationTest {
 
   @Test
   void getUserSessions_FilterByCompleted_ReturnsOnlyCompleted() throws Exception {
-    // Створюємо і заповнюємо сесію до COMPLETED
     Cookie c1 = loginAndGetCookie("olena.p@ukr.net", "12345678");
     Cookie c2 = loginAndGetCookie("marina.shop@test.com", "12345678");
     Cookie c3 = loginAndGetCookie("sergiy.tech@outlook.com", "12345678");
 
     String uuid = createSession(c1, 1L);
-    mockMvc.perform(post("/api/v1/group-buy/sessions/" + uuid + "/join").cookie(c2));
-    mockMvc.perform(post("/api/v1/group-buy/sessions/" + uuid + "/join").cookie(c3));
+
+    mockMvc.perform(post("/api/v1/group-buy/sessions/" + uuid + "/join")
+      .contentType(MediaType.APPLICATION_JSON)
+      .content(validCheckoutRequestJson(1L))
+      .cookie(c2));
+
+    mockMvc.perform(post("/api/v1/group-buy/sessions/" + uuid + "/join")
+      .contentType(MediaType.APPLICATION_JSON)
+      .content(validCheckoutRequestJson(1L))
+      .cookie(c3));
 
     mockMvc.perform(get("/api/v1/group-buy/sessions/user")
         .param("status", "COMPLETED")

@@ -6,6 +6,7 @@ import com.sellora.core.domain.entities.Product;
 import com.sellora.core.infrastructure.persistence.CartItemRepository;
 import com.sellora.core.infrastructure.persistence.CartRepository;
 import com.sellora.core.infrastructure.persistence.ProductRepository;
+import com.sellora.core.infrastructure.persistence.StoreRepository;
 import com.sellora.core.presentation.dtos.AddToCartDto;
 import com.sellora.core.presentation.dtos.AddToCartResponseDto;
 import com.sellora.core.presentation.dtos.CartResponseDto;
@@ -42,6 +43,8 @@ public class CartServiceTest {
   @Mock
   private ProductRepository productRepository;
 
+  @Mock
+  private StoreRepository storeRepository;
   @InjectMocks
   private CartService cartService;
 
