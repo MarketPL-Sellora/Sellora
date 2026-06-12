@@ -35,4 +35,7 @@ public interface GroupBuySessionRepository extends JpaRepository<GroupBuySession
   @Query("UPDATE GroupBuySession s SET s.status = 'CANCELED' WHERE s.status = 'ACTIVE' AND s.productId IN (SELECT p.id FROM Product p WHERE p.merchantId = :merchantId)")
   void cancelAllActiveSessionsForMerchant(@org.springframework.data.repository.query.Param("merchantId") Long merchantId);
 
+  @Query("SELECT s.uuid FROM GroupBuySession s JOIN GroupMember m ON s.id = m.sessionId WHERE m.userId = :userId AND s.productId = :productId AND s.status = 'ACTIVE'")
+  java.util.Optional<String> findActiveSessionUuidForUserAndProduct(@org.springframework.data.repository.query.Param("userId") Long userId, @org.springframework.data.repository.query.Param("productId") Long productId);
+
 }

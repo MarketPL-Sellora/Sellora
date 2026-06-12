@@ -19,8 +19,6 @@ public class StoreService {
   private final ProductRepository productRepository;
   private final GroupBuySessionRepository groupBuySessionRepository;
   private final ShippingCarrierRepository shippingCarrierRepository;
-
-  // --- ДОДАНО НОВІ ІН'ЄКЦІЇ ---
   private final MerchantRequisiteService merchantRequisiteService;
   private final MerchantRequisiteRepository merchantRequisiteRepository;
 
@@ -33,6 +31,14 @@ public class StoreService {
       throw new ConflictException("У вас вже є створений магазин!");
     }
 
+    // --- ФІКС БАГУ: Ескалація привілеїв (Role Upgrade) ---
+    // Робимо це НА ПОЧАТКУ транзакції!
+    // Тепер, коли ми викличемо merchantRequisiteService нижче, він перевірить БД і побачить "MERCHANT", а не "BUYER", і не викине 403 Forbidden.
+    if (!"ADMIN".equalsIgnoreCase(currentUser.getRole())) {
+      currentUser.setRole("MERCHANT");
+      userRepository.save(currentUser);
+    }
+
     Store store = new Store();
     store.setOwnerId(currentUser.getId());
     store.setName(request.getName());
@@ -42,6 +48,9 @@ public class StoreService {
     store.setDescription(request.getDescription());
     store.setLogoUrl(request.getLogoUrl());
     store.setStatus("PENDING");
+
+    // Зберігаємо магазин перед тим, як в'язати до нього служби доставки
+    storeRepository.save(store);
 
     // --- ЛОГІКА ДОДАВАННЯ МЕТОДІВ ДОСТАВКИ (Атомарно) ---
     if (request.getShippingMethods() != null) {
@@ -57,18 +66,11 @@ public class StoreService {
       }
     }
 
-    storeRepository.save(store);
-
     // --- ЛОГІКА ДОДАВАННЯ РЕКВІЗИТІВ (Атомарно) ---
     if (request.getMerchantRequisites() != null && !request.getMerchantRequisites().isEmpty()) {
       for (MerchantRequisiteDto reqDto : request.getMerchantRequisites()) {
         merchantRequisiteService.create(reqDto, currentUser.getId());
       }
-    }
-
-    if (!"ADMIN".equalsIgnoreCase(currentUser.getRole())) {
-      currentUser.setRole("MERCHANT");
-      userRepository.save(currentUser);
     }
   }
 
@@ -184,9 +186,7 @@ public class StoreService {
       userRepository.save(owner);
     }
 
-    // --- ДОДАНО ОЧИЩЕННЯ РЕКВІЗИТІВ ПРИ ВИДАЛЕННІ МАГАЗИНУ ---
     merchantRequisiteRepository.deleteAllByOwnerId(store.getOwnerId());
-
     storeRepository.delete(store);
   }
 
