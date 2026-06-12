@@ -120,14 +120,33 @@ public class GlobalExceptionHandler {
   }
 
   /**
-   * Обробка помилок бази даних (наприклад, коли спрацьовує Foreign Key при видаленні)
+   * Обробка помилок бази даних (Foreign Key, Check Constraints, Unique Constraints)
    */
   @ExceptionHandler(DataIntegrityViolationException.class)
   public ResponseEntity<ApiErrorResponse> handleDataIntegrityViolationException(DataIntegrityViolationException ex) {
+    // Отримуємо найбільш детальне повідомлення від бази даних
+    String rootMessage = ex.getMostSpecificCause().getMessage();
+    String userMessage = "Помилка цілісності даних бази даних.";
+
+    if (rootMessage != null) {
+      String lowerCaseMessage = rootMessage.toLowerCase();
+
+      if (lowerCaseMessage.contains("foreign key") || lowerCaseMessage.contains("fk_")) {
+        userMessage = "Неможливо виконати дію (видалити або оновити), оскільки до цього запису вже прив'язана історія.";
+      } else if (lowerCaseMessage.contains("check") && (lowerCaseMessage.contains("date") || lowerCaseMessage.contains("time"))) {
+        userMessage = "Некоректний діапазон дат. Перевірте правильність введених часових рамок.";
+      } else if (lowerCaseMessage.contains("unique") || lowerCaseMessage.contains("duplicate")) {
+        userMessage = "Такий запис вже існує. Дані мають бути унікальними (наприклад, код промокоду чи назва).";
+      } else {
+        // Для інших CHECK обмежень (наприклад статусів)
+        userMessage = "Недопустиме значення поля згідно з правилами бази даних.";
+      }
+    }
+
     ApiErrorResponse error = new ApiErrorResponse(
       LocalDateTime.now().toString(),
       "CONFLICT_DB_RELATION",
-      "Неможливо виконати дію (видалити або оновити), оскільки до цього запису вже прив'язана історія в базі даних."
+      userMessage
     );
     return new ResponseEntity<>(error, HttpStatus.CONFLICT);
   }
