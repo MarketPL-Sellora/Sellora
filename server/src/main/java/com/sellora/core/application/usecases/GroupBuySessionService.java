@@ -56,7 +56,8 @@ public class GroupBuySessionService {
   public GroupBuySessionResponseDto createSession(GroupBuyCheckoutRequestDto dto, Long initiatorId) {
     if (!userRepository.existsById(initiatorId)) throw new ResourceNotFoundException("Користувача не знайдено");
 
-    if (memberRepository.isUserInActiveSessionForProduct(initiatorId, dto.getProductId())) {
+    // ФІКС 1: Перевірка виключно активної сесії
+    if (sessionRepository.hasActiveSessionForUserAndProduct(initiatorId, dto.getProductId())) {
       throw new BadRequestException("Ви вже берете участь в активній сесії для цього товару.");
     }
 
@@ -84,7 +85,12 @@ public class GroupBuySessionService {
       .orElseThrow(() -> new ResourceNotFoundException("Сесію не знайдено"));
 
     if (!"ACTIVE".equals(session.getStatus())) throw new BadRequestException("Ця сесія вже неактивна");
-    if (memberRepository.existsBySessionIdAndUserId(session.getId(), userId)) throw new BadRequestException("Ви вже учасник цієї групи");
+
+    // ФІКС 1: Перевірка виключно активної сесії
+    if (sessionRepository.hasActiveSessionForUserAndProduct(userId, dto.getProductId())) {
+      throw new BadRequestException("Ви вже берете участь в активній сесії для цього товару.");
+    }
+
     if (memberRepository.countBySessionId(session.getId()) >= session.getLockedTargetSize()) throw new BadRequestException("В групі немає вільних місць");
     if (!session.getProductId().equals(dto.getProductId())) throw new BadRequestException("Товар у запиті не збігається з товаром сесії");
 
@@ -100,13 +106,11 @@ public class GroupBuySessionService {
   }
 
   private GroupBuySessionResponseDto processGroupBuyOrder(Long userId, GroupBuyCheckoutRequestDto request, GroupBuySession session) {
-    // 1. Валідація доставки
     String deliveryType = request.getDeliveryType().toUpperCase();
     if (("BRANCH".equals(deliveryType) || "COURIER".equals(deliveryType)) && (request.getCarrierId() == null || request.getDeliveryAddress() == null)) {
       throw new BadRequestException("Для доставки BRANCH або COURIER обов'язково вказати carrier_id та delivery_address");
     }
 
-    // 2. Блокування товару та перевірка стоку
     Product product = productRepository.findByIdForUpdate(request.getProductId())
       .orElseThrow(() -> new ResourceNotFoundException("Товар не знайдено або він не активний"));
 
@@ -114,7 +118,6 @@ public class GroupBuySessionService {
       throw new ConflictException("Недостатньо товару на складі. Доступно: " + product.getStockQuantity());
     }
 
-    // 3. Розрахунок цін
     BigDecimal subtotal = session.getLockedPrice().multiply(BigDecimal.valueOf(request.getQuantity()));
     BigDecimal discount = BigDecimal.ZERO;
     PromoCode appliedPromo = null;
@@ -139,12 +142,10 @@ public class GroupBuySessionService {
     BigDecimal tax = subtotal.subtract(discount).multiply(BigDecimal.valueOf(0.01)).setScale(2, RoundingMode.HALF_UP);
     BigDecimal totalAmount = subtotal.subtract(discount).add(tax);
 
-    // 4. Списання залишків
     product.setStockQuantity(product.getStockQuantity() - request.getQuantity());
     if (product.getStockQuantity() == 0) product.setStatus("OUT_OF_STOCK");
     productRepository.save(product);
 
-    // 5. Створення DRAFT замовлення
     String paymentMethod = request.getPaymentMethod().toUpperCase();
     Order order = new Order();
     order.setUserId(userId);
@@ -186,7 +187,6 @@ public class GroupBuySessionService {
       promoUsageHistoryRepository.save(usage);
     }
 
-    // 6. Додавання в групу (ТІЛЬКИ ДЛЯ ГОТІВКИ)
     if ("CASH_ON_DELIVERY".equals(paymentMethod)) {
       GroupMember member = new GroupMember();
       member.setSessionId(session.getId());
@@ -200,7 +200,6 @@ public class GroupBuySessionService {
       }
     }
 
-    // 7. Повернення відповіді
     String paymentUrl = "ONLINE_CARD".equals(paymentMethod) ? paymentService.generatePaymentUrl(savedOrder.getId(), totalAmount) : null;
     GroupBuySessionResponseDto d = getSessionDetails(session.getUuid());
 
