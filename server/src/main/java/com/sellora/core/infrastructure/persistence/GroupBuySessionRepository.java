@@ -34,7 +34,7 @@ public interface GroupBuySessionRepository extends JpaRepository<GroupBuySession
   @Query("SELECT s.uuid FROM GroupBuySession s JOIN GroupMember m ON s.id = m.sessionId WHERE m.userId = :userId AND s.productId = :productId AND s.status = 'ACTIVE'")
   Optional<String> findActiveSessionUuidForUserAndProduct(@Param("userId") Long userId, @Param("productId") Long productId);
 
-  // --- НОВИЙ ФІКС: Перевірка тільки АКТИВНОЇ сесії (як для ініціатора, так і для учасника) ---
-  @Query("SELECT COUNT(s) > 0 FROM GroupBuySession s LEFT JOIN GroupMember m ON s.id = m.sessionId WHERE (s.initiatorId = :userId OR m.userId = :userId) AND s.productId = :productId AND s.status = 'ACTIVE'")
-  boolean hasActiveSessionForUserAndProduct(@Param("userId") Long userId, @Param("productId") Long productId);
+  // --- ФІКС: Перевірка тільки АКТИВНОЇ та НЕ ПРОСТРОЧЕНОЇ сесії ---
+  @Query("SELECT COUNT(s) > 0 FROM GroupBuySession s LEFT JOIN GroupMember m ON s.id = m.sessionId WHERE (s.initiatorId = :userId OR m.userId = :userId) AND s.productId = :productId AND s.status = 'ACTIVE' AND s.expiresAt > :now")
+  boolean hasActiveAndNotExpiredSessionForUserAndProduct(@Param("userId") Long userId, @Param("productId") Long productId, @Param("now") LocalDateTime now);
 }
