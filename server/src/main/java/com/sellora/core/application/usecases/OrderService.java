@@ -401,7 +401,8 @@ public class OrderService {
     // Оновлення Shipping Status
     if (request.shippingStatus() != null) {
       String newShippingStatus = request.shippingStatus().toUpperCase();
-      if (!List.of("PENDING", "PROCESSING", "SHIPPED", "DELIVERED").contains(newShippingStatus)) {
+      // ДОДАНО "CANCELLED" У СПИСОК ДОЗВОЛЕНИХ СТАТУСІВ
+      if (!List.of("PENDING", "PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED").contains(newShippingStatus)) {
         throw new BadRequestException("Недопустимий статус доставки");
       }
       order.setShippingStatus(newShippingStatus);
@@ -514,8 +515,9 @@ public class OrderService {
       });
     }
 
-    // 4. Оновлення статусу замовлення
+    // 4. Оновлення статусів замовлення
     order.setPaymentStatus("CANCELLED");
+    order.setShippingStatus("CANCELLED");
     orderRepository.save(order);
   }
 
