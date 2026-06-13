@@ -384,6 +384,13 @@ public class OrderService {
       throw new ForbiddenException("Тільки власник магазину може оновлювати це замовлення");
     }
 
+    // --- ДОДАНО: ЗАХИСТ ВІД "ОЖИВЛЕННЯ" СКАСОВАНИХ ЗАМОВЛЕНЬ ---
+    // Якщо замовлення вже скасоване, будь-які зміни заборонені
+    if ("CANCELLED".equalsIgnoreCase(order.getPaymentStatus()) || "CANCELLED".equalsIgnoreCase(order.getShippingStatus())) {
+      throw new BadRequestException("Скасоване замовлення є остаточним і не підлягає редагуванню");
+    }
+    // -----------------------------------------------------------
+
     // Оновлення Payment Status
     if (request.paymentStatus() != null) {
       if ("ONLINE_CARD".equalsIgnoreCase(order.getPaymentMethod())) {
@@ -401,7 +408,6 @@ public class OrderService {
     // Оновлення Shipping Status
     if (request.shippingStatus() != null) {
       String newShippingStatus = request.shippingStatus().toUpperCase();
-      // ДОДАНО "CANCELLED" У СПИСОК ДОЗВОЛЕНИХ СТАТУСІВ
       if (!List.of("PENDING", "PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED").contains(newShippingStatus)) {
         throw new BadRequestException("Недопустимий статус доставки");
       }
