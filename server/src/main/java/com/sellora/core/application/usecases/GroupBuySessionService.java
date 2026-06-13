@@ -56,8 +56,8 @@ public class GroupBuySessionService {
   public GroupBuySessionResponseDto createSession(GroupBuyCheckoutRequestDto dto, Long initiatorId) {
     if (!userRepository.existsById(initiatorId)) throw new ResourceNotFoundException("Користувача не знайдено");
 
-    // ФІКС 1: Перевірка виключно активної сесії
-    if (sessionRepository.hasActiveSessionForUserAndProduct(initiatorId, dto.getProductId())) {
+    // ФІКС: Перевірка виключно активної і не простроченої сесії
+    if (sessionRepository.hasActiveAndNotExpiredSessionForUserAndProduct(initiatorId, dto.getProductId(), LocalDateTime.now())) {
       throw new BadRequestException("Ви вже берете участь в активній сесії для цього товару.");
     }
 
@@ -86,8 +86,8 @@ public class GroupBuySessionService {
 
     if (!"ACTIVE".equals(session.getStatus())) throw new BadRequestException("Ця сесія вже неактивна");
 
-    // ФІКС 1: Перевірка виключно активної сесії
-    if (sessionRepository.hasActiveSessionForUserAndProduct(userId, dto.getProductId())) {
+    // ФІКС: Перевірка виключно активної і не простроченої сесії
+    if (sessionRepository.hasActiveAndNotExpiredSessionForUserAndProduct(userId, dto.getProductId(), LocalDateTime.now())) {
       throw new BadRequestException("Ви вже берете участь в активній сесії для цього товару.");
     }
 
