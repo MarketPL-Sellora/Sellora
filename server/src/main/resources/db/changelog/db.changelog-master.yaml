@@ -14,6 +14,9 @@ databaseChangeLog:
   - include:
       file: changes/product-reviews-schema-2026-06-11.sql
       relativeToChangelogFile: true
+  - include:
+      file: changes/modify-orders-shipping_status-2026-06-13.sql
+      relativeToChangelogFile: true
 
 
   - include:
