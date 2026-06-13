@@ -102,7 +102,7 @@ async function deleteReview() {
 
   try {
     await apiClient.delete(`/reviews/${props.apiProduct.id}`)
-    window.location.reload()
+    emit('review-updated')
   } catch (e: any) {
     alert(e.response?.data?.message || 'Помилка при видаленні відгуку')
   }
@@ -120,6 +120,7 @@ watch(() => props.apiProduct, () => {
 
 const emit = defineEmits<{
   (e: 'tab-change', id: string): void
+  (e: 'review-updated'): void
 }>()
 
 function setTab(id: string) {
@@ -325,7 +326,7 @@ function setTab(id: string) {
       @close="isReviewModalOpen = false"
       @success="() => {
         isReviewModalOpen = false;
-        window.location.reload();
+        emit('review-updated');
       }"
     />
 

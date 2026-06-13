@@ -47,6 +47,7 @@ interface Order {
   discount: number
   tax: number
   total_amount: number
+  tracking_number: string | null
   items: OrderItem[]
   created_at: string
   updated_at: string
@@ -105,6 +106,7 @@ const paymentStatusMap: Record<string, { label: string; color: string; bg: strin
   PENDING:  { label: 'Очікує оплати',     color: 'text-amber-400',   bg: 'bg-amber-500/15',   border: 'border-amber-500/25'   },
   FAILED:   { label: 'Помилка оплати',    color: 'text-red-400',     bg: 'bg-red-500/15',     border: 'border-red-500/25'     },
   REFUNDED: { label: 'Повернення коштів', color: 'text-sky-400',     bg: 'bg-sky-500/15',     border: 'border-sky-500/25'     },
+  CANCELLED: { label: 'Скасовано', color: 'text-gray-400', bg: 'bg-gray-500/15', border: 'border-gray-500/25' },
 }
 
 const shippingStatusMap: Record<string, { label: string; color: string; bg: string; border: string }> = {
@@ -287,6 +289,7 @@ onMounted(async () => {
               </span>
               <!-- Shipping badge -->
               <span
+                v-if="order.payment_status !== 'CANCELLED'"
                 class="px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider border"
                 :class="[getShippingBadge(order.shipping_status).color, getShippingBadge(order.shipping_status).bg, getShippingBadge(order.shipping_status).border]"
               >
@@ -356,6 +359,13 @@ onMounted(async () => {
                 <div class="flex justify-between items-start gap-4">
                   <span class="text-gray-500 text-sm shrink-0">Адреса</span>
                   <span class="text-gray-200 text-sm font-medium text-right">{{ deliveryAddressFormatted }}</span>
+                </div>
+              </template>
+              <template v-if="order.tracking_number && order.payment_status !== 'CANCELLED'">
+                <div class="h-px bg-gray-800" />
+                <div class="flex justify-between items-center gap-4">
+                  <span class="text-gray-500 text-sm shrink-0">ТТН (Трек-номер)</span>
+                  <span class="text-orange-400 text-sm font-bold text-right tracking-wider">{{ order.tracking_number }}</span>
                 </div>
               </template>
               <template v-if="order.order_comment">
