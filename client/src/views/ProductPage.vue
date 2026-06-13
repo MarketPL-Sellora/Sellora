@@ -166,10 +166,10 @@ const productBreadcrumbs = computed(() => {
       v-if="isGroupBuyModalOpen"
       :product-id="productId"
       :group-price="groupPrice"
+      :target-size="productStore.currentProduct?.groupTargetSize || 3"
       :session-uuid="sessionData?.uuid ?? null"
       @close="closeGroupModal"
       @open-auth="handleOpenAuth"
-      @success="async () => { if (sessionData?.uuid) { sessionData = await groupBuyStore.fetchSession(sessionData.uuid) } }"
     />
   </div>
 </template>

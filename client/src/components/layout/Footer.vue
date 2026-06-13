@@ -13,23 +13,23 @@ const columns: FooterColumn[] = [
   {
     heading: 'Покупцям',
     links: [
-      { label: 'Як зробити замовлення', href: '#' },
-      { label: 'Оплата та доставка',    href: '#' },
-      { label: 'Повернення товарів',    href: '#' },
-      { label: 'Гарантія та сервіс',    href: '#' },
-      { label: 'Групові покупки',       href: '#' },
-      { label: 'Програма лояльності',   href: '#' },
+      { label: 'Як зробити замовлення', href: '/info/how-to-order' },
+      { label: 'Оплата та доставка',    href: '/info/payment-delivery' },
+      { label: 'Повернення товарів',    href: '/info/returns' },
+      { label: 'Гарантія та сервіс',    href: '/info/warranty' },
+      { label: 'Групові покупки',       href: '/info/group-buys' },
+      { label: 'Програма лояльності',   href: '/info/loyalty' },
     ],
   },
   {
     heading: 'Продавцям',
     links: [
-      { label: 'Стати продавцем',    href: '#' },
-      { label: 'Кабінет продавця',   href: '#' },
-      { label: 'Тарифи та комісії',  href: '#' },
-      { label: 'Групові акції',      href: '#' },
-      { label: 'Реклама на Sellora', href: '#' },
-      { label: 'Технічна підтримка', href: '#' },
+      { label: 'Стати продавцем',    href: '/info/become-seller' },
+      { label: 'Кабінет продавця',   href: '/info/seller-cabinet' },
+      { label: 'Тарифи та комісії',  href: '/info/tariffs' },
+      { label: 'Групові акції',      href: '/info/seller-group-promos' },
+      { label: 'Реклама на Sellora', href: '/info/ads' },
+      { label: 'Технічна підтримка', href: '/info/support' },
     ],
   },
 ]
@@ -53,9 +53,9 @@ const socials: SocialLink[] = [
 // ─── Legal ───────────────────────────────────────────────────────────────────
 
 const legalLinks: LegalLink[] = [
-  { label: 'Умови використання',        href: '#' },
-  { label: 'Політика конфіденційності', href: '#' },
-  { label: 'Cookie',                    href: '#' },
+  { label: 'Умови використання',        href: '/info/terms' },
+  { label: 'Політика конфіденційності', href: '/info/privacy' },
+  { label: 'Cookie',                    href: '/info/cookies' },
 ]
 
 const currentYear = new Date().getFullYear()
@@ -140,14 +140,14 @@ const currentYear = new Date().getFullYear()
             {{ col.heading }}
           </span>
           <div class="flex flex-col gap-2.5">
-            <a
+            <router-link
               v-for="link in col.links"
               :key="link.label"
-              :href="link.href"
+              :to="link.href"
               class="py-0.5 text-[#5a5f7a] text-sm font-normal font-['Onest'] leading-5 transition-colors duration-150 hover:text-orange-500"
             >
               {{ link.label }}
-            </a>
+            </router-link>
           </div>
         </div>
 
@@ -212,14 +212,14 @@ const currentYear = new Date().getFullYear()
           © {{ currentYear }} Sellora. Всі права захищені.
         </span>
         <div class="flex gap-5 flex-wrap">
-          <a
+          <router-link
             v-for="link in legalLinks"
             :key="link.label"
-            :href="link.href"
+            :to="link.href"
             class="text-[#3d4158] text-xs font-normal font-['Onest'] leading-4 transition-colors duration-150 hover:text-orange-500"
           >
             {{ link.label }}
-          </a>
+          </router-link>
         </div>
       </div>
 
