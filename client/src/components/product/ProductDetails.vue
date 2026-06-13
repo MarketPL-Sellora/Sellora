@@ -36,13 +36,24 @@ async function handleAddToCart() {
 }
 const activeSessionForProduct = computed(() => {
   if (!props.apiProduct?.id) return null
-  return groupBuyStore.mySessions.find(s => s.productId === props.apiProduct!.id)
+  
+  return groupBuyStore.mySessions.find(s => {
+    const isMatch = s.productId === props.apiProduct!.id
+    const isNotExpired = s.expiresAt ? dayjs.utc(s.expiresAt).diff(dayjs(), 'second') > 0 : true
+    return isMatch && isNotExpired
+  })
 })
 
 const isUserInGroup = computed(() => !!activeSessionForProduct.value)
+
+// Єдине джерело правди: сесія з URL (props) АБО знайдена активна сесія користувача
+const resolvedSession = computed(() => {
+  return props.sessionData || activeSessionForProduct.value
+})
+
 const localMembersCount = ref(0)
 
-watch(() => props.sessionData, (newData) => {
+watch(resolvedSession, (newData) => {
   if (newData) {
     localMembersCount.value = newData.currentMembersCount
   }
@@ -54,14 +65,14 @@ function handleJoin() {
 
 // ─── ПЕРЕВІРКА НА ЗАПОВНЕНІСТЬ ГРУПИ ─────────────────────────────────────────
 const isGroupFull = computed(() => {
-  if (!props.sessionData) return false
-  return localMembersCount.value >= props.sessionData.targetSize
+  if (!resolvedSession.value) return false
+  return localMembersCount.value >= resolvedSession.value.targetSize
 })
 
 // ─── ПЕРЕВІРКА НА ВИЧЕРПАННЯ ЧАСУ (синхронно через dayjs) ─────────────────
 const isExpired = computed(() => {
-  if (!props.sessionData?.expiresAt) return false
-  return dayjs.utc(props.sessionData.expiresAt).diff(dayjs(), 'second') <= 0
+  if (!resolvedSession.value?.expiresAt) return false
+  return dayjs.utc(resolvedSession.value.expiresAt).diff(dayjs(), 'second') <= 0
 })
 
 interface MemoryOption { label: string }
@@ -148,8 +159,8 @@ const deliveryRows: DeliveryRow[] = [
 ]
 
 const groupPercent = computed(() => {
-  const current = props.sessionData ? localMembersCount.value : product.value.groupCurrent;
-  const total = props.sessionData ? props.sessionData.targetSize : product.value.groupTotal;
+  const current = resolvedSession.value ? localMembersCount.value : product.value.groupCurrent;
+  const total = resolvedSession.value ? resolvedSession.value.targetSize : product.value.groupTotal;
   if (total === 0) return 0;
   return Math.round((current / total) * 100);
 })
@@ -158,12 +169,12 @@ const countdownText = ref('—')
 let timerInterval: ReturnType<typeof setInterval>
 
 function updateCountdown() {
-  if (!props.sessionData?.expiresAt) {
+  if (!resolvedSession.value?.expiresAt) {
     countdownText.value = '—'
     return
   }
   const now = dayjs()
-  const end = dayjs.utc(props.sessionData.expiresAt)
+  const end = dayjs.utc(resolvedSession.value.expiresAt)
   const diff = end.diff(now, 'second')
   if (diff <= 0) {
     countdownText.value = DICT.product.timeExpired
@@ -177,7 +188,7 @@ function updateCountdown() {
 }
 
 // Синхронно оновлюємо таймер при зміні sessionData (усуває flicker — не чекаємо onMounted)
-watch(() => props.sessionData, () => {
+watch(resolvedSession, () => {
   updateCountdown()
 }, { immediate: true })
 
@@ -294,7 +305,7 @@ const emit = defineEmits<{
               </svg>
             </div>
             <span class="text-orange-300 text-base font-normal font-['Onest'] leading-6">
-              {{ sessionData ? DICT.product.groupBuyInvitation : DICT.product.groupBuy }}
+              {{ resolvedSession ? DICT.product.groupBuyInvitation : DICT.product.groupBuy }}
             </span>
           </div>
         <div class="px-3 py-1.5 bg-gradient-to-r from-orange-500/20 to-amber-500/10 rounded-lg outline outline-1 outline-offset-[-1px] outline-orange-500/40">
@@ -312,11 +323,11 @@ const emit = defineEmits<{
 
         <p class="self-stretch text-sm font-normal font-['Onest'] leading-6">
           <span class="text-orange-200/70">Збери групу з </span>
-          <span class="text-orange-300 font-bold">{{ sessionData ? sessionData.targetSize : product.groupMinPeople }} людей</span>
+          <span class="text-orange-300 font-bold">{{ resolvedSession ? resolvedSession.targetSize : product.groupMinPeople }} людей</span>
           <span class="text-orange-200/70"> за {{ product.groupHours }} години та отримай знижку на весь порядок!</span>
         </p>
 
-        <div v-if="sessionData" class="self-stretch pt-2 inline-flex items-center gap-2">
+        <div v-if="resolvedSession" class="self-stretch pt-2 inline-flex items-center gap-2">
           <svg class="w-4 h-4 text-orange-400 shrink-0" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5">
             <circle cx="10" cy="10" r="8"/><path d="M10 6v4l2.5 2.5" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
@@ -331,7 +342,7 @@ const emit = defineEmits<{
           <div class="self-stretch inline-flex justify-between items-center pb-0.5">
             <span class="text-[#787d99] text-xs font-normal font-['Onest'] leading-4">Учасники групи</span>
             <span class="text-orange-300 text-xs font-normal font-['Onest'] leading-4">
-              {{ sessionData ? localMembersCount : product.groupCurrent }} / {{ sessionData ? sessionData.targetSize : product.groupTotal }} учасників
+              {{ resolvedSession ? localMembersCount : product.groupCurrent }} / {{ resolvedSession ? resolvedSession.targetSize : product.groupTotal }} учасників
             </span>
           </div>
           <div class="self-stretch h-2 relative bg-[#1c1f2a]/80 rounded-full overflow-hidden">
@@ -339,16 +350,16 @@ const emit = defineEmits<{
           </div>
           <div class="self-stretch inline-flex justify-between items-start">
             <span
-              v-for="step in (sessionData ? sessionData.targetSize : product.groupTotal) + 1" :key="step"
+              v-for="step in (resolvedSession ? resolvedSession.targetSize : product.groupTotal) + 1" :key="step"
               class="text-xs font-normal font-['Onest'] leading-4"
-              :class="step - 1 === (sessionData ? sessionData.targetSize : product.groupTotal) ? 'text-green-400' : 'text-[#3d4158]'"
+              :class="step - 1 === (resolvedSession ? resolvedSession.targetSize : product.groupTotal) ? 'text-green-400' : 'text-[#3d4158]'"
             >
-              {{ step - 1 }}{{ step - 1 === (sessionData ? sessionData.targetSize : product.groupTotal) ? ' ✓' : '' }}
+              {{ step - 1 }}{{ step - 1 === (resolvedSession ? resolvedSession.targetSize : product.groupTotal) ? ' ✓' : '' }}
             </span>
           </div>
         </div>
 
-        <template v-if="sessionData">
+        <template v-if="resolvedSession">
           <div v-if="isExpired" class="w-full h-14 py-4 bg-[#2a2d3e] rounded-xl text-[#787d99] text-[11px] sm:text-xs md:text-base font-normal font-['Unbounded'] leading-6 tracking-wide text-center flex items-center justify-center cursor-not-allowed">
             ЗБІР ЗАВЕРШЕНО (ЧАС ВИЧЕРПАНО)
           </div>

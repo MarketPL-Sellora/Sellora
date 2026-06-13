@@ -19,6 +19,7 @@ const routes = [
   { path: '/checkout',     component: CheckoutPage },
   { path: '/order/:id',    name: 'order', component: OrderPage },
   { path: '/cabinet',      component: CabinetPage, meta: { requiresAuth: true } },
+  { path: '/info/:section?', name: 'InfoPage', component: () => import('./views/InfoPage.vue') },
   // Catch-all route для 404 помилки
   { path: '/:pathMatch(.*)*', name: 'NotFound', component: NotFound },
 ]
