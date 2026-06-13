@@ -180,6 +180,7 @@ async function saveOrderChanges() {
                   Деталі
                 </button>
                 <button 
+                  v-if="order.payment_status !== 'CANCELLED' && order.paymentStatus !== 'CANCELLED'"
                   @click="openManageModal(order)"
                   class="px-3 py-1.5 rounded-lg bg-orange-500/10 text-orange-500 text-xs font-bold hover:bg-orange-500/20 transition-colors"
                 >
@@ -241,7 +242,7 @@ async function saveOrderChanges() {
         </div>
 
         <!-- Shipping Status -->
-        <div class="flex flex-col gap-1.5">
+        <div v-if="editForm.payment_status !== 'CANCELLED'" class="flex flex-col gap-1.5">
           <label class="text-slate-400 text-xs font-['Onest']">Статус доставки</label>
           <div class="relative">
             <div 
@@ -269,7 +270,7 @@ async function saveOrderChanges() {
         </div>
 
         <!-- Tracking Number -->
-        <div class="flex flex-col gap-1.5">
+        <div v-if="editForm.payment_status !== 'CANCELLED'" class="flex flex-col gap-1.5">
           <label class="text-slate-400 text-xs font-['Onest']">Трек-номер</label>
           <input 
             v-model="editForm.tracking_number"

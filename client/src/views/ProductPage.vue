@@ -151,6 +151,7 @@ const productBreadcrumbs = computed(() => {
           :api-product="productStore.currentProduct"
           :description="productStore.currentProduct?.description" 
           :attributes="productStore.currentProduct?.attributes" 
+          @review-updated="productStore.fetchProductById(Number(route.params.id))"
         />
         <RelatedProducts 
           v-if="productStore.currentProduct?.categoryId"
