@@ -30,7 +30,10 @@ function syncCategoryFromUrl() {
   for (const rootCat of categoryStore.categories) {
     if (rootCat.id === catId) {
       activeCategory.value = rootCat.name
-      openCategoryId.value = null
+      // Скидаємо відкритий акордеон ТІЛЬКИ якщо він не належить до поточної категорії
+      if (openCategoryId.value !== rootCat.id) {
+        openCategoryId.value = null
+      }
       activeSubcategory.value = null
       found = true
       break
@@ -83,13 +86,18 @@ function toggleCategory(id: number) {
 }
 
 function selectCategory(cat: Category) {
+  // 1. Завжди робимо цю категорію активною (навіть якщо вона батьківська)
   activeCategory.value = cat.name
   activeSubcategory.value = null
-  if (!cat.children?.length) {
-    openCategoryId.value = null
-  } else {
+
+  // 2. Якщо є підкатегорії — відкриваємо/закриваємо їх. Якщо ні — ховаємо всі інші відкриті
+  if (cat.children && cat.children.length > 0) {
     toggleCategory(cat.id)
+  } else {
+    openCategoryId.value = null
   }
+
+  // 3. Завжди оновлюємо URL і викликаємо фільтрацію
   router.replace({ query: { ...route.query, categoryId: cat.id } })
   emit('category', { id: cat.id, name: cat.name })
 }
@@ -269,8 +277,12 @@ const emit = defineEmits<{
           <input v-model.number="priceMax" type="number" :min="priceMin" max="100000" class="flex-1 w-0 min-w-0 px-2.5 py-1.5 bg-[#1c1f2a] rounded-lg outline outline-1 outline-white/10 text-gray-300 text-xs font-normal font-['Onest'] focus:outline-orange-500/40 focus:outline-2" />
         </div>
 
-        <div class="self-stretch h-1.5 relative bg-[#2a2d3e] rounded-full overflow-hidden">
-          <div class="h-1.5 absolute top-0 bg-gradient-to-r from-orange-500 to-amber-400 rounded-full transition-all duration-200" :style="{ left: sliderFillLeft + '%', width: sliderFillWidth + '%' }" />
+        <div class="self-stretch h-6 relative flex items-center group">
+          <div class="absolute left-0 right-0 h-1.5 bg-[#2a2d3e] rounded-full overflow-hidden">
+            <div class="h-full absolute bg-gradient-to-r from-orange-500 to-amber-400" :style="{ left: sliderFillLeft + '%', width: sliderFillWidth + '%' }" />
+          </div>
+          <input v-model.number="priceMin" type="range" :min="PRICE_ABSOLUTE_MIN" :max="PRICE_ABSOLUTE_MAX" step="100" class="absolute w-full h-1.5 appearance-none bg-transparent pointer-events-none [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:shadow-md [&::-webkit-slider-thumb]:cursor-pointer" />
+          <input v-model.number="priceMax" type="range" :min="PRICE_ABSOLUTE_MIN" :max="PRICE_ABSOLUTE_MAX" step="100" class="absolute w-full h-1.5 appearance-none bg-transparent pointer-events-none [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:shadow-md [&::-webkit-slider-thumb]:cursor-pointer" />
         </div>
 
         <!-- Банер "РАЗОМ — ДЕШЕВШЕ" -->
@@ -319,6 +331,7 @@ input[type='number']::-webkit-outer-spin-button {
 }
 input[type='number'] {
   -moz-appearance: textfield;
+  appearance: textfield;
 }
 
 /* Кастомний скролбар для мобільного меню, щоб виглядав акуратно */

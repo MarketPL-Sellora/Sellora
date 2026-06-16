@@ -185,18 +185,39 @@ function setTab(id: string) {
           </p>
         </div>
 
-        <!-- Dynamic product images -->
+        <!-- Dynamic product images (ambient blur + 16:9) -->
         <div 
           v-for="(img, idx) in displayImages" 
           :key="idx"
-          class="self-stretch rounded-2xl overflow-hidden bg-[#161820]/50 outline outline-1 outline-white/5 flex justify-center items-center"
+          class="self-stretch aspect-video relative rounded-2xl overflow-hidden outline outline-1 outline-white/5"
         >
-          <img 
-            :src="img" 
-            :alt="'Фото товару ' + (idx + 1)" 
-            class="w-full max-h-[500px] object-contain transition-transform duration-700 hover:scale-[1.03]" 
-            loading="lazy" 
+          <!-- Dark base -->
+          <div class="absolute inset-0 bg-[#0d0f14]" />
+
+          <!-- Ambient blur background -->
+          <img
+            :src="img"
+            alt=""
+            aria-hidden="true"
+            class="absolute inset-0 w-full h-full object-cover scale-125 blur-[60px] opacity-25 saturate-[1.4] pointer-events-none select-none"
           />
+
+          <!-- Vignette overlay -->
+          <div
+            class="absolute inset-0 pointer-events-none z-[1]"
+            style="background: radial-gradient(ellipse 80% 80% at 50% 50%, transparent 40%, rgba(13,15,20,0.95) 100%);"
+          />
+
+          <!-- Centered product image -->
+          <div class="absolute inset-0 z-10 flex items-center justify-center p-6">
+            <img 
+              :src="img" 
+              :alt="'Фото товару ' + (Number(idx) + 1)" 
+              class="max-w-full max-h-full object-contain select-none transition-all duration-700 hover:scale-[1.03] drop-shadow-[0_12px_32px_rgba(0,0,0,0.5)]" 
+              draggable="false"
+              loading="lazy" 
+            />
+          </div>
         </div>
       </div>
 

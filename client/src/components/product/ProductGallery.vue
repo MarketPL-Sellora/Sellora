@@ -4,13 +4,9 @@ import type { ProductApiItem } from '../../state/productStore'
 import { useProductStore } from '../../state/productStore'
 import { useUserStore } from '../../state/userStore'
 
-// ─── Props ───────────────────────────────────────────────────────────────────
-
 const props = defineProps<{
   apiProduct?: ProductApiItem | null
 }>()
-
-// ─── Computed images ─────────────────────────────────────────────────────────
 
 interface GalleryImage {
   src: string
@@ -27,20 +23,15 @@ const images = computed<GalleryImage[]>(() => {
 })
 
 const hasImages = computed(() => images.value.length > 0)
-
-// ─── State ───────────────────────────────────────────────────────────────────
-
 const activeImageIndex = ref(0)
 
-// ─── Zoom / Loupe state ──────────────────────────────────────────────────────
-
-const isZoomMode = ref(false) // Чи увімкнена кнопка лупи
-const isHovering = ref(false) // Чи знаходиться мишка над фотографією
-const zoomX      = ref(0)     // позиція курсору 0-1 відносно контейнера
+const isZoomMode = ref(false)
+const isHovering = ref(false)
+const zoomX      = ref(0)
 const zoomY      = ref(0)
 
-const LENS_SIZE = 180      // розмір лупи (діаметр у пікселях)
-const ZOOM_FACTOR = 2.5    // наскільки сильно збільшувати
+const LENS_SIZE = 180
+const ZOOM_FACTOR = 2.5
 
 const mainContainerRef = ref<HTMLDivElement | null>(null)
 
@@ -50,7 +41,6 @@ function onMouseEnter() {
 }
 
 function onMouseMove(e: MouseEvent) {
-  // Обчислюємо координати тільки якщо увімкнено режим лупи
   if (!mainContainerRef.value || !hasImages.value || !isZoomMode.value) return
   const rect = mainContainerRef.value.getBoundingClientRect()
   zoomX.value = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
@@ -65,7 +55,6 @@ function toggleZoomMode() {
   isZoomMode.value = !isZoomMode.value
 }
 
-// Стилі для позиціонування самої лупи
 const lensStyle = computed(() => {
   const half = LENS_SIZE / 2
   return {
@@ -76,7 +65,6 @@ const lensStyle = computed(() => {
   }
 })
 
-// Стилі для фону всередині лупи (збільшене фото)
 const lensImageStyle = computed(() => {
   if (!hasImages.value) return {}
   return {
@@ -96,10 +84,8 @@ watch(() => props.apiProduct?.isFavorite, (newVal) => {
 
 watch(() => userStore.isAuthenticated, (isAuth) => {
   if (!isAuth) {
-    // При виході з акаунту миттєво знімаємо сердечко
     localIsFavorite.value = false
   } else {
-    // При успішному вході перевіряємо відкладений лайк
     const pending = localStorage.getItem('pendingFavorite')
     if (props.apiProduct && pending === String(props.apiProduct.id)) {
       localIsFavorite.value = true
@@ -109,16 +95,13 @@ watch(() => userStore.isAuthenticated, (isAuth) => {
 
 async function toggleWishlist() {
   if (!props.apiProduct) return
-
   if (!userStore.isAuthenticated) {
     localStorage.setItem('pendingFavorite', String(props.apiProduct.id))
     userStore.isAuthModalOpen = true
     return
   }
-
   const originalState = localIsFavorite.value
   localIsFavorite.value = !localIsFavorite.value
-
   try {
     if (localIsFavorite.value) {
       await productStore.addToFavorites(props.apiProduct.id)
@@ -126,147 +109,168 @@ async function toggleWishlist() {
       await productStore.removeFromFavorites(props.apiProduct.id)
     }
   } catch (error: any) {
-    localIsFavorite.value = originalState // Відкат при помилці
-    if (error?.isHandled) return // 401 перехоплюється глобально
+    localIsFavorite.value = originalState
+    if (error?.isHandled) return
     alert('Помилка збереження. Спробуйте пізніше.')
   }
 }
 </script>
 
 <template>
-  <div class="w-full self-stretch inline-flex flex-col justify-start items-start gap-3">
+  <div class="w-full self-stretch flex flex-col gap-2">
 
+    <!-- ── Головний контейнер ──────────────────────────────────────────────── -->
     <div
       ref="mainContainerRef"
-      class="self-stretch aspect-square relative bg-[#0f1117] rounded-2xl outline outline-1 outline-offset-[-1px] outline-[#2a2d3e] flex justify-center items-center overflow-hidden group transition-colors duration-300"
+      class="w-full aspect-square relative rounded-2xl overflow-hidden group"
       :class="isZoomMode ? 'cursor-crosshair' : 'cursor-default'"
       @mouseenter="onMouseEnter"
       @mousemove="onMouseMove"
       @mouseleave="onMouseLeave"
     >
 
+      <!-- Темний фон -->
+      <div class="absolute inset-0 bg-[#0d0f14]" />
+
+      <!-- Розмите фонове зображення (колірний ambient) -->
       <img
         v-if="hasImages"
         :src="images[activeImageIndex].src"
         :alt="''"
         aria-hidden="true"
-        class="absolute inset-0 w-full h-full object-cover scale-110 blur-[40px] brightness-[0.45] saturate-[1.3] pointer-events-none select-none"
+        class="absolute inset-0 w-full h-full object-cover scale-125 blur-[60px] opacity-25 saturate-[1.4] pointer-events-none select-none"
       />
 
+      <!-- Vignette — затемнення по краях -->
       <div
-        v-if="hasImages"
-        class="absolute inset-0 bg-[radial-gradient(ellipse_90%_90%_at_50%_50%,transparent_30%,rgba(15,17,23,0.85)_100%)] pointer-events-none"
+        class="absolute inset-0 pointer-events-none z-[1]"
+        style="background: radial-gradient(ellipse 80% 80% at 50% 50%, transparent 40%, rgba(13,15,20,0.95) 100%);"
       />
 
-      <div v-if="!hasImages" class="absolute inset-0 bg-[radial-gradient(ellipse_98.99%_98.99%_at_30%_30%,#1A1040_0%,#0D1022_40%,#0A0B0F_100%)]" />
-
-      <img
-        v-if="hasImages"
-        :src="images[activeImageIndex].src"
-        :alt="images[activeImageIndex].alt"
-        class="relative z-10 max-w-[90%] max-h-[90%] object-contain drop-shadow-[0_8px_30px_rgba(0,0,0,0.5)] transition-transform duration-500 select-none"
-        draggable="false"
-        loading="lazy"
-      />
-
-      <div v-if="!hasImages" class="relative z-10 flex flex-col items-center gap-3">
-        <svg class="w-16 h-16 text-[#2a2d3e]" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="1.5">
+      <!-- Порожній стан -->
+      <div v-if="!hasImages" class="absolute inset-0 flex flex-col items-center justify-center gap-3 z-10">
+        <svg class="w-14 h-14 text-[#1e2030]" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="1.5">
           <rect x="8" y="12" width="48" height="40" rx="4" />
           <circle cx="24" cy="28" r="6" />
           <path d="M8 44l12-10 8 6 12-14 16 18" stroke-linecap="round" stroke-linejoin="round" />
         </svg>
-        <span class="text-[#3d4158] text-sm font-normal font-['Onest']">Фото відсутнє</span>
+        <span class="text-[#2d3148] text-sm font-['Onest']">Фото відсутнє</span>
       </div>
 
-      <div
-        v-if="isZoomMode && isHovering && hasImages"
-        class="absolute z-30 rounded-full pointer-events-none border-2 border-white/20 shadow-[0_0_20px_rgba(0,0,0,0.6),0_0_60px_rgba(0,0,0,0.3)]"
-        :style="lensStyle"
-      >
-        <div
-          class="w-full h-full rounded-full bg-no-repeat"
-          :style="lensImageStyle"
+      <!-- Головне зображення — flex центрування без absolute конфлікту -->
+      <div v-if="hasImages" class="absolute inset-0 z-10 flex items-center justify-center p-6">
+        <img
+          :src="images[activeImageIndex].src"
+          :alt="images[activeImageIndex].alt"
+          class="max-w-full max-h-full object-contain select-none transition-all duration-500 drop-shadow-[0_16px_40px_rgba(0,0,0,0.5)]"
+          draggable="false"
+          loading="lazy"
         />
       </div>
 
+      <!-- Лупа -->
+      <div
+        v-if="isZoomMode && isHovering && hasImages"
+        class="absolute z-30 rounded-full pointer-events-none overflow-hidden"
+        :style="lensStyle"
+        style="border: 1px solid rgba(255,255,255,0.15); box-shadow: 0 8px 32px rgba(0,0,0,0.7);"
+      >
+        <div class="w-full h-full rounded-full bg-no-repeat" :style="lensImageStyle" />
+      </div>
+
+      <!-- Кнопка "Обране" -->
       <button
         :aria-label="localIsFavorite ? 'Прибрати з обраного' : 'Додати до обраного'"
-        class="absolute right-[17px] top-[17px] z-20 w-9 h-9 bg-[#1c1f2a]/80 rounded-xl outline outline-1 outline-offset-[-1px] outline-[#2a2d3e] backdrop-blur-sm flex justify-center items-center transition-all duration-150 hover:bg-[#252b3d] hover:outline-[#3d4158] hover:scale-110 active:scale-95 focus:outline-none focus:ring-2 focus:ring-orange-500/50"
+        class="absolute right-3 top-3 z-20 w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95 focus:outline-none"
+        style="background: rgba(13,15,20,0.75); border: 1px solid rgba(255,255,255,0.08); backdrop-filter: blur(10px);"
         @click="toggleWishlist"
       >
         <svg
-          class="w-4 h-4 transition-colors duration-150"
-          :class="localIsFavorite ? 'text-orange-500' : 'text-[#787d99] hover:text-orange-400'"
-          viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"
+          class="w-4 h-4 transition-all duration-200"
+          :class="localIsFavorite ? 'text-orange-500' : 'text-[#4b5563]'"
+          viewBox="0 0 16 16" fill="none"
         >
           <path
             d="M8 13.5S2 9.5 2 5.5A3 3 0 018 3.8 3 3 0 0114 5.5C14 9.5 8 13.5 8 13.5Z"
             :fill="localIsFavorite ? 'currentColor' : 'none'"
-            stroke="currentColor"
-            stroke-width="1.2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
+            stroke="currentColor" stroke-width="1.2"
+            stroke-linecap="round" stroke-linejoin="round"
           />
         </svg>
       </button>
 
+      <!-- Кнопка зуму -->
       <button
         v-if="hasImages"
-        aria-label="Увімкнути/Вимкнути збільшення"
-        class="absolute right-[17px] bottom-[17px] z-20 w-9 h-9 rounded-xl outline outline-1 outline-offset-[-1px] backdrop-blur-sm flex justify-center items-center transition-all duration-200 active:scale-95 focus:outline-none focus:ring-2 focus:ring-orange-500/50"
-        :class="isZoomMode 
-          ? 'opacity-100 bg-[#252b3d] outline-orange-500 text-orange-500' 
-          : 'opacity-0 group-hover:opacity-100 bg-[#1c1f2a]/80 outline-[#2a2d3e] text-[#787d99] hover:bg-[#252b3d] hover:text-orange-400'"
+        aria-label="Збільшення"
+        class="absolute right-3 bottom-3 z-20 w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-200 active:scale-95 focus:outline-none"
+        :class="isZoomMode ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'"
+        :style="isZoomMode
+          ? 'background: rgba(249,115,22,0.18); border: 1px solid rgba(249,115,22,0.45); color: #f97316; backdrop-filter: blur(10px);'
+          : 'background: rgba(13,15,20,0.75); border: 1px solid rgba(255,255,255,0.08); color: #4b5563; backdrop-filter: blur(10px);'"
         @click.prevent.stop="toggleZoomMode"
       >
-        <svg class="w-4 h-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" xmlns="http://www.w3.org/2000/svg">
+        <svg class="w-4 h-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3">
           <circle cx="7" cy="7" r="4.5"/>
           <path d="M10.5 10.5L14 14" stroke-linecap="round"/>
           <path d="M5 7h4M7 5v4" stroke-linecap="round"/>
         </svg>
       </button>
 
+      <!-- Стрілка ліво -->
       <button
         v-if="images.length > 1"
         aria-label="Попереднє фото"
-        class="absolute left-3 top-1/2 -translate-y-1/2 z-20 w-8 h-8 bg-[#1c1f2a]/80 rounded-full outline outline-1 outline-offset-[-1px] outline-[#2a2d3e] backdrop-blur-sm flex justify-center items-center opacity-0 group-hover:opacity-100 transition-all duration-200 hover:bg-[#252b3d] active:scale-95"
+        class="absolute left-3 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-200 hover:scale-110 active:scale-95"
+        style="background: rgba(13,15,20,0.75); border: 1px solid rgba(255,255,255,0.08); backdrop-filter: blur(10px);"
         @click.prevent.stop="activeImageIndex = (activeImageIndex - 1 + images.length) % images.length"
       >
-        <svg class="w-3.5 h-3.5 text-[#787d99]" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5">
+        <svg class="w-3.5 h-3.5 text-[#9ca3af]" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5">
           <path d="M9 11.5L4.5 7 9 2.5" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
       </button>
+
+      <!-- Стрілка право -->
       <button
         v-if="images.length > 1"
         aria-label="Наступне фото"
-        class="absolute right-3 top-1/2 -translate-y-1/2 z-20 w-8 h-8 bg-[#1c1f2a]/80 rounded-full outline outline-1 outline-offset-[-1px] outline-[#2a2d3e] backdrop-blur-sm flex justify-center items-center opacity-0 group-hover:opacity-100 transition-all duration-200 hover:bg-[#252b3d] active:scale-95"
+        class="absolute right-3 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-200 hover:scale-110 active:scale-95"
+        style="background: rgba(13,15,20,0.75); border: 1px solid rgba(255,255,255,0.08); backdrop-filter: blur(10px);"
         @click.prevent.stop="activeImageIndex = (activeImageIndex + 1) % images.length"
       >
-        <svg class="w-3.5 h-3.5 text-[#787d99]" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5">
+        <svg class="w-3.5 h-3.5 text-[#9ca3af]" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5">
           <path d="M5 2.5L9.5 7 5 11.5" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
       </button>
     </div>
 
-    <div v-if="images.length > 1" class="self-stretch inline-flex justify-start items-start gap-2">
+    <!-- ── Мініатюри ───────────────────────────────────────────────────────── -->
+    <div v-if="images.length > 1" class="w-full flex gap-2">
       <button
         v-for="(img, i) in images"
         :key="img.src"
-        :aria-label="`Фото ${i + 1}: ${img.alt}`"
-        class="flex-1 aspect-square min-w-0 bg-[#1c1f2a] rounded-xl overflow-hidden flex justify-center items-center transition-all duration-150 hover:scale-[1.04] active:scale-95 focus:outline-none"
-        :class="
-          activeImageIndex === i
-            ? 'outline outline-2 outline-offset-[-2px] outline-orange-500'
-            : 'outline outline-2 outline-offset-[-2px] outline-[#2a2d3e] hover:outline-[#3d4158]'
-        "
+        :aria-label="`Фото ${i + 1}`"
+        class="flex-1 aspect-square rounded-xl overflow-hidden relative transition-all duration-200 active:scale-95 focus:outline-none"
+        :style="activeImageIndex === i
+          ? 'box-shadow: 0 0 0 2px #f97316;'
+          : 'box-shadow: 0 0 0 1px rgba(255,255,255,0.07);'"
         @click="activeImageIndex = i"
       >
+        <!-- Темний фон під мініатюру -->
+        <div class="absolute inset-0 bg-[#0d0f14]" />
+
         <img
           :src="img.src"
           :alt="img.alt"
-          class="w-full h-full object-contain p-1 transition-opacity duration-150"
-          :class="activeImageIndex === i ? 'opacity-100' : 'opacity-50 hover:opacity-80'"
+          class="absolute inset-0 w-full h-full object-contain p-1 transition-all duration-200"
+          :class="activeImageIndex === i ? 'opacity-100' : 'opacity-45 hover:opacity-75'"
           loading="lazy"
+        />
+
+        <!-- Активний dot -->
+        <div
+          v-if="activeImageIndex === i"
+          class="absolute bottom-1.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-orange-500 z-10"
         />
       </button>
     </div>

@@ -65,7 +65,7 @@ export const useProductStore = defineStore('products', () => {
     error.value = null
 
     try {
-      const query: Record<string, string | number> = {
+      const query: Record<string, string | number | boolean> = {
         page: filters.page,
         size: filters.size,
       }

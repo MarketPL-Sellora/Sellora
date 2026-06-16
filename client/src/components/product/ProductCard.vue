@@ -38,10 +38,11 @@ const item = computed(() => {
     // Шукаємо бренд в attributes (кирилицею або латиницею), потім у звичайному полі
     brand:        p.attributes?.['Бренд'] || p.attributes?.['brand'] || p.brand || '',
     name:         p.title || p.name || 'Без назви',
+    description:  p.description || '',
     image:        (p.images && p.images.length > 0) ? p.images[0] : (p.image || 'https://via.placeholder.com/400?text=No+Image'),
     imageAlt:     p.imageAlt || p.title || p.name || 'Зображення товару',
-    rating:       p.rating || 0,
-    reviewCount:  p.reviewCount || 0,
+    rating:       Number(p.rating) || Number(p.average_rating) || 0,
+    reviewCount:  Number(p.reviewCount) || Number(p.reviews_count) || 0,
     isGroupBuy:   isGroupBuy,
     price:        finalPrice,
     oldPrice:     isGroupBuy ? (standardPrice || fallbackOld) : 0,
@@ -132,7 +133,8 @@ async function toggleWishlist(e: MouseEvent) {
     class="relative w-full lg:max-w-none mx-auto sm:max-w-none bg-[#1c1f2a] rounded-2xl outline outline-1 outline-offset-[-1px] outline-orange-500/30 flex flex-col justify-start items-start cursor-pointer transition-all duration-300 ease-out hover:-translate-y-1.5 hover:shadow-[0px_16px_48px_0px_rgba(0,0,0,0.50),0px_0px_0px_1px_rgba(249,115,22,0.30)] group overflow-hidden"
     :class="simple ? 'h-auto' : 'h-full min-h-[22rem]'"
   >
-    <div class="pointer-events-none absolute inset-0 rounded-2xl shadow-[0px_0px_0px_1px_rgba(249,115,22,0.15)] shadow-[inset_0px_0px_40px_1px_rgba(249,115,22,0.03)] z-10" />
+    <div class="pointer-events-none absolute inset-0 rounded-2xl shadow-[0px_0px_0px_1px_rgba(249,115,22,0.15),inset_0px_0px_40px_1px_rgba(249,115,22,0.03)] z-10" />
+
 
     <div class="self-stretch h-52 relative bg-[#2a2d3e] flex-shrink-0 overflow-hidden">
       <img
@@ -178,6 +180,10 @@ async function toggleWishlist(e: MouseEvent) {
         <span class="text-amber-400 text-xs font-normal font-['Segoe_UI_Symbol'] leading-4">{{ stars }}</span>
         <span class="text-gray-600 text-xs font-normal font-['Onest'] leading-4">({{ item.reviewCount }})</span>
       </div>
+
+      <p class="text-gray-500 text-xs font-['Onest'] leading-5 mt-2 line-clamp-2 w-full">
+        {{ item.description }}
+      </p>
 
       <div class="self-stretch flex flex-col mt-auto pt-5 w-full">
 

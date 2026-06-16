@@ -5,7 +5,6 @@ import dayjs from 'dayjs'
 import utc from 'dayjs/plugin/utc'
 dayjs.extend(utc)
 import { useGroupBuyStore } from '../../state/groupBuyStore'
-import type { GroupBuySession } from '../../state/groupBuyStore'
 import { apiClient } from '../../api/axios'
 
 // ─── Store ────────────────────────────────────────────────────────────────────
