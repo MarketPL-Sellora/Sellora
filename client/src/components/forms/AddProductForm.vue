@@ -684,6 +684,13 @@ input[type='number']::-webkit-outer-spin-button {
   -webkit-appearance: none;
   margin: 0;
 }
-input[type='number'] { -moz-appearance: textfield; }
-select { -webkit-appearance: none; }
+input[type='number'] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+select {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+}
 </style>

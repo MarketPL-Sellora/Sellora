@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { DICT } from '../../constants/dictionary'
 import { useCartStore } from '../../state/cartStore'
@@ -71,7 +71,7 @@ function isStoreAllSelected(items: CartItem[]): boolean {
   return items.length > 0 && items.every(i => cartStore.selectedProductIds.includes(i.productId))
 }
 
-function isStorePartiallySelected(merchantId: number, items: CartItem[]): boolean {
+function isStorePartiallySelected(_merchantId: number, items: CartItem[]): boolean {
   const some = items.some(i => cartStore.selectedProductIds.includes(i.productId))
   const all = items.every(i => cartStore.selectedProductIds.includes(i.productId))
   return some && !all

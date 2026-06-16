@@ -1,12 +1,11 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
 
-// ─── Props ────────────────────────────────────────────────────────────────────
-const props = defineProps<{ products?: any[] }>()
+const router = useRouter()
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-interface Slide {
+interface PromoSlide {
+  productId: number
   badge: string
   titleWhite: string
   titleAccent: string
@@ -16,7 +15,6 @@ interface Slide {
   discount: string
   image: string
   imageAlt: string
-  originalProduct?: any
 }
 
 interface Stat {
@@ -25,100 +23,51 @@ interface Stat {
   color: string
 }
 
-// ─── Slides data ──────────────────────────────────────────────────────────────
-
-const slides: Slide[] = [
+const displaySlides = ref<PromoSlide[]>([
   {
+    productId: 1, // TODO: Вписати ID iPhone з БД
     badge: '🔥 Гаряча пропозиція',
-    titleWhite: 'iPhone 15 Pro',
-    titleAccent: 'Max 256GB',
-    description: 'Titanium. So strong. So light. So Pro.\nКамера 48Мп · A17 Pro · USB-C',
-    price: '45 999 ₴',
+    titleWhite: 'iPhone 15',
+    titleAccent: 'Pro 256GB',
+    description: 'Titanium Black. Міцний. Легкий. Професійний.\nКамера 48Мп · A17 Pro · USB-C',
+    price: '48 000 ₴',
     oldPrice: '52 000 ₴',
-    discount: '-12%',
-    image: '../../assets/iphone.png',
-    imageAlt: 'iPhone 15 Pro',
+    discount: '-8%',
+    image: new URL('../../assets/Pro15.webp', import.meta.url).href,
+    imageAlt: 'iPhone 15 Pro'
   },
   {
+    productId: 3, // TODO: Вписати ID Samsung з БД
     badge: '⚡ Новинка',
     titleWhite: 'Samsung Galaxy',
     titleAccent: 'S24 Ultra',
-    description: 'AI-можливості нового рівня.\nS Pen · 200Мп · Snapdragon 8 Gen 3',
-    price: '42 499 ₴',
-    oldPrice: '49 000 ₴',
-    discount: '-13%',
-    image: '../../assets/samsung.png',
-    imageAlt: 'Samsung Galaxy S24 Ultra',
+    description: 'AI-можливості нового рівня у кольорі Titanium Gray.\nS Pen · 200Мп · Snapdragon 8 Gen 3',
+    price: '46 000 ₴',
+    oldPrice: '50 000 ₴',
+    discount: '-8%',
+    image: new URL('../../assets/Sam.webp', import.meta.url).href,
+    imageAlt: 'Samsung Galaxy S24 Ultra'
   },
   {
+    productId: 2, // TODO: Вписати ID MacBook з БД
     badge: '🎯 Топ продажів',
     titleWhite: 'MacBook Pro',
-    titleAccent: 'M3 Pro 14"',
-    description: 'Неймовірна продуктивність.\nChip M3 Pro · 18GB RAM · 512GB SSD',
-    price: '89 999 ₴',
-    oldPrice: '102 000 ₴',
-    discount: '-12%',
-    image: '../../assets/macbook.png',
-    imageAlt: 'MacBook Pro M3',
-  },
-]
-
-// ─── Computed slides (real products or fallback) ──────────────────────────────
-
-const displaySlides = computed<Slide[]>(() => {
-  if (props.products && props.products.length > 0) {
-    return props.products.slice(0, 3).map((p: any, index: number) => {
-      const badges = ['🔥 Гаряча пропозиція', '⚡ Новинка', '🎯 Топ продажів']
-      
-      // Безпечний парсинг значень
-      const title = p.title || p.name || 'Товар'
-      const standardPrice = Number(p.standardPrice) || Number(p.price) || 0
-      const groupPrice = Number(p.groupPrice) || 0
-      const targetSize = Number(p.groupTargetSize) || 0
-      
-      // Логіка визначення ціни (як у ProductCard)
-      const isGroupBuy = groupPrice > 0 && targetSize > 0
-      const finalPrice = isGroupBuy ? groupPrice : standardPrice
-      const oldPrice = isGroupBuy ? standardPrice : 0
-      
-      // Розбиваємо назву на дві частини
-      const nameParts = title.split(' ')
-      const titleWhite = nameParts.slice(0, 2).join(' ')
-      const titleAccent = nameParts.slice(2).join(' ')
-      
-      const discount = (oldPrice > 0 && finalPrice < oldPrice)
-        ? `-${Math.round((1 - finalPrice / oldPrice) * 100)}%` 
-        : ''
-        
-      const image = (p.images && p.images.length > 0) ? p.images[0] : (p.image || '../../assets/iphone.png')
-        
-      return {
-        badge: badges[index % badges.length],
-        titleWhite: titleWhite,
-        titleAccent: titleAccent,
-        description: p.description ? p.description.substring(0, 80) + '...' : 'Неймовірна пропозиція',
-        price: finalPrice > 0 ? `${finalPrice.toLocaleString('uk-UA')} ₴` : 'Ціну не вказано',
-        oldPrice: oldPrice > 0 ? `${oldPrice.toLocaleString('uk-UA')} ₴` : '',
-        discount: discount,
-        image: image,
-        imageAlt: title,
-        originalProduct: p
-      }
-    })
+    titleAccent: 'M3 14"',
+    description: 'Неймовірна продуктивність для професіоналів.\nChip M3 · 18GB RAM · 512GB SSD',
+    price: '80 000 ₴',
+    oldPrice: '85 000 ₴',
+    discount: '-6%',
+    image: new URL('../../assets/M3.png', import.meta.url).href,
+    imageAlt: 'MacBook Pro M3'
   }
-  return slides
-})
-
-// ─── Stats data ────────────────────────────────────────────────────────────────
+])
 
 const stats: Stat[] = [
-  { value: '2.4M+',  label: 'Товарів',     color: 'text-orange-500' },
-  { value: '320K',   label: 'Продавців',   color: 'text-white'      },
-  { value: '98%',    label: 'Позитивних',  color: 'text-green-400'  },
-  { value: '1-3 дні',label: 'Доставка',   color: 'text-blue-400'   },
+  { value: '2.4M+',   label: 'Товарів',    color: 'text-orange-500' },
+  { value: '320K',    label: 'Продавців',  color: 'text-white'      },
+  { value: '98%',     label: 'Позитивних', color: 'text-green-400'  },
+  { value: '1-3 дні', label: 'Доставка',  color: 'text-blue-400'   },
 ]
-
-// ─── Carousel logic ───────────────────────────────────────────────────────────
 
 const current = ref(0)
 const isAnimating = ref(false)
@@ -133,115 +82,133 @@ function goTo(index: number) {
 function prev() { goTo(current.value - 1) }
 function next() { goTo(current.value + 1) }
 
-// Auto-play
 let timer: ReturnType<typeof setInterval>
-
-onMounted(() => {
-  timer = setInterval(next, 5000)
-})
-
-onUnmounted(() => {
-  clearInterval(timer)
-})
+onMounted(() => { timer = setInterval(next, 5000) })
+onUnmounted(() => { clearInterval(timer) })
 
 function pauseAutoPlay() { clearInterval(timer) }
 function resumeAutoPlay() {
   clearInterval(timer)
   timer = setInterval(next, 5000)
 }
-
-// ─── Emits ────────────────────────────────────────────────────────────────────
-
-const emit = defineEmits<{
-  (e: 'buy', slide: Slide): void
-  (e: 'details', slide: Slide): void
-}>()
 </script>
 
 <template>
-  <section class="self-stretch flex flex-col gap-2">
+  <section class="self-stretch flex flex-col gap-0">
 
-    <!-- ── Hero banner ─────────────────────────────────────────────────────── -->
+    <!-- ── Hero слайдер ──────────────────────────────────────────────────── -->
     <div
-      class="self-stretch h-[400px] sm:h-[320px] md:h-72 relative rounded-2xl overflow-hidden"
+      class="self-stretch h-[380px] sm:h-[320px] md:h-[300px] relative rounded-t-2xl overflow-hidden"
       @mouseenter="pauseAutoPlay"
       @mouseleave="resumeAutoPlay"
     >
-      <!-- Background -->
-      <div class="absolute inset-0 bg-gradient-to-b from-[#0f2027] via-[#1c1f2a] to-[#16213e]" />
+      <!-- Базовий фон -->
+      <div class="absolute inset-0 bg-[#0d1017]" />
 
-      <!-- Glow orbs -->
-      <div class="pointer-events-none absolute right-0 top-0 w-80 h-80 -translate-y-16 translate-x-8 rounded-full bg-[radial-gradient(ellipse_70.71%_70.71%_at_50%_50%,rgba(249,115,22,0.12)_0%,rgba(249,115,22,0)_70%)]" />
-      <div class="pointer-events-none absolute right-0 bottom-0 w-64 h-64 translate-y-16 rounded-full bg-[radial-gradient(ellipse_70.71%_70.71%_at_50%_50%,rgba(99,102,241,0.08)_0%,rgba(99,102,241,0)_70%)]" />
+      <!-- Тонка сітка -->
+      <div
+        class="pointer-events-none absolute inset-0"
+        style="
+          background-image:
+            linear-gradient(rgba(255,255,255,0.022) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255,255,255,0.022) 1px, transparent 1px);
+          background-size: 48px 48px;
+        "
+      />
 
       <!-- Slides -->
       <transition-group name="slide-fade" tag="div" class="absolute inset-0">
         <div
           v-for="(slide, i) in displaySlides"
           v-show="i === current"
-          :key="slide.titleAccent"
-          class="absolute inset-0 flex items-center overflow-hidden"
+          :key="slide.imageAlt + i"
+          class="absolute inset-0 flex items-center"
         >
-          <!-- Phone / product mockup -->
-          <div class="hidden md:block absolute right-8 top-1/2 -translate-y-1/2 w-40 h-64 shrink-0">
-            <!-- Decorative card behind image -->
-            <div class="absolute inset-0 bg-gradient-to-br from-slate-800 to-[#0f2027] rounded-3xl shadow-[0px_30px_80px_0px_rgba(0,0,0,0.60)] shadow-[inset_0px_1px_0px_1px_rgba(255,255,255,0.08)] outline outline-1 outline-offset-[-1px] outline-white/10">
-              <div class="w-28 h-1.5 absolute left-[21px] top-[11px] bg-white/10 rounded" />
-              <div class="w-32 h-24 absolute left-[16px] top-[25px] opacity-80 bg-gradient-to-br from-orange-500 to-purple-500 rounded-xl" />
-              <div class="w-32 h-2 absolute left-[16px] top-[133px] bg-white/5 rounded" />
-              <div class="w-28 h-2 absolute left-[16px] top-[145px] bg-white/5 rounded" />
-            </div>
-            <!-- Actual product image — swap src per-slide -->
+
+          <!-- ── Зображення: Full Bleed — фото заповнює правий бік ── -->
+          <div class="hidden md:block absolute right-0 top-0 bottom-0 w-[55%] overflow-hidden">
+
+            <!-- Фото як фон — object-cover заповнює весь правий блок -->
             <img
               :src="slide.image"
-              :alt="slide.imageAlt"
-              class="absolute inset-0 w-full h-full object-contain drop-shadow-2xl z-10"
-              loading="lazy"
+              :alt="''"
+              aria-hidden="true"
+              class="absolute inset-0 w-full h-full object-cover object-center select-none pointer-events-none"
+            />
+
+            <!-- Fade зліва — головний перехід до темного фону -->
+            <div
+              class="absolute inset-0 pointer-events-none"
+              style="background: linear-gradient(to right, #0d1017 0%, rgba(13,16,23,0.92) 10%, rgba(13,16,23,0.6) 28%, rgba(13,16,23,0.15) 52%, transparent 68%);"
+            />
+
+            <!-- Fade зверху -->
+            <div
+              class="absolute inset-0 pointer-events-none"
+              style="background: linear-gradient(to bottom, rgba(13,16,23,0.75) 0%, transparent 35%);"
+            />
+
+            <!-- Fade знизу -->
+            <div
+              class="absolute inset-0 pointer-events-none"
+              style="background: linear-gradient(to top, rgba(13,16,23,0.75) 0%, transparent 35%);"
+            />
+
+            <!-- Fade справа -->
+            <div
+              class="absolute inset-0 pointer-events-none"
+              style="background: linear-gradient(to left, rgba(13,16,23,0.4) 0%, transparent 20%);"
             />
           </div>
 
-          <!-- Text content -->
-          <div class="relative z-10 max-w-[512px] px-14 md:px-12 pb-8 md:pb-0 flex flex-col justify-start items-start gap-2">
-            <!-- Badge -->
-            <span class="relative px-2.5 py-1 bg-orange-500/10 rounded-full outline outline-1 outline-offset-[-1px] outline-orange-500/20 text-orange-400 text-[10px] font-semibold font-['Onest'] uppercase leading-4 tracking-wide">
-              {{ slide.badge }}
-            </span>
+          <!-- ── Текстовий контент ── -->
+          <div class="relative z-10 w-full md:w-[52%] px-10 md:px-12 flex flex-col items-start gap-3 pb-8 md:pb-0">
 
-            <!-- Title -->
-            <div class="pt-1">
-              <span class="text-white text-4xl font-black ...">{{ slide.titleWhite }}<br /></span>
-              <span class="text-orange-500 text-4xl ...">{{ slide.titleAccent }}</span>
+            <!-- Бейдж -->
+            <span
+              class="px-3 py-1 rounded-full text-[10px] font-semibold font-['Onest'] uppercase tracking-widest text-orange-400"
+              style="background: rgba(249,115,22,0.1); border: 1px solid rgba(249,115,22,0.2);"
+            >{{ slide.badge }}</span>
+
+            <!-- Заголовок -->
+            <div>
+              <div class="text-white font-black font-['Unbounded'] leading-tight" style="font-size: clamp(1.4rem, 2.6vw, 2.1rem);">
+                {{ slide.titleWhite }}
+              </div>
+              <div class="text-orange-500 font-black font-['Unbounded'] leading-tight" style="font-size: clamp(1.4rem, 2.6vw, 2.1rem);">
+                {{ slide.titleAccent }}
+              </div>
             </div>
 
-            <!-- Description -->
-            <p class="text-gray-400 text-sm font-normal font-['Onest'] leading-6 whitespace-pre-line">
+            <!-- Опис -->
+            <p class="text-[#6b7280] text-sm font-['Onest'] leading-6 max-w-[280px] line-clamp-2">
               {{ slide.description }}
             </p>
 
-            <!-- Prices -->
-            <div class="self-stretch flex items-end gap-3 pt-2">
-              <span class="text-orange-500 text-3xl font-bold font-['Onest'] leading-none">
-                {{ slide.price }}
-              </span>
-              <span class="text-gray-600 text-lg font-normal font-['Onest'] line-through leading-none mb-1">
-                {{ slide.oldPrice }}
-              </span>
-              <span class="px-2 py-0.5 bg-green-500/20 rounded-lg text-green-400 text-sm font-semibold font-['Onest'] mb-1">
-                {{ slide.discount }}
-              </span>
+            <!-- Ціна -->
+            <div class="flex items-baseline gap-2.5">
+              <span class="text-white text-2xl font-bold font-['Unbounded']">{{ slide.price }}</span>
+              <span v-if="slide.oldPrice" class="text-[#374151] text-sm font-['Onest'] line-through">{{ slide.oldPrice }}</span>
+              <span
+                v-if="slide.discount"
+                class="px-2 py-0.5 rounded-md text-xs font-bold font-['Onest']"
+                style="background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.2); color: #4ade80;"
+              >{{ slide.discount }}</span>
             </div>
 
-            <!-- CTA buttons -->
-            <div class="w-full pt-3 flex flex-wrap justify-start items-start gap-3">
+            <!-- Кнопки -->
+            <div class="flex items-center gap-2.5 pt-1">
               <button
-                class="px-6 py-2.5 bg-gradient-to-b from-orange-500 to-orange-600 rounded-xl shadow-[0px_4px_16px_0px_rgba(249,115,22,0.35)] text-white text-sm font-semibold font-['Onest'] leading-5 transition-all duration-150 hover:from-orange-400 hover:to-orange-500 hover:shadow-[0px_4px_24px_0px_rgba(249,115,22,0.55)] active:scale-[0.97]"
-                @click="emit('buy', slide)"
+                class="px-5 py-2 rounded-xl text-white text-sm font-semibold font-['Onest'] whitespace-nowrap transition-all duration-150 active:scale-[0.97]"
+                style="background: #f97316; box-shadow: 0 0 20px rgba(249,115,22,0.3);"
+                @click="router.push('/product/' + slide.productId)"
               >
                 Купити зараз
               </button>
               <button
-                class="px-5 py-2.5 bg-white/5 rounded-xl outline outline-1 outline-offset-[-1px] outline-white/10 text-gray-300 text-sm font-normal font-['Onest'] leading-5 transition-all duration-150 hover:bg-white/10 hover:outline-white/20 hover:text-white active:scale-[0.97]"
-                @click="emit('details', slide)"
+                class="px-4 py-2 rounded-xl text-[#9ca3af] text-sm font-['Onest'] whitespace-nowrap transition-all duration-150 hover:text-white active:scale-[0.97]"
+                style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08);"
+                @click="router.push('/product/' + slide.productId)"
               >
                 Детальніше
               </button>
@@ -250,54 +217,56 @@ const emit = defineEmits<{
         </div>
       </transition-group>
 
-      <!-- Prev arrow -->
+      <!-- Стрілка ліво -->
       <button
         aria-label="Назад"
-        class="absolute left-3 top-1/2 -translate-y-1/2 z-20 w-8 h-8 bg-[#1a1f2e] rounded-full outline outline-1 outline-offset-[-1px] outline-white/5 flex justify-center items-center transition-all duration-150 hover:bg-[#252b3d] hover:outline-white/15 hover:scale-110 active:scale-95"
+        class="absolute left-3 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full flex items-center justify-center transition-all duration-150 hover:scale-110 active:scale-95"
+        style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08);"
         @click="prev"
       >
-        <svg class="w-4 h-4 text-gray-400" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <svg class="w-4 h-4 text-[#6b7280]" viewBox="0 0 16 16" fill="none">
           <path d="M10 12L6 8L10 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
       </button>
 
-      <!-- Next arrow -->
+      <!-- Стрілка право -->
       <button
         aria-label="Вперед"
-        class="absolute right-3 top-1/2 -translate-y-1/2 z-20 w-8 h-8 bg-[#1a1f2e] rounded-full outline outline-1 outline-offset-[-1px] outline-white/5 flex justify-center items-center transition-all duration-150 hover:bg-[#252b3d] hover:outline-white/15 hover:scale-110 active:scale-95"
+        class="absolute right-3 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full flex items-center justify-center transition-all duration-150 hover:scale-110 active:scale-95"
+        style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08);"
         @click="next"
       >
-        <svg class="w-4 h-4 text-gray-400" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <svg class="w-4 h-4 text-[#6b7280]" viewBox="0 0 16 16" fill="none">
           <path d="M6 12L10 8L6 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
       </button>
 
-      <!-- Dot indicators -->
-      <div class="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2">
+      <!-- Dots -->
+      <div class="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5">
         <button
           v-for="(_, i) in displaySlides"
           :key="i"
           :aria-label="`Слайд ${i + 1}`"
-          class="h-2 rounded transition-all duration-300"
-          :class="i === current ? 'w-6 bg-orange-500' : 'w-2 bg-white/20 hover:bg-white/40'"
+          class="h-1 rounded-full transition-all duration-300"
+          :class="i === current ? 'w-6 bg-orange-500' : 'w-1.5 bg-white/20 hover:bg-white/40'"
           @click="goTo(i)"
         />
       </div>
     </div>
 
-    <!-- ── Stats row ────────────────────────────────────────────────────────── -->
-    <div class="self-stretch pt-2 grid grid-cols-2 md:grid-cols-4 gap-3">
+    <!-- ── Stats ───────────────────────────────────────────────────────────── -->
+    <div
+      class="self-stretch rounded-b-2xl flex overflow-hidden"
+      style="background: #111319; border: 1px solid rgba(255,255,255,0.06); border-top: none;"
+    >
       <div
-        v-for="stat in stats"
+        v-for="(stat, i) in stats"
         :key="stat.label"
-        class="flex-1 self-stretch p-3 bg-[#1c1f2a] rounded-xl outline outline-1 outline-offset-[-1px] outline-white/5 inline-flex flex-col justify-start items-start gap-0.5 transition-all duration-150 hover:bg-[#222637] hover:outline-white/10"
+        class="flex-1 py-3.5 flex flex-col items-center gap-0.5 relative cursor-default transition-colors duration-150 hover:bg-white/[0.025]"
       >
-        <div class="self-stretch text-center text-xl font-bold font-['Unbounded'] leading-7" :class="stat.color">
-          {{ stat.value }}
-        </div>
-        <div class="self-stretch text-center text-[#7c6e7e] text-xs font-normal font-['Onest'] leading-4">
-          {{ stat.label }}
-        </div>
+        <div v-if="i < stats.length - 1" class="absolute right-0 top-[22%] h-[56%] w-px bg-white/[0.06]" />
+        <span class="text-lg font-bold font-['Unbounded']" :class="stat.color">{{ stat.value }}</span>
+        <span class="text-[11px] font-['Onest'] text-[#4b5563]">{{ stat.label }}</span>
       </div>
     </div>
 
@@ -313,10 +282,10 @@ const emit = defineEmits<{
 }
 .slide-fade-enter-from {
   opacity: 0;
-  transform: translateX(24px);
+  transform: translateX(20px);
 }
 .slide-fade-leave-to {
   opacity: 0;
-  transform: translateX(-24px);
+  transform: translateX(-20px);
 }
 </style>

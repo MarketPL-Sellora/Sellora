@@ -131,7 +131,7 @@ defineExpose({
 </script>
 
 <template>
-  <header class="w-full bg-[#0f1117]/90 shadow-[0px_0px_40px_0px_rgba(249,115,22,0.04)] shadow-[0px_1px_0px_0px_rgba(249,115,22,0.15)] backdrop-blur-[10px]">
+  <header class="w-full bg-[#0f1117]/90 shadow-[0px_0px_40px_0px_rgba(249,115,22,0.04),0px_1px_0px_0px_rgba(249,115,22,0.15)] backdrop-blur-[10px]">
 
     <div class="w-full max-w-[1536px] mx-auto px-4 md:px-6 py-3 flex flex-col md:flex-row justify-between items-center gap-3 md:gap-4">
 

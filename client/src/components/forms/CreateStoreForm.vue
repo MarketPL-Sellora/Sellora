@@ -449,6 +449,9 @@ async function handleCreate() {
 </template>
 
 <style scoped>
-select { -webkit-appearance: none; }
+select { 
+  -webkit-appearance: none; 
+  appearance: none; 
+}
 textarea::placeholder { line-height: 1.5; }
 </style>

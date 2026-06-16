@@ -5,7 +5,6 @@ import { useUserStore }             from '../../state/userStore'
 import { apiClient }                from '../../api/axios'
 import { DICT }                     from '../../constants/dictionary'
 import type { GroupBuyCheckoutPayload } from '../../state/groupBuyStore'
-import type { GroupBuySession }     from '../../state/groupBuyStore'
 
 // ─── Props & Emits ────────────────────────────────────────────────────────────
 const props = withDefaults(defineProps<{
@@ -155,68 +154,6 @@ const userInitials = computed(() => {
   const email = userStore.user?.email ?? ''
   return email.slice(0, 2).toUpperCase()
 })
-
-// ─── Invite link (локальне, для інпута) ───────────────────────────────────────
-const inviteLink = computed(() =>
-  store.session
-    ? `${window.location.origin}/product/${props.productId}?session=${store.session.uuid}`
-    : ''
-)
-
-// ─── OG Share link (бекенд-роут для генерації OG тегів) ──────────────────────
-const ogShareLink = computed(() =>
-  store.session
-    ? `${apiClient.defaults.baseURL}/share/group-buy/${store.session.uuid}`
-    : ''
-)
-
-// ─── Copy logic ───────────────────────────────────────────────────────────────
-const copied = ref(false)
-
-async function copyLink() {
-  if (!inviteLink.value) return
-  try {
-    await navigator.clipboard.writeText(inviteLink.value)
-    copied.value = true
-    setTimeout(() => { copied.value = false }, 2000)
-  } catch {
-    // fallback для старих браузерів
-    const el = document.createElement('textarea')
-    el.value = inviteLink.value
-    document.body.appendChild(el)
-    el.select()
-    document.execCommand('copy')
-    document.body.removeChild(el)
-    copied.value = true
-    setTimeout(() => { copied.value = false }, 2000)
-  }
-}
-
-// ─── Web Share API ────────────────────────────────────────────────────────────
-async function shareNative() {
-  try {
-    await navigator.share({
-      title: 'Групова покупка',
-      text:  'Приєднуйся до моєї групової покупки!',
-      url:   ogShareLink.value,
-    })
-  } catch (err) {
-    console.warn('Web Share API:', err)
-  }
-}
-
-// ─── Шарінг у Telegram / Viber ────────────────────────────────────────────────
-const shareText = 'Приєднуйся до моєї групової покупки на Sellora!'
-
-function shareToTelegram() {
-  const url = `https://t.me/share/url?url=${encodeURIComponent(ogShareLink.value)}&text=${encodeURIComponent(shareText)}`
-  window.open(url, '_blank', 'noopener')
-}
-
-function shareToViber() {
-  const url = `viber://forward?text=${encodeURIComponent(shareText + ' ' + ogShareLink.value)}`
-  window.open(url, '_blank', 'noopener')
-}
 
 // ─── Participants helpers ─────────────────────────────────────────────────────
 const slots = computed(() => {
@@ -859,7 +796,10 @@ onMounted(async () => {
 </template>
 
 <style scoped>
-select { -webkit-appearance: none; }
+select { 
+  -webkit-appearance: none; 
+  appearance: none; 
+}
 textarea::-webkit-scrollbar { width: 3px; }
 textarea::-webkit-scrollbar-track { background: transparent; }
 textarea::-webkit-scrollbar-thumb { background: #3d4158; border-radius: 2px; }

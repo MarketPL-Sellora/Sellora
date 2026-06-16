@@ -59,7 +59,7 @@ function handleCategory() {
 function handleBannerBuy(slide: any) {
   const productId = slide.originalProduct?.id
   if (productId) {
-    cartStore.addToCart(productId, 1)
+    cartStore.addToCart(productId)
   }
 }
 

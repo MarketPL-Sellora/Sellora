@@ -51,10 +51,11 @@ onMounted(async () => {
     sessionData.value = await groupBuyStore.fetchSession(uuidFromUrl)
   } else if (userStore.isAuthenticated) {
     // Якщо URL чистий, але юзер залогований — шукаємо його активну сесію
-    const mySessions = await groupBuyStore.fetchMySessions() || []
+    await groupBuyStore.fetchMySessions()
+    const mySessions = (groupBuyStore as any).mySessions || []
     const activeSession = mySessions.find((s: any) => 
       s.productId === productId && s.status === 'ACTIVE'
-    )
+    ) as any
 
     if (activeSession) {
       // Бекенд віддає повний об'єкт, тому просто підставляємо його
@@ -78,10 +79,11 @@ watch(
       if (uuidFromUrl) {
         sessionData.value = await groupBuyStore.fetchSession(uuidFromUrl);
       } else if (userStore.isAuthenticated) {
-        const mySessions = await groupBuyStore.fetchMySessions() || [];
-        const activeSession = mySessions.find((s: any) => 
+        await groupBuyStore.fetchMySessions()
+        const mySessions = (groupBuyStore as any).mySessions || []
+        const activeSession = mySessions.find((s: any) =>
           s.productId === id && s.status === 'ACTIVE'
-        );
+        ) as any
         
         if (activeSession) {
           sessionData.value = activeSession;

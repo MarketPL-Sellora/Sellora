@@ -6,6 +6,9 @@ interface UserData {
   id: number
   email: string
   role: string
+  firstName?: string
+  lastName?: string
+  phone?: string
   avatarUrl: string
   createdAt: string
   updatedAt: string

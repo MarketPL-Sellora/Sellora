@@ -30,6 +30,7 @@ interface OrderItem {
 interface Order {
   id: number
   store_id: number
+  user_id?: number
   store_name: string
   buyer_name: string
   buyer_surname: string
@@ -421,7 +422,7 @@ onMounted(async () => {
 
               <!-- Item subtotal -->
               <span class="text-white text-sm md:text-base font-bold font-['Onest'] whitespace-nowrap shrink-0">
-                {{ fmt(item.total_price ?? item.totalPrice ?? ((item.unit_price ?? item.unitPrice ?? 0) * item.quantity) ?? item.subtotal ?? 0) }}
+                {{ fmt(item.total_price ?? item.totalPrice ?? item.subtotal ?? ((item.unit_price ?? item.unitPrice ?? 0) * (item.quantity || 1))) }}
               </span>
 
               <!-- Review button -->

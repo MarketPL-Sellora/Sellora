@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
 import { useUserStore } from '../../state/userStore'
 import { useGroupBuyStore } from '../../state/groupBuyStore'
 import { useProductStore } from '../../state/productStore'
@@ -30,7 +29,6 @@ const props = defineProps<{
 const userStore     = useUserStore()
 const groupBuyStore = useGroupBuyStore()
 const productStore  = useProductStore()
-const router        = useRouter()
 
 // ─── Завантаження сесій при монтуванні (щоб лічильник був актуальним) ──────────
 onMounted(() => {
