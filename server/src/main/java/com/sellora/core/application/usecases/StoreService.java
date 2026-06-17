@@ -31,9 +31,6 @@ public class StoreService {
       throw new ConflictException("У вас вже є створений магазин!");
     }
 
-    // --- ФІКС БАГУ: Ескалація привілеїв (Role Upgrade) ---
-    // Робимо це НА ПОЧАТКУ транзакції!
-    // Тепер, коли ми викличемо merchantRequisiteService нижче, він перевірить БД і побачить "MERCHANT", а не "BUYER", і не викине 403 Forbidden.
     if (!"ADMIN".equalsIgnoreCase(currentUser.getRole())) {
       currentUser.setRole("MERCHANT");
       userRepository.save(currentUser);
@@ -49,10 +46,8 @@ public class StoreService {
     store.setLogoUrl(request.getLogoUrl());
     store.setStatus("PENDING");
 
-    // Зберігаємо магазин перед тим, як в'язати до нього служби доставки
     storeRepository.save(store);
 
-    // --- ЛОГІКА ДОДАВАННЯ МЕТОДІВ ДОСТАВКИ (Атомарно) ---
     if (request.getShippingMethods() != null) {
       for (StoreShippingMethodDto methodDto : request.getShippingMethods()) {
         ShippingCarrier carrier = shippingCarrierRepository.findById(methodDto.carrierId())
@@ -66,7 +61,6 @@ public class StoreService {
       }
     }
 
-    // --- ЛОГІКА ДОДАВАННЯ РЕКВІЗИТІВ (Атомарно) ---
     if (request.getMerchantRequisites() != null && !request.getMerchantRequisites().isEmpty()) {
       for (MerchantRequisiteDto reqDto : request.getMerchantRequisites()) {
         merchantRequisiteService.create(reqDto, currentUser.getId());
@@ -90,10 +84,15 @@ public class StoreService {
       throw new ForbiddenException("Ви не маєте прав редагувати цей магазин");
     }
 
+
     if (!store.getName().equalsIgnoreCase(request.name())) {
-      if (storeRepository.existsByNameAndIdNot(request.name(), storeId)) throw new ConflictException("Магазин з такою назвою вже існує");
+      if (storeRepository.existsByNameAndIdNot(request.name(), storeId)) {
+        throw new ConflictException("Магазин з такою назвою вже існує");
+      }
       String newSlug = generateSlug(request.name());
-      if (storeRepository.existsBySlugAndIdNot(newSlug, storeId)) throw new ConflictException("Slug вже зайнятий");
+      if (storeRepository.existsBySlugAndIdNot(newSlug, storeId)) {
+        throw new ConflictException("Slug вже зайнятий");
+      }
       store.setName(request.name());
       store.setSlug(newSlug);
     }
@@ -103,7 +102,6 @@ public class StoreService {
     store.setDescription(request.description());
     store.setLogoUrl(request.logoUrl());
 
-    // --- ОНОВЛЕННЯ МЕТОДІВ ДОСТАВКИ ---
     if (request.shippingMethods() != null) {
       store.getShippingMethods().clear();
       for (StoreShippingMethodDto methodDto : request.shippingMethods()) {

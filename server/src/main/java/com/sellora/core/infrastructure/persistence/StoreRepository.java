@@ -19,6 +19,5 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
   boolean existsByNameAndIdNot(String name, Long id);
   boolean existsBySlugAndIdNot(String slug, Long id);
 
-  // Додай цей метод у StoreRepository
   org.springframework.data.domain.Page<Store> findByNameContainingIgnoreCase(String keyword, org.springframework.data.domain.Pageable pageable);
 }
