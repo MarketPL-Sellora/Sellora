@@ -51,6 +51,7 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/${DB_NAME:-sellora_db}
       SPRING_DATASOURCE_USERNAME: ${DB_USER:-postgres}
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-admin}
+      SPRING_LIQUIBASE_CONTEXTS: ${LIQUIBASE_CONTEXT:-prod}
     depends_on:
       db:
         condition: service_healthy
@@ -80,7 +81,7 @@ services:
   #       - --changeLogFile=db/changelog/db.changelog-master.yaml
   #       - --username=${DB_USER:-postgres}
   #       - --password=${DB_PASSWORD:-admin}
-  #       - --contexts=dev
+  #       - --contexts=${LIQUIBASE_CONTEXT:-dev}
   #       - update
   #     depends_on:
   #       db:
