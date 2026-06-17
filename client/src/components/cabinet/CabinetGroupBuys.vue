@@ -141,17 +141,7 @@ async function copyLink(buy: MappedSession) {
   setTimeout(() => (copiedId.value = null), 2000)
 }
 
-// ─── Emits ────────────────────────────────────────────────────────────────────
 
-const emit = defineEmits<{
-  (e: 'cancel', uuid: string): void
-}>()
-
-function cancelBuy(uuid: string) {
-  if (confirm('Скасувати участь у груповій покупці?')) {
-    emit('cancel', uuid)
-  }
-}
 </script>
 
 <template>
@@ -344,20 +334,7 @@ function cancelBuy(uuid: string) {
           </svg>
         </a>
 
-        <!-- Cancel button -->
-        <button
-          class="w-40 h-11 shrink-0 px-4 bg-[#1a2235] rounded-[10.4px] outline outline-1 outline-offset-[-1px] outline-[#2a3a52] inline-flex justify-center items-center gap-2 transition-all duration-150 hover:bg-red-500/10 hover:outline-red-500/50 hover:text-red-400 active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-red-500/30 group"
-          @click="cancelBuy(buy.uuid)"
-        >
-          <!-- X circle icon -->
-          <svg class="w-3 h-3 shrink-0 text-gray-400 group-hover:text-red-400 transition-colors duration-150" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.2">
-            <circle cx="6" cy="6" r="4.5"/>
-            <path d="M4 4l4 4M8 4l-4 4" stroke-linecap="round"/>
-          </svg>
-          <span class="text-gray-400 group-hover:text-red-400 text-sm font-normal font-['Onest'] leading-5 transition-colors duration-150">
-            Скасувати участь
-          </span>
-        </button>
+
       </div>
     </div>
 
