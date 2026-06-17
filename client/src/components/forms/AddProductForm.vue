@@ -261,14 +261,14 @@ function handleCancel() {
   <div class="w-full max-w-[896px] bg-gray-900 rounded-2xl shadow-[0px_25px_50px_-12px_rgba(0,0,0,0.50)] outline outline-1 outline-offset-[-1px] outline-gray-800 inline-flex flex-col justify-start items-start overflow-hidden">
 
     <!-- Шапка з кнопками -->
-    <div class="self-stretch px-8 py-6 bg-neutral-900 border-b border-gray-800 inline-flex justify-between items-center">
+    <div class="self-stretch px-4 sm:px-8 py-6 bg-neutral-900 border-b border-gray-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
       <div class="inline-flex flex-col justify-start items-start gap-0.5">
         <div class="justify-center text-white text-lg font-bold font-['Onest'] leading-7">{{ isEditing ? 'Редагувати товар' : 'Створити новий товар' }}</div>
         <div class="justify-center text-gray-500 text-xs font-normal font-['Onest'] leading-4">Заповніть усі поля та завантажте фотографії</div>
       </div>
-      <div class="flex justify-start items-center gap-2.5">
+      <div class="flex justify-start items-center gap-2.5 w-full sm:w-auto">
         <button
-          class="w-32 h-11 flex items-center justify-center gap-2 bg-gray-800 rounded-xl outline outline-1 outline-offset-[-1px] outline-gray-700 transition-all hover:bg-gray-700 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+          class="flex-1 sm:flex-none w-full sm:w-32 h-11 flex items-center justify-center gap-2 bg-gray-800 rounded-xl outline outline-1 outline-offset-[-1px] outline-gray-700 transition-all hover:bg-gray-700 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
           :disabled="isSaving"
           @click="handleCancel"
         >
@@ -278,7 +278,7 @@ function handleCancel() {
           <span class="text-gray-400 text-xs font-medium font-['Onest'] leading-5">Скасувати</span>
         </button>
         <button
-          class="px-6 py-2.5 bg-orange-500 rounded-xl shadow-[0px_4px_14px_0px_rgba(249,115,22,0.30)] flex justify-start items-center gap-2 transition-all hover:bg-orange-400 hover:shadow-[0px_4px_20px_0px_rgba(249,115,22,0.45)] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100"
+          class="flex-1 sm:flex-none px-6 py-2.5 bg-orange-500 rounded-xl shadow-[0px_4px_14px_0px_rgba(249,115,22,0.30)] flex justify-start items-center gap-2 transition-all hover:bg-orange-400 hover:shadow-[0px_4px_20px_0px_rgba(249,115,22,0.45)] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100"
           :disabled="isSaving"
           @click="handleSave"
         >
@@ -628,7 +628,7 @@ function handleCancel() {
     </div>
 
     <!-- ── Нижня панель з кнопками ────────────────────────────────────────── -->
-    <div class="self-stretch px-8 py-5 bg-neutral-900 border-t border-gray-800 inline-flex justify-between items-center">
+    <div class="self-stretch px-4 sm:px-8 py-5 bg-neutral-900 border-t border-gray-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
       <div class="flex justify-start items-center gap-1.5">
         <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
           <circle cx="7" cy="7" r="5.5" stroke="#4B5563" stroke-width="1.2"/>
@@ -639,9 +639,9 @@ function handleCancel() {
           Усі поля, позначені зірочкою *, є обов'язковими
         </span>
       </div>
-      <div class="flex items-center gap-2.5">
+      <div class="flex items-center gap-2.5 w-full sm:w-auto">
         <button
-          class="w-32 h-11 flex items-center justify-center gap-2 bg-gray-800 rounded-xl outline outline-1 outline-offset-[-1px] outline-gray-700 transition-all hover:bg-gray-700 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+          class="flex-1 sm:flex-none w-full sm:w-32 h-11 flex items-center justify-center gap-2 bg-gray-800 rounded-xl outline outline-1 outline-offset-[-1px] outline-gray-700 transition-all hover:bg-gray-700 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
           :disabled="isSaving"
           @click="handleCancel"
         >
@@ -651,7 +651,7 @@ function handleCancel() {
           <span class="text-gray-400 text-xs font-medium font-['Onest'] leading-5">Скасувати</span>
         </button>
         <button
-          class="px-6 py-2.5 bg-orange-500 rounded-xl shadow-[0px_4px_14px_0px_rgba(249,115,22,0.30)] flex items-center gap-2 transition-all hover:bg-orange-400 hover:shadow-[0px_4px_20px_0px_rgba(249,115,22,0.45)] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100"
+          class="flex-1 sm:flex-none px-6 py-2.5 bg-orange-500 rounded-xl shadow-[0px_4px_14px_0px_rgba(249,115,22,0.30)] flex items-center gap-2 transition-all hover:bg-orange-400 hover:shadow-[0px_4px_20px_0px_rgba(249,115,22,0.45)] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100"
           :disabled="isSaving"
           @click="handleSave"
         >
