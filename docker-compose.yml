@@ -51,7 +51,7 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/${DB_NAME:-sellora_db}
       SPRING_DATASOURCE_USERNAME: ${DB_USER:-postgres}
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-admin}
-      SPRING_LIQUIBASE_CONTEXTS: ${LIQUIBASE_CONTEXT:-prod}
+      SPRING_LIQUIBASE_CONTEXTS: dev
     depends_on:
       db:
         condition: service_healthy
