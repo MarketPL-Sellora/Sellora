@@ -276,7 +276,7 @@
 ### 🎯 User Personas
 
 <p align="center">
-  <img src="docs/marketing_kit/strategy/personas.png" alt="User Personas" width="90%" />
+  <img src="docs/marketing_kit/strategy/persona.png" alt="User Personas" width="90%" />
 </p>
 
 ### 🔬 SWOT Analysis
