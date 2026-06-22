@@ -38,13 +38,18 @@ public class PaymentService {
   @Value("${liqpay.private-key}")
   private String privateKey;
 
+  // --- ДОДАНО ---
+  @Value("${liqpay.webhook-url}")
+  private String webhookUrl;
+
   @Transactional
   public void processLiqPayWebhook(String idempotencyKey, Long orderId, String status, BigDecimal amount) {
 
     String internalEventType = "PENDING";
     String orderPaymentStatus = "PENDING";
 
-    if ("success".equalsIgnoreCase(status) || "wait_accept".equalsIgnoreCase(status) || "sandbox".equalsIgnoreCase(status)) {
+    if ("success".equalsIgnoreCase(status) || "wait_accept".equalsIgnoreCase(status)
+        || "sandbox".equalsIgnoreCase(status)) {
       internalEventType = "PAYMENT";
       orderPaymentStatus = "PAID";
     } else if ("error".equalsIgnoreCase(status) || "failure".equalsIgnoreCase(status)) {
@@ -63,7 +68,7 @@ public class PaymentService {
     transactionRepository.save(event);
 
     Order order = orderRepository.findById(orderId)
-      .orElseThrow(() -> new RuntimeException("Замовлення не знайдено"));
+        .orElseThrow(() -> new RuntimeException("Замовлення не знайдено"));
 
     order.setPaymentStatus(orderPaymentStatus);
     orderRepository.save(order);
@@ -108,18 +113,19 @@ public class PaymentService {
       params.put("order_id", String.valueOf(orderId));
       params.put("version", "3");
       params.put("sandbox", "1");
-      params.put("server_url", "https://bartender-payphone-sizzle.ngrok-free.dev/api/v1/payments/webhook");
+
+      // --- ЗМІНЕНО ---
+      params.put("server_url", webhookUrl);
 
       String data = Base64.getEncoder().encodeToString(
-        new ObjectMapper().writeValueAsString(params).getBytes(StandardCharsets.UTF_8)
-      );
+          new ObjectMapper().writeValueAsString(params).getBytes(StandardCharsets.UTF_8));
       String signString = privateKey + data + privateKey;
       MessageDigest md = MessageDigest.getInstance("SHA-1");
       String signature = Base64.getEncoder().encodeToString(md.digest(signString.getBytes(StandardCharsets.UTF_8)));
 
       // URL-кодування рядків
-      String encodedData = java.net.URLEncoder.encode(data, StandardCharsets.UTF_8.name());
-      String encodedSignature = java.net.URLEncoder.encode(signature, StandardCharsets.UTF_8.name());
+      String encodedData = URLEncoder.encode(data, StandardCharsets.UTF_8.name());
+      String encodedSignature = URLEncoder.encode(signature, StandardCharsets.UTF_8.name());
 
       return "https://www.liqpay.ua/api/3/checkout?data=" + encodedData + "&signature=" + encodedSignature;
     } catch (Exception e) {
