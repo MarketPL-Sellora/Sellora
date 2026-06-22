@@ -84,15 +84,15 @@
 
 **Адміністратор (Admin):**
 * Email: `admin@sellora.com`
-* Пароль: `password123`
+* Пароль: `12345678`
 
 **Продавець (Merchant):**
 * Email: `merchant@sellora.com`
-* Пароль: `password123`
+* Пароль: `12345678`
 
 **Покупець (Buyer):**
 * Email: `buyer@sellora.com`
-* Пароль: `password123`
+* Пароль: `12345678`
 
 **Доступ до бази даних (pgAdmin):**
 * Email: `admin@admin.com` (або той, що вказаний у вашому `.env` як `PGADMIN_EMAIL`)
