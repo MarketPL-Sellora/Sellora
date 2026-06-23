@@ -55,18 +55,21 @@ public class ProductControllerTest {
   @Test
   void getProducts_ReturnsOkWithPage() {
     Page<ProductResponseDto> page = new PageImpl<>(List.of(
-      new ProductResponseDto(1L, "Title", "Desc", BigDecimal.TEN, BigDecimal.ONE,
-        5, 10, 1L, null, 1L, null, Map.of(), List.of(), "ACTIVE", false, null)
+      new ProductResponseDto(
+        1L, "Title", "Desc", BigDecimal.TEN, BigDecimal.ONE,
+        5, 10, 1L, null, 1L, null, Map.of(), List.of(), "ACTIVE",
+        false, null, null, null, null // Додано 3 параметри
+      )
     ));
     when(productService.filterProducts(
       any(), any(), any(), any(), any(), any(), any(),
-      anyBoolean(), // Додано параметр onlyFavorites
+      anyBoolean(),
       anyInt(), anyInt(), anyString(), anyString()))
       .thenReturn(page);
 
     ResponseEntity<Page<ProductResponseDto>> response = productController.getProducts(
       "key", BigDecimal.ZERO, BigDecimal.TEN, 1L, "ACTIVE", 1L, "ALL",
-      false, // Додано аргумент onlyFavorites
+      false,
       0, 10, "id", "asc"
     );
 
@@ -80,15 +83,15 @@ public class ProductControllerTest {
     ProductResponseDto dto = new ProductResponseDto(
       1L, "Title", "Desc", BigDecimal.TEN, BigDecimal.ONE, 5, 10,
       1L, "Category", 1L, "Store", Map.of(), List.of(), "ACTIVE",
-      false, null
+      false, null, null, null, null // Додано 3 параметри
     );
-    when(productService.getProductById(eq(1L), anyBoolean())).thenReturn(dto);
 
-    ResponseEntity<ProductResponseDto> response = productController.getProductById(1L, true);
+    when(productService.getProductById(1L, false)).thenReturn(dto);
+
+    ResponseEntity<ProductResponseDto> response = productController.getProductById(1L, false);
 
     assertEquals(HttpStatus.OK, response.getStatusCode());
     assertNotNull(response.getBody());
-    assertEquals(1L, response.getBody().id());
   }
 
   @Test

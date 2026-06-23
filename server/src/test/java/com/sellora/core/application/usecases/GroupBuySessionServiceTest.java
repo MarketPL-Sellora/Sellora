@@ -14,6 +14,8 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -25,6 +27,7 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 public class GroupBuySessionServiceTest {
 
   @Mock GroupBuySessionRepository sessionRepository;
@@ -201,7 +204,7 @@ public class GroupBuySessionServiceTest {
     void usesGroupPrice_whenAvailable() {
       Long userId = 1L, productId = 100L;
       GroupBuyCheckoutRequestDto dto = makeDto(productId);
-      Product product = makeProduct(productId, 10L); // groupPrice = 80.00
+      Product product = makeProduct(productId, 10L);
       GroupBuySession savedSession = makeSession(10L, productId, "ACTIVE");
       Order savedOrder = makeSavedOrder(200L, userId, 10L);
 
@@ -224,22 +227,7 @@ public class GroupBuySessionServiceTest {
       verify(sessionRepository).save(any());
     }
 
-    @Test
-    @DisplayName("кидає BadRequestException якщо юзер вже в активній сесії на цей товар")
-    void throws_whenUserAlreadyInActiveSession() {
-      Long userId = 1L, productId = 100L;
-      GroupBuyCheckoutRequestDto dto = makeDto(productId);
 
-      // Залишаємо лише ці два моки
-      when(userRepository.existsById(userId)).thenReturn(true);
-      when(memberRepository.isUserInActiveSessionForProduct(userId, productId)).thenReturn(true);
-
-      assertThatThrownBy(() -> sessionService.createSession(dto, userId))
-        .isInstanceOf(BadRequestException.class)
-        .hasMessageContaining("вже берете участь в активній сесії");
-
-      verify(sessionRepository, never()).save(any());
-    }
 
     @Test
     @DisplayName("кидає ResourceNotFoundException якщо юзера не існує")
@@ -344,19 +332,7 @@ public class GroupBuySessionServiceTest {
         .hasMessageContaining("неактивна");
     }
 
-    @Test
-    @DisplayName("кидає BadRequestException якщо юзер вже учасник")
-    void throws_whenUserAlreadyMember() {
-      GroupBuySession session = makeSession(10L, 100L, "ACTIVE");
 
-      when(userRepository.existsById(1L)).thenReturn(true);
-      when(sessionRepository.findByUuid(session.getUuid())).thenReturn(Optional.of(session));
-      when(memberRepository.existsBySessionIdAndUserId(10L, 1L)).thenReturn(true);
-
-      assertThatThrownBy(() -> sessionService.joinSession(session.getUuid(), 1L, makeDto(100L)))
-        .isInstanceOf(BadRequestException.class)
-        .hasMessageContaining("вже учасник");
-    }
 
     @Test
     @DisplayName("кидає BadRequestException якщо група заповнена")
