@@ -4,10 +4,13 @@ import { useRouter } from 'vue-router'
 import { DICT } from '../../constants/dictionary'
 import { useCartStore } from '../../state/cartStore'
 import type { CartItem } from '../../state/cartStore'
+import { toast } from 'vue3-toastify'
+import { useConfirmStore } from '../../state/confirmStore'
 
 const emit = defineEmits<{ (e: 'close'): void }>()
 const router = useRouter()
 const cartStore = useCartStore()
+const confirmStore = useConfirmStore()
 
 onMounted(() => {
   cartStore.fetchCart()
@@ -20,7 +23,7 @@ async function changeQuantity(item: CartItem, delta: number) {
   if (newQty < 1) return
 
   if (item.stockQuantity !== undefined && newQty > item.stockQuantity) {
-    alert(`Максимальна доступна кількість: ${item.stockQuantity} шт.`)
+    toast.warning(`Максимальна доступна кількість: ${item.stockQuantity} шт.`)
     return
   }
 
@@ -36,13 +39,15 @@ async function changeQuantity(item: CartItem, delta: number) {
 }
 
 async function handleRemove(productId: number) {
-  if (confirm(DICT.messages.confirmDeleteCart)) {
+  const isConfirmed = await confirmStore.ask('Увага', DICT.messages.confirmDeleteCart)
+  if (isConfirmed) {
     await cartStore.removeItem(productId)
   }
 }
 
 async function handleClear() {
-  if (confirm(DICT.messages.confirmClearCart)) {
+  const isConfirmed = await confirmStore.ask('Увага', DICT.messages.confirmClearCart)
+  if (isConfirmed) {
     await cartStore.clearCart()
   }
 }
@@ -197,6 +202,21 @@ const fmt = (n: number) => (n || 0).toLocaleString('uk-UA') + ' ₴'
         >
           {{ DICT.cart.checkoutBtn }}
         </button>
+      </div>
+      <!-- Conflict Modal -->
+      <div v-if="cartStore.showConflictModal" class="fixed inset-0 bg-black/70 flex items-center justify-center z-[9999]">
+        <div class="bg-stone-900 rounded-xl p-6 border border-stone-700 max-w-sm w-full mx-4 animate-slide-in">
+          <h3 class="text-white text-lg font-bold font-['Unbounded'] mb-3">Увага</h3>
+          <p class="text-gray-300 text-sm mb-6">Можна вибрати товари лише з одного магазину. Скинути попередній вибір?</p>
+          <div class="flex gap-3 justify-end">
+            <button class="px-4 py-2 bg-stone-700 hover:bg-stone-600 text-white rounded-lg transition-colors font-medium text-sm" @click="cartStore.resolveConflict(false)">
+              Скасувати
+            </button>
+            <button class="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-colors font-medium text-sm" @click="cartStore.resolveConflict(true)">
+              Скинути вибір
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   </div>

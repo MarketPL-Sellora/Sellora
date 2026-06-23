@@ -19,9 +19,11 @@ import CabinetStoreOrders from '../components/cabinet/CabinetStoreOrders.vue'
 import ProductGrid from '../components/product/ProductGrid.vue'
 import { useUserStore } from '../state/userStore'
 import { useProductStore } from '../state/productStore'
+import { useConfirmStore } from '../state/confirmStore'
 
 const userStore = useUserStore()
 const productStore = useProductStore()
+const confirmStore = useConfirmStore()
 
 const route = useRoute()
 const router = useRouter()
@@ -92,7 +94,8 @@ function editStore() {
 }
 
 async function handleDeleteProduct(id: number) {
-  if (!confirm('Ви дійсно хочете видалити цей товар?')) return
+  const isConfirmed = await confirmStore.ask('Увага', 'Ви дійсно хочете видалити цей товар?')
+  if (!isConfirmed) return
   processingActionId.value = id
   try {
     const success = await productStore.deleteProduct(id)
@@ -123,7 +126,8 @@ function openEditForm(id: number) {
 
 async function handleDeleteStore() {
   if (!userStore.sellerStore?.id) return
-  if (!confirm('Ви дійсно хочете видалити свій магазин? Цю дію неможливо скасувати.')) return
+  const isConfirmed = await confirmStore.ask('Увага', 'Ви дійсно хочете видалити свій магазин? Цю дію неможливо скасувати.')
+  if (!isConfirmed) return
   processingActionId.value = 'store'
   try {
     await userStore.deleteStore(userStore.sellerStore.id)
@@ -135,7 +139,8 @@ async function handleDeleteStore() {
 async function handleStoreStatus(newStatus: string) {
   if (!userStore.sellerStore?.id) return
   const actionText = newStatus === 'CLOSED' ? 'закрити' : 'активувати'
-  if (!confirm(`Ви дійсно хочете ${actionText} свій магазин?`)) return
+  const isConfirmed = await confirmStore.ask('Увага', `Ви дійсно хочете ${actionText} свій магазин?`)
+  if (!isConfirmed) return
   processingActionId.value = 'store'
   try {
     const success = await userStore.changeStoreStatus(userStore.sellerStore.id, newStatus)

@@ -4,6 +4,7 @@ import { useUserStore } from '../../state/userStore'
 import { useGroupBuyStore } from '../../state/groupBuyStore'
 import { useProductStore } from '../../state/productStore'
 import { apiClient } from '../../api/axios'
+import { useConfirmStore } from '../../state/confirmStore'
 
 const ordersCount = ref(0)
 
@@ -29,6 +30,7 @@ const props = defineProps<{
 const userStore     = useUserStore()
 const groupBuyStore = useGroupBuyStore()
 const productStore  = useProductStore()
+const confirmStore  = useConfirmStore()
 
 // ─── Завантаження сесій при монтуванні (щоб лічильник був актуальним) ──────────
 onMounted(() => {
@@ -100,7 +102,8 @@ function navigate(id: string) {
 // ─── Логіка виходу ────────────────────────────────────────────────────────────
 // Показуємо підтвердження перед виходом, щоб уникнути випадкового натискання.
 async function handleLogout() {
-  if (window.confirm('Ви точно хочете вийти?')) {
+  const isConfirmed = await confirmStore.ask('Увага', 'Ви точно хочете вийти?')
+  if (isConfirmed) {
     try {
       await userStore.logout() // Обов'язково чекаємо, поки токен успішно видалиться
     } catch (err) {

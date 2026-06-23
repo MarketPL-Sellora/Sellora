@@ -2,6 +2,7 @@
 import { ref, computed, watch } from 'vue'
 import { useProductStore } from '../../state/productStore'
 import { useUserStore } from '../../state/userStore'
+import { toast } from 'vue3-toastify'
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 const props = defineProps<{
@@ -122,7 +123,7 @@ async function toggleWishlist(e: MouseEvent) {
   } catch (error: any) {
     localIsFavorite.value = originalState // Rollback при помилці
     if (error?.isHandled) return // Якщо це 401, інтерцептор вже відкрив модалку
-    alert('Помилка збереження. Спробуйте пізніше.')
+    toast.error('Помилка збереження. Спробуйте пізніше.')
   }
 }
 </script>

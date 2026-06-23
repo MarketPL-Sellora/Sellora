@@ -4,6 +4,10 @@ import dayjs from 'dayjs'
 import { apiClient } from '../../api/axios'
 import { useUserStore } from '../../state/userStore'
 import ReviewModal from '../modals/ReviewModal.vue'
+import { toast } from 'vue3-toastify'
+import { useConfirmStore } from '../../state/confirmStore'
+
+const confirmStore = useConfirmStore()
 
 interface ReviewItem {
   id: number
@@ -98,13 +102,14 @@ function openCreateModal() {
 
 async function deleteReview() {
   if (!props.apiProduct?.id) return
-  if (!confirm('Ви впевнені, що хочете видалити свій відгук?')) return
+  const isConfirmed = await confirmStore.ask('Увага', 'Ви впевнені, що хочете видалити свій відгук?')
+  if (!isConfirmed) return
 
   try {
     await apiClient.delete(`/reviews/${props.apiProduct.id}`)
     emit('review-updated')
   } catch (e: any) {
-    alert(e.response?.data?.message || 'Помилка при видаленні відгуку')
+    toast.error(e.response?.data?.message || 'Помилка при видаленні відгуку')
   }
 }
 

@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { apiClient } from '../../api/axios'
+import { toast } from 'vue3-toastify'
+import { useConfirmStore } from '../../state/confirmStore'
+
+const confirmStore = useConfirmStore()
 
 // ─── Типи ─────────────────────────────────────────────────────────────────────
 interface MerchantRequisite {
@@ -98,12 +102,13 @@ async function handleSave() {
 
 // ─── Видалення ────────────────────────────────────────────────────────────────
 async function handleDelete(id: number) {
-  if (!confirm('Ви дійсно хочете видалити цей платіжний реквізит?')) return
+  const isConfirmed = await confirmStore.ask('Увага', 'Ви дійсно хочете видалити цей платіжний реквізит?')
+  if (!isConfirmed) return
   try {
     await apiClient.delete(`/merchant_requisites/${id}`)
     await fetchRequisites()
   } catch (error: any) {
-    alert(error.response?.data?.message || 'Помилка при видаленні реквізиту.')
+    toast.error(error.response?.data?.message || 'Помилка при видаленні реквізиту.')
   }
 }
 

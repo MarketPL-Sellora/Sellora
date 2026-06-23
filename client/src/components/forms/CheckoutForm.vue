@@ -5,6 +5,7 @@ import { DICT } from '../../constants/dictionary'
 import { useCartStore } from '../../state/cartStore'
 import { useUserStore } from '../../state/userStore'
 import { apiClient } from '../../api/axios'
+import { toast } from 'vue3-toastify'
 
 const router = useRouter()
 const cartStore = useCartStore()
@@ -362,7 +363,7 @@ function validateForm(): string | null {
 async function handleSubmit() {
   const validationError = validateForm()
   if (validationError) {
-    alert(validationError)
+    toast.error(validationError)
     return
   }
 
@@ -422,7 +423,7 @@ async function handleSubmit() {
     }
   } catch (error: any) {
     submitError.value = error.response?.data?.message || error.message || 'Помилка при оформленні замовлення'
-    alert(submitError.value)
+    toast.error(submitError.value)
   } finally {
     isSubmitting.value = false
   }

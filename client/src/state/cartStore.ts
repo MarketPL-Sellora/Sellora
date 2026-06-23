@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { apiClient } from '../api/axios'
+import { toast } from 'vue3-toastify'
 
 export interface CartItem {
   productId: number
@@ -36,6 +37,31 @@ export const useCartStore = defineStore('cart', () => {
   // --- Selection state ---
   const selectedProductIds = ref<number[]>([])
   const selectedMerchantId = ref<number | null>(null)
+
+  const showConflictModal = ref(false)
+  const pendingConflictData = ref<{ type: 'item' | 'store', merchantId: number, data: any } | null>(null)
+
+  function resolveConflict(confirmReset: boolean) {
+    if (confirmReset && pendingConflictData.value) {
+      selectedProductIds.value = []
+      selectedMerchantId.value = null
+
+      if (pendingConflictData.value.type === 'item') {
+        const item = pendingConflictData.value.data as CartItem
+        selectedProductIds.value.push(item.productId)
+        selectedMerchantId.value = pendingConflictData.value.merchantId
+      } else if (pendingConflictData.value.type === 'store') {
+        const items = pendingConflictData.value.data as CartItem[]
+        const storeProductIds = items.map(i => i.productId)
+        for (const id of storeProductIds) {
+          selectedProductIds.value.push(id)
+        }
+        selectedMerchantId.value = pendingConflictData.value.merchantId
+      }
+    }
+    showConflictModal.value = false
+    pendingConflictData.value = null
+  }
 
   // --- Computed: group items by merchantId ---
   const groupedItems = computed<Record<number, GroupedStore>>(() => {
@@ -87,12 +113,9 @@ export const useCartStore = defineStore('cart', () => {
       selectedMerchantId.value !== itemMerchantId &&
       selectedProductIds.value.length > 0
     ) {
-      const confirmed = confirm('Можна вибрати товари лише з одного магазину. Скинути вибір?')
-      if (!confirmed) return
-
-      // Reset selection
-      selectedProductIds.value = []
-      selectedMerchantId.value = null
+      pendingConflictData.value = { type: 'item', merchantId: itemMerchantId, data: item }
+      showConflictModal.value = true
+      return
     }
 
     selectedProductIds.value.push(item.productId)
@@ -120,11 +143,9 @@ export const useCartStore = defineStore('cart', () => {
       selectedMerchantId.value !== merchantId &&
       selectedProductIds.value.length > 0
     ) {
-      const confirmed = confirm('Можна вибрати товари лише з одного магазину. Скинути вибір?')
-      if (!confirmed) return
-
-      selectedProductIds.value = []
-      selectedMerchantId.value = null
+      pendingConflictData.value = { type: 'store', merchantId, data: items }
+      showConflictModal.value = true
+      return
     }
 
     // Add missing product IDs
@@ -173,7 +194,7 @@ export const useCartStore = defineStore('cart', () => {
       return true
     } catch (error: any) {
       console.error('Помилка при додаванні в кошик:', error)
-      alert(error.response?.data?.message || 'Помилка при додаванні в кошик')
+      toast.error(error.response?.data?.message || 'Помилка при додаванні в кошик')
       return false
     } finally {
       isLoading.value = false
@@ -185,7 +206,7 @@ export const useCartStore = defineStore('cart', () => {
       await apiClient.patch(`/cart/${productId}/quantity`, { new_quantity: newQuantity })
       return true
     } catch (error: any) {
-      alert(error.response?.data?.message || 'Помилка при зміні кількості')
+      toast.error(error.response?.data?.message || 'Помилка при зміні кількості')
       return false
     }
   }
@@ -196,7 +217,7 @@ export const useCartStore = defineStore('cart', () => {
       await fetchCart()
       return true
     } catch (error: any) {
-      alert(error.response?.data?.message || 'Помилка видалення')
+      toast.error(error.response?.data?.message || 'Помилка видалення')
       return false
     }
   }
@@ -209,7 +230,7 @@ export const useCartStore = defineStore('cart', () => {
       selectedMerchantId.value = null
       return true
     } catch (error: any) {
-      alert(error.response?.data?.message || 'Помилка очищення')
+      toast.error(error.response?.data?.message || 'Помилка очищення')
       return false
     }
   }
@@ -229,5 +250,8 @@ export const useCartStore = defineStore('cart', () => {
     clearCart,
     toggleItemSelection,
     toggleStoreSelection,
+    showConflictModal,
+    pendingConflictData,
+    resolveConflict,
   }
 })

@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { apiClient } from '../api/axios'
+import { toast } from 'vue3-toastify'
 
 interface UserData {
   id: number
@@ -163,13 +164,13 @@ export const useUserStore = defineStore('user', () => {
       await apiClient.delete(`/stores/${storeId}`)
       sellerStore.value = null // Очищаємо локальний стейт
       await fetchMe() // Оновлюємо юзера, бо його роль могла змінитись на BUYER
-      alert('Магазин успішно видалено')
+      toast.success('Магазин успішно видалено')
       return true
     } catch (error: any) {
       if (error.response?.status === 409) {
-        alert('Помилка: У магазину є існуючі товари. Спочатку видаліть їх.')
+        toast.error('Помилка: У магазину є існуючі товари. Спочатку видаліть їх.')
       } else {
-        alert(error.response?.data?.message || 'Помилка при видаленні магазину')
+        toast.error(error.response?.data?.message || 'Помилка при видаленні магазину')
       }
       return false
     }
@@ -180,7 +181,7 @@ export const useUserStore = defineStore('user', () => {
       await apiClient.patch(`/stores/${storeId}/status`, { status })
       return true
     } catch (error: any) {
-      alert(error.response?.data?.message || 'Помилка при зміні статусу')
+      toast.error(error.response?.data?.message || 'Помилка при зміні статусу')
       return false
     }
   }

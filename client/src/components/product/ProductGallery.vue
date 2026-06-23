@@ -3,6 +3,7 @@ import { ref, computed, watch } from 'vue'
 import type { ProductApiItem } from '../../state/productStore'
 import { useProductStore } from '../../state/productStore'
 import { useUserStore } from '../../state/userStore'
+import { toast } from 'vue3-toastify'
 
 const props = defineProps<{
   apiProduct?: ProductApiItem | null
@@ -111,7 +112,7 @@ async function toggleWishlist() {
   } catch (error: any) {
     localIsFavorite.value = originalState
     if (error?.isHandled) return
-    alert('Помилка збереження. Спробуйте пізніше.')
+    toast.error('Помилка збереження. Спробуйте пізніше.')
   }
 }
 </script>
