@@ -1,9 +1,7 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
-// Видаляємо: import axios from 'axios'
-import { apiClient } from '../api/axios' // Або шлях до твого файлу з налаштованим Axios
+import { apiClient } from '../api/axios'
 
-// ─── Інтерфейс категорії (згідно зі Swagger) ─────────────────────────────────
 export interface Category {
   id: number;
   name: string;
@@ -17,16 +15,13 @@ export interface FlatCategory {
   parentId: number | null;
 }
 
-// ─── Pinia Store: categoryStore ──────────────────────────────────────────────
 export const useCategoryStore = defineStore('category', () => {
 
-  // ─── Стан ──────────────────────────────────────────────────────────────────
   const categories = ref<Category[]>([]);
   const flatCategories = ref<FlatCategory[]>([]);
   const isLoading = ref<boolean>(false);
   const error = ref<string | null>(null);
 
-  // ─── Дія: завантажити дерево категорій з бекенду ───────────────────────────
   async function fetchCategories() {
     isLoading.value = true;
     error.value = null;
@@ -35,7 +30,6 @@ export const useCategoryStore = defineStore('category', () => {
       const response = await apiClient.get('/categories/tree')
       categories.value = response.data;
     } catch (err: any) {
-      // Записуємо повідомлення про помилку в стан та виводимо в консоль
       error.value = err?.message || 'Помилка при завантаженні категорій';
       console.error('fetchCategories error:', err);
     } finally {
@@ -47,9 +41,7 @@ export const useCategoryStore = defineStore('category', () => {
     isLoading.value = true;
     error.value = null;
     try {
-      // Використовуємо size=1000, щоб отримати всі категорії для селекта без складної пагінації на фронті
       const response = await apiClient.get('/categories?page=0&size=1000');
-      // Згідно зі Swagger, масив даних лежить у полі content
       flatCategories.value = response.data.content || [];
     } catch (err: any) {
       error.value = err?.message || 'Помилка при завантаженні категорій';
@@ -59,7 +51,6 @@ export const useCategoryStore = defineStore('category', () => {
     }
   }
 
-  // ─── Дія: створити нову категорію ─────────────────────────────────────────
   async function createCategory(payload: { name: string; parentId: number | null }) {
     isLoading.value = true;
     error.value = null;
@@ -74,7 +65,6 @@ export const useCategoryStore = defineStore('category', () => {
     }
   }
 
-  // ─── Дія: видалити категорію за ID ──────────────────────────────────────────
   async function deleteCategory(id: number) {
     isLoading.value = true;
     error.value = null;

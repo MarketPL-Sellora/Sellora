@@ -1,8 +1,8 @@
 import { defineStore } from 'pinia'
 import { ref, reactive } from 'vue'
 import { apiClient } from '../api/axios.ts'
+import { toast } from 'vue3-toastify'
 
-// ─── Тип відповіді бекенду ────────────────────────────────────────────────────
 
 export interface ProductApiItem {
   id: number
@@ -20,7 +20,6 @@ export interface ProductApiItem {
   isFavorite?: boolean
 }
 
-// ─── Тип фільтрів ─────────────────────────────────────────────────────────────
 
 export interface ProductFilters {
   sortBy?: string
@@ -37,15 +36,13 @@ export interface ProductFilters {
   size: number
 }
 
-// ─── Стор ────────────────────────────────────────────────────────────────────
 
 export const useProductStore = defineStore('products', () => {
 
-  // --- Стан -------------------------------------------------------------------
 
   const products = ref<ProductApiItem[]>([])
-  const myProducts = ref<ProductApiItem[]>([])   // NEW: товари конкретного мерчанта
-  const currentProduct = ref<ProductApiItem | null>(null) // Деталі одного товару
+  const myProducts = ref<ProductApiItem[]>([])
+  const currentProduct = ref<ProductApiItem | null>(null)
   const totalElements = ref<number>(0)
   const favoritesCount = ref<number>(0)
   const isLoading = ref<boolean>(false)
@@ -56,7 +53,6 @@ export const useProductStore = defineStore('products', () => {
     size: 24,
   })
 
-  // --- Дії --------------------------------------------------------------------
 
   async function fetchProducts(params: Partial<ProductFilters> = {}) {
     Object.assign(filters, params)
@@ -84,10 +80,8 @@ export const useProductStore = defineStore('products', () => {
 
       const newProducts = response.data.content ?? [];
       if (filters.page === 0) {
-        // Якщо це перша сторінка (або зміна фільтрів), замінюємо масив
         products.value = newProducts;
       } else {
-        // Якщо це наступна сторінка, додаємо в кінець
         products.value = [...products.value, ...newProducts];
       }
       totalElements.value = response.data.totalElements ?? 0;
@@ -100,7 +94,6 @@ export const useProductStore = defineStore('products', () => {
     }
   }
 
-  // ─── NEW: завантажити одне зображення, повернути URL ─────────────────────────
   async function uploadImage(file: File): Promise<string> {
     const formData = new FormData()
     formData.append('file', file)
@@ -113,18 +106,15 @@ export const useProductStore = defineStore('products', () => {
 
     const data = response.data
 
-    // Бекенд може повернути: просто рядок, об'єкт { url }, або { additionalProp1: "..." }
     if (typeof data === 'string') return data
     if (data && typeof data === 'object') {
       if (typeof data.url === 'string') return data.url
-      // Дістаємо перше рядкове значення з об'єкта
       const firstString = Object.values(data).find(v => typeof v === 'string')
       if (firstString) return firstString as string
     }
     throw new Error('Не вдалося отримати URL зображення від сервера')
   }
 
-  // ─── NEW: створити товар ──────────────────────────────────────────────────────
   async function createProduct(payload: Omit<ProductApiItem, 'id'>): Promise<boolean> {
     try {
       await apiClient.post('/products', payload)
@@ -135,7 +125,6 @@ export const useProductStore = defineStore('products', () => {
     }
   }
 
-  // ─── NEW: завантажити товари конкретного мерчанта ─────────────────────────────
   async function fetchMerchantProducts(merchantId: number): Promise<void> {
     isLoading.value = true
     error.value = null
@@ -151,7 +140,7 @@ export const useProductStore = defineStore('products', () => {
     }
   }
 
-  // ─── NEW: завантажити один товар за ID ──────────────────────────────────────
+
   async function fetchProductById(id: number): Promise<void> {
     isLoading.value = true
     error.value = null
@@ -167,29 +156,29 @@ export const useProductStore = defineStore('products', () => {
     }
   }
 
-  // ─── Видалити товар ──────────────────────────────────────────────────────────
+
   async function deleteProduct(id: number): Promise<boolean> {
     try {
       await apiClient.delete('/products/' + id)
       return true
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Помилка видалення товару')
+      toast.error(err.response?.data?.message || 'Помилка видалення товару')
       return false
     }
   }
 
-  // ─── Змінити статус товару ───────────────────────────────────────────────────
+
   async function changeProductStatus(id: number, status: string): Promise<boolean> {
     try {
       await apiClient.patch('/products/' + id + '/status', { status })
       return true
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Помилка зміни статусу')
+      toast.error(err.response?.data?.message || 'Помилка зміни статусу')
       return false
     }
   }
 
-  // ─── Оновити товар ──────────────────────────────────────────────────────────
+
   async function updateProduct(id: number, payload: Omit<ProductApiItem, 'id'>): Promise<boolean> {
     try {
       await apiClient.put('/products/' + id, payload)
@@ -214,7 +203,7 @@ export const useProductStore = defineStore('products', () => {
     fetchProducts()
   }
 
-  // ─── Улюблені товари ──────────────────────────────────────────────────────────
+
   async function fetchFavoritesCount() {
     try {
       const response = await apiClient.get('/products', { params: { onlyFavorites: true, size: 1 } })

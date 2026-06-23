@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useUserStore } from '../../state/userStore'
 import { apiClient } from '../../api/axios'
+import { toast } from 'vue3-toastify'
 
 const userStore = useUserStore()
 
@@ -92,7 +93,7 @@ async function handleChangePassword() {
     newPassword.value = ''
     repeatPassword.value = ''
     passwordError.value = ''
-    alert('Пароль успішно змінено')
+    toast.success('Пароль успішно змінено')
   } catch {
     passwordError.value = 'Невірний старий пароль або помилка сервера'
   } finally {

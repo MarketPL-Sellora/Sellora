@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { apiClient } from '../../api/axios'
+import { toast } from 'vue3-toastify'
+import { useConfirmStore } from '../../state/confirmStore'
+
+const confirmStore = useConfirmStore()
 
 interface StoreItem {
   id: number
@@ -29,24 +33,26 @@ async function handleStatusChange(storeId: number, currentStatus: string) {
   const newStatus = (currentStatus === 'ACTIVE' || currentStatus === 'CLOSED') ? 'BLOCKED' : 'ACTIVE'
   const actionText = newStatus === 'BLOCKED' ? 'заблокувати' : 'активувати'
   
-  if (!confirm(`Ви дійсно хочете ${actionText} цей магазин?`)) return
+  const isConfirmed = await confirmStore.ask('Увага', `Ви дійсно хочете ${actionText} цей магазин?`)
+  if (!isConfirmed) return
   
   try {
     await apiClient.patch(`/stores/${storeId}/status`, { status: newStatus })
     await fetchStores()
   } catch (error: any) {
-    alert(error.response?.data?.message || 'Помилка при зміні статусу')
+    toast.error(error.response?.data?.message || 'Помилка при зміні статусу')
   }
 }
 
 async function handleDelete(storeId: number) {
-  if (!confirm('Ви дійсно хочете видалити цей магазин?')) return
+  const isConfirmed = await confirmStore.ask('Увага', 'Ви дійсно хочете видалити цей магазин?')
+  if (!isConfirmed) return
   
   try {
     await apiClient.delete(`/stores/${storeId}`)
     await fetchStores()
   } catch (error: any) {
-    alert(error.response?.data?.message || 'Помилка при видаленні')
+    toast.error(error.response?.data?.message || 'Помилка при видаленні')
   }
 }
 

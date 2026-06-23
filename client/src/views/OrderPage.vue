@@ -6,10 +6,13 @@ import Footer from '../components/layout/Footer.vue'
 import ReviewModal from '../components/modals/ReviewModal.vue'
 import { apiClient } from '../api/axios'
 import { useUserStore } from '../state/userStore'
+import { useConfirmStore } from '../state/confirmStore'
+import { toast } from 'vue3-toastify'
 
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
+const confirmStore = useConfirmStore()
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -170,21 +173,23 @@ async function retryPayment() {
       window.location.href = res.data.payment_url
     }
   } catch (e: any) {
-    alert(e.response?.data?.message || 'Помилка генерації посилання на оплату')
+    toast.error(e.response?.data?.message || 'Помилка генерації посилання на оплату')
   } finally {
     isActionLoading.value = false
   }
 }
 
 async function cancelOrder() {
-  if (!order.value || !confirm('Ви впевнені, що хочете скасувати це замовлення?')) return
+  if (!order.value) return
+  const isConfirmed = await confirmStore.ask('Увага', 'Ви впевнені, що хочете скасувати це замовлення?')
+  if (!isConfirmed) return
   isActionLoading.value = true
   try {
     await apiClient.patch(`/orders/${order.value.id}/cancel`)
     order.value.payment_status = 'CANCELLED'
-    alert('Замовлення успішно скасовано')
+    toast.success('Замовлення успішно скасовано')
   } catch (e: any) {
-    alert(e.response?.data?.message || 'Помилка скасування замовлення')
+    toast.error(e.response?.data?.message || 'Помилка скасування замовлення')
   } finally {
     isActionLoading.value = false
   }

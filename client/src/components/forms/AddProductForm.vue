@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue'
+import { toast } from 'vue3-toastify'
 import { useProductStore }         from '../../state/productStore'
 import { useUserStore }            from '../../state/userStore'
 import { useCategoryStore }        from '../../state/categoryStore'
@@ -153,15 +154,15 @@ async function handleSave() {
 
   if (productForm.isGroupBuy) {
     if (targetSize < 2) {
-      alert('Для групової покупки потрібно мінімум 2 людини.')
+      toast.warning('Для групової покупки потрібно мінімум 2 людини.')
       return
     }
     if (targetSize > stock) {
-      alert('Помилка: кількість людей для групової покупки не може перевищувати залишок товару на складі!')
+      toast.warning('Кількість людей для групової покупки не може перевищувати залишок товару на складі!')
       return
     }
     if (!Number(productForm.groupPrice)) {
-      alert('Вкажіть ціну для групової покупки.')
+      toast.warning('Вкажіть ціну для групової покупки.')
       return
     }
   }
@@ -207,12 +208,12 @@ async function handleSave() {
     if (success) {
       emit('close')
     } else {
-      alert(isEditing.value ? 'Не вдалося оновити товар. Спробуйте ще раз.' : 'Не вдалося створити товар. Спробуйте ще раз.')
+      toast.error(isEditing.value ? 'Не вдалося оновити товар. Спробуйте ще раз.' : 'Не вдалося створити товар. Спробуйте ще раз.')
     }
 
   } catch (err: unknown) {
     console.error('[AddProductForm] handleSave error:', err)
-    alert(err instanceof Error ? err.message : 'Помилка при збереженні товару')
+    toast.error(err instanceof Error ? err.message : 'Помилка при збереженні товару')
   } finally {
     isSaving.value = false
   }

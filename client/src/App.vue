@@ -3,6 +3,7 @@ import { onMounted } from 'vue';
 import { useCategoryStore } from './state/categoryStore';
 import { useUserStore } from './state/userStore'; // ДОДАНО
 import { useGroupBuyStore } from './state/groupBuyStore'; // ДОДАНО
+import GlobalConfirmModal from './components/modals/GlobalConfirmModal.vue';
 
 // Ініціалізуємо сховища
 const categoryStore = useCategoryStore();
@@ -25,4 +26,5 @@ onMounted(async () => { // ЗМІНЕНО НА async
 
 <template>
   <router-view/>
+  <GlobalConfirmModal />
 </template>

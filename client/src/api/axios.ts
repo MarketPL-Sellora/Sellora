@@ -8,27 +8,21 @@ export const apiClient: AxiosInstance = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  // ДОЗВОЛЯЄ БРАУЗЕРУ АВТОМАТИЧНО ПРИКРІПЛЮВАТИ COOKIES (зокрема accessToken)
   withCredentials: true,
 });
 
-// ─── Response Interceptor: обробка 401 Unauthorized ─────────────────────────
 apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
-    // Якщо бекенд повернув 401 — cookie протухла або відсутня
     if (error.response?.status === 401) {
-      // Не обробляємо 401 від самого /auth/logout, щоб уникнути рекурсії
       const requestUrl: string = error.config?.url || '';
       if (requestUrl.includes('/auth/logout')) {
         return Promise.reject(error);
       }
 
-      // Ленивий імпорт для уникнення циклічних залежностей (axios → userStore → axios)
       const { useUserStore } = await import('../state/userStore');
       const userStore = useUserStore();
 
-      // Скидаємо стан авторизації та відкриваємо модалку
       userStore.$patch({
         user: null,
         isAuthenticated: false,
@@ -36,13 +30,11 @@ apiClient.interceptors.response.use(
         isAuthModalOpen: true,
       });
 
-      // Редірект з захищених сторінок на головну, інакше залишаємось і показуємо модалку
       const protectedPaths = ['/cabinet'];
       if (protectedPaths.some((p) => window.location.pathname.startsWith(p))) {
         window.location.href = '/';
       }
 
-      // Повертаємо оброблений об'єкт помилки, щоб уникнути спаму "Request failed with status code 401" на UI
       return Promise.reject({ ...error, isHandled: true });
     }
 
@@ -50,5 +42,4 @@ apiClient.interceptors.response.use(
   }
 );
 
-// export default залишати не обов'язково, якщо всюди використовується import { apiClient }
 export default apiClient;

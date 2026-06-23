@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { apiClient } from '../../api/axios'
 import { useUserStore } from '../../state/userStore'
+import { toast } from 'vue3-toastify'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -105,11 +106,11 @@ async function saveOrderChanges() {
     };
 
     await apiClient.put(`/orders/${selectedOrder.value.id}`, payload);
-    alert('Зміни успішно збережено!');
+    toast.success('Зміни успішно збережено!');
     closeManageModal();
     fetchOrders(); // Оновлюємо таблицю після успішного збереження
   } catch (e: any) {
-    alert(e.response?.data?.message || 'Помилка при збереженні змін');
+    toast.error(e.response?.data?.message || 'Помилка при збереженні змін');
   } finally {
     isSaving.value = false;
   }

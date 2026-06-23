@@ -5,6 +5,7 @@ import { useUserStore }             from '../../state/userStore'
 import { apiClient }                from '../../api/axios'
 import { DICT }                     from '../../constants/dictionary'
 import type { GroupBuyCheckoutPayload } from '../../state/groupBuyStore'
+import { toast } from 'vue3-toastify'
 
 // ─── Props & Emits ────────────────────────────────────────────────────────────
 const props = withDefaults(defineProps<{
@@ -260,7 +261,7 @@ function validateForm(): string | null {
 async function handleSubmitOrder() {
   const validationError = validateForm()
   if (validationError) {
-    alert(validationError)
+    toast.error(validationError)
     return
   }
 
@@ -293,7 +294,7 @@ async function handleSubmitOrder() {
 
     if (!response) {
       submitError.value = store.error || 'Помилка оформлення'
-      alert(submitError.value)
+      toast.error(submitError.value)
       return
     }
 
@@ -313,7 +314,7 @@ async function handleSubmitOrder() {
 
   } catch (error: any) {
     submitError.value = error.response?.data?.message || 'Помилка оформлення'
-    alert(submitError.value)
+    toast.error(submitError.value)
   } finally {
     isSubmitting.value = false
   }

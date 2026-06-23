@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { useCategoryStore } from '../../state/categoryStore'
+import { toast } from 'vue3-toastify'
+import { useConfirmStore } from '../../state/confirmStore'
 
 // ─── Ініціалізація store ──────────────────────────────────────────────────────
 const categoryStore = useCategoryStore()
+const confirmStore = useConfirmStore()
 
 // ─── Стан модалки та форми створення ──────────────────────────────────────────
 const isModalOpen = ref(false)
@@ -35,12 +38,13 @@ async function handleCreate() {
 
 // ─── Видалення категорії ──────────────────────────────────────────────────────
 async function handleDelete(id: number) {
-  if (!window.confirm('Ви впевнені, що хочете видалити цю категорію?')) return
+  const isConfirmed = await confirmStore.ask('Увага', 'Ви впевнені, що хочете видалити цю категорію?')
+  if (!isConfirmed) return
   try {
     await categoryStore.deleteCategory(id)
     await categoryStore.fetchFlatCategories()
   } catch (e) {
-    alert('Помилка видалення. Можливо, категорія містить товари або підкатегорії.')
+    toast.error('Помилка видалення. Можливо, категорія містить товари або підкатегорії.')
   }
 }
 </script>
